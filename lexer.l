@@ -33,14 +33,22 @@
 #define T_geq 1029
 #define T_assign 1030
 #define T_id 1031
-#define T_const 1032
+#define T_int_const 1032
+#define T_char_const 1033
+#define T_string_const 1034
+
+int lineno = 1;
+int comment_level = 0;
+
 %}
 
 L [A-Za-z]
 D [0-9]
 H [0-9A-Fa-f]
-W [ \t\r\n]
-E [\n\t\r\0\\\'\"\x{H}{H}]
+W [ \t\r]
+E \\(n|t|r|0|\'|\"|\\|x{H}{H})
+
+%x COMMENT
 
 %%
 
@@ -75,9 +83,11 @@ E [\n\t\r\0\\\'\"\x{H}{H}]
 "<="     { return T_leq; }
 ">="     { return T_geq; }
 
-
 {L}({L}|{D}|_|\?)* { return T_id; }
-{D}+    { return T_const; }
+{D}+    { return T_int_const; }
+
+\'([^\'\"\\]|{E})\' { return T_char_const; }
+\"([^\n\'\"\\]|{E})*\" { return T_string_const; }
 
 [\,\;\:] { return yytext[0]; }
 [+\-\*/#=<>] { return yytext[0]; }
@@ -85,10 +95,21 @@ E [\n\t\r\0\\\'\"\x{H}{H}]
 [()\[\]+\-/%*=]   { return yytext[0]; }
 
 {W}+    { /* nothing */ }
-\'.*\n  { /* nothing' */ }
 
-.       { fprintf(stderr, "Illegal character with code %d",
-                  yytext[0]);
+\%.*\n  { lineno++; }
+
+"<*" { BEGIN(COMMENT); }
+<COMMENT>"<*" { ++comment_level; fprintf(stdout, "Im in line %d with comment_level %d \n", lineno, comment_level); }
+<COMMENT>"*"+">" { if(comment_level) --comment_level;
+                   else BEGIN(INITIAL); }
+<COMMENT>\n { lineno++; }
+<COMMENT>"*"+ { /* nothing */ }
+<COMMENT>[^*\n]+ { /* nothing */ }
+
+\n      { lineno++; }
+
+.       { fprintf(stderr, "Illegal character with code %d in line %d \n",
+                  yytext[0], lineno);
           exit(1);
         }
 
@@ -104,6 +125,7 @@ int main () {
   } while (token != T_eof);
 }
 #else
+
 int main () {
   int token;
   do {
