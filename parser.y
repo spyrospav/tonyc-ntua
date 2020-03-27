@@ -32,16 +32,16 @@
 %token T_char_const
 %token T_string_const
 
-%left<op> T_and     "and"
+%left     T_and     "and"
 %nonassoc T_not     "not"
-%left<op> T_or      "or"
+%left     T_or      "or"
 
-%left<op>           '*'
-%left<op>           '/'
-%left<op>           '+'
-%left<op>           '-'
-%right<op>          '#'
-%left<op> T_mod     "mod"
+%left               '*'
+%left               '/'
+%left               '+'
+%left               '-'
+%right              '#'
+%left     T_mod     "mod"
 
 %nonassoc T_assign  ":="
 %nonassoc T_neq     "<>"

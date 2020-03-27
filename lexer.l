@@ -59,7 +59,7 @@ E \\(n|t|r|0|\'|\"|\\|x{H}{H})
 \"([^\n\'\"\\]|{E})*\" { return T_string_const; }
 
 [\,\;\:] { return yytext[0]; }
-
+[+\-\*/#=<>]
 [()\[\]+\-/%*=]   { return yytext[0]; }
 
 {W}+    { /* nothing */ }
