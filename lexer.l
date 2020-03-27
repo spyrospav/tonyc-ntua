@@ -1,44 +1,11 @@
 %option noyywrap
 
 %{
-#define T_eof 0
-#define T_and 1001
-#define T_bool 1002
-#define T_char 1003
-#define T_decl 1004
-#define T_def 1005
-#define T_else 1006
-#define T_elsif 1007
-#define T_end 1008
-#define T_exit 1009
-#define T_false 1010
-#define T_for 1011
-#define T_head 1012
-#define T_if 1013
-#define T_int 1014
-#define T_list 1015
-#define T_mod 1016
-#define T_new 1017
-#define T_nil 1018
-#define T_nil_quest 1019
-#define T_not 1020
-#define T_or 1021
-#define T_ref 1022
-#define T_return 1023
-#define T_skip 1024
-#define T_tail 1025
-#define T_true 1026
-#define T_neq 1027
-#define T_leq 1028
-#define T_geq 1029
-#define T_assign 1030
-#define T_id 1031
-#define T_int_const 1032
-#define T_char_const 1033
-#define T_string_const 1034
 
+#include "parser.hpp"
 int lineno = 1;
 int comment_level = 0;
+#define T_eof 0
 
 %}
 
@@ -90,7 +57,6 @@ E \\(n|t|r|0|\'|\"|\\|x{H}{H})
 \"([^\n\'\"\\]|{E})*\" { return T_string_const; }
 
 [\,\;\:] { return yytext[0]; }
-[+\-\*/#=<>] { return yytext[0]; }
 
 [()\[\]+\-/%*=]   { return yytext[0]; }
 
