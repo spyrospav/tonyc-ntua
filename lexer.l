@@ -1,10 +1,12 @@
 %option noyywrap
 
 %{
-
+#include <stdio.h>
 #include "parser.hpp"
+
 int lineno = 1;
 int comment_level = 0;
+
 #define T_eof 0
 
 %}

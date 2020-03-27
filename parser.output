@@ -13,6 +13,7 @@ Terminals unused in grammar
    "for"
    "head"
    "if"
+   "int"
    "list"
    "new"
    "nil"
@@ -53,7 +54,7 @@ Grammar
 
     0 $accept: program $end
 
-    1 program: "int"
+    1 program: %empty
 
 
 Terminals, with rules where they appear
@@ -78,7 +79,7 @@ error (256)
 "for" (268)
 "head" (269)
 "if" (270)
-"int" (271) 1
+"int" (271)
 "list" (272)
 "new" (273)
 "nil" (274)
@@ -122,26 +123,19 @@ State 0
 
     0 $accept: . program $end
 
-    "int"  shift, and go to state 1
+    $default  reduce using rule 1 (program)
 
-    program  go to state 2
+    program  go to state 1
 
 
 State 1
 
-    1 program: "int" .
+    0 $accept: program . $end
 
-    $default  reduce using rule 1 (program)
+    $end  shift, and go to state 2
 
 
 State 2
-
-    0 $accept: program . $end
-
-    $end  shift, and go to state 3
-
-
-State 3
 
     0 $accept: program $end .
 

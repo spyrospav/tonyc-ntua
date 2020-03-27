@@ -48,10 +48,20 @@
 %nonassoc T_leq     "<="
 %nonassoc T_geq     ">="
 
+%{
+  typedef int YYSTYPE;
+%}
+
 %%
 
 program:
-  "int"
+  /* nothing */
 ;
 
 %%
+
+int main(){
+  int result = yyparse();
+  if (result == 0) printf("Success.\n");
+  return result;
+}
