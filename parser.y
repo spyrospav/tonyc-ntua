@@ -63,10 +63,6 @@
 
 program:
   func-def
-| hellotest
-;
-
-hellotest: "hellotest"
 ;
 
 func-def:
@@ -81,22 +77,48 @@ func-def-list:
   | var-def func-def-list
 ;
 
+header:
+    type T_id '(' formal-list ')'
+  | T_id '(' formal-list ')'
+;
+
+formal-list:
+    /* nothing */
+  | formal
+;
+
+formal:
+    "ref" type T_id formal-list-plus
+  | type T_id formal-list-plus
+;
+
+formal-list-plus:
+    /* nothing */
+  | ';' formal formal-list-plus
+;
+
+type: "int" | "bool" | "char" | type '[' ']' | "list" '[' type ']'
+;
+
+func-decl: "decl" header
+;
+
+var-def: type T_id var-def-list
+;
+
+var-def-list:
+    /* nothing */
+  | ',' T_id var-def-list
+;
+
 stmt-plus-list:
     stmt
   | stmt stmt-plus-list
 ;
 
-var-def: "vd"
-;
-
 stmt: "stmt"
 ;
 
-func-decl: "fdl"
-;
-
-header: "hd"
-;
 
 %%
 
