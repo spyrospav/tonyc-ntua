@@ -16,6 +16,14 @@ parser.hpp parser.cpp: parser.y
 
 compiler: parser.cpp
 
+parser.o: parser.cpp lexer.hpp
+lexer.o: lexer.cpp lexer.hpp parser.hpp
+
+
+tony: lexer.o parser.o
+	$(CXX) $(CXXFLAGS) -o tony lexer.o parser.o
+
+
 clean:
 	$(RM) lexer.cpp parser.cpp parser.hpp parser.output *.o
 

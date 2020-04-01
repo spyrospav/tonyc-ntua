@@ -26,27 +26,34 @@
 %token T_skip       "skip"
 %token T_tail       "tail"
 %token T_true       "true"
+%token T_not        "not"
+%token T_and        "and"
+%token T_or         "or"
+%token T_assign     ":="
+%token T_neq        "<>"
+%token T_leq        "<="
+%token T_geq        ">="
 
 %token T_id
 %token T_int_const
 %token T_char_const
 %token T_string_const
 
-%left     T_and     "and"
-%nonassoc T_not     "not"
-%left     T_or      "or"
+%left               T_and
+%nonassoc           T_not
+%left               T_or
 
 %left               '*'
 %left               '/'
 %left               '+'
 %left               '-'
 %right              '#'
-%left     T_mod     "mod"
+%left               T_mod
 
-%nonassoc T_assign  ":="
-%nonassoc T_neq     "<>"
-%nonassoc T_leq     "<="
-%nonassoc T_geq     ">="
+%nonassoc           T_assign
+%nonassoc           T_neq
+%nonassoc           T_leq
+%nonassoc           T_geq
 
 %{
   typedef int YYSTYPE;
@@ -55,7 +62,40 @@
 %%
 
 program:
-  /* nothing */
+  func-def
+| hellotest
+;
+
+hellotest: "hellotest"
+;
+
+func-def:
+  "def" header ':' func-def-list stmt-plus-list "end"
+;
+
+
+func-def-list:
+    /* nothing */
+  | func-def func-def-list
+  | func-decl func-def-list
+  | var-def func-def-list
+;
+
+stmt-plus-list:
+    stmt
+  | stmt stmt-plus-list
+;
+
+var-def: "vd"
+;
+
+stmt: "stmt"
+;
+
+func-decl: "fdl"
+;
+
+header: "hd"
 ;
 
 %%

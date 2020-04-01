@@ -3,6 +3,7 @@
 %{
 #include <stdio.h>
 #include "parser.hpp"
+#include "lexer.hpp"
 
 int lineno = 1;
 int comment_level = 0;
@@ -76,13 +77,16 @@ E \\(n|t|r|0|\'|\"|\\|x{H}{H})
 
 \n      { lineno++; }
 
-.       { fprintf(stderr, "Illegal character with code %d in line %d \n",
-                  yytext[0], lineno);
-          exit(1);
-        }
+.       { yyerror("a"); }
 
 %%
 
+void yyerror(const char *msg) {
+  fprintf(stderr, "Illegal character with code %d in line %d \n",
+                    yytext[0], lineno, msg);
+      exit(1);
+}
+/*
 #ifdef yyFlexLexer
 int main () {
   yyFlexLexer lexer;
@@ -102,3 +106,4 @@ int main () {
   } while (token != T_eof);
 }
 #endif
+*/

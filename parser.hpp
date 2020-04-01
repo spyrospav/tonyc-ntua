@@ -68,18 +68,18 @@ extern int yydebug;
     T_skip = 278,
     T_tail = 279,
     T_true = 280,
-    T_id = 281,
-    T_int_const = 282,
-    T_char_const = 283,
-    T_string_const = 284,
-    T_and = 285,
-    T_not = 287,
-    T_or = 289,
-    T_mod = 291,
-    T_assign = 293,
-    T_neq = 295,
-    T_leq = 297,
-    T_geq = 299
+    T_not = 281,
+    T_and = 282,
+    T_or = 283,
+    T_assign = 284,
+    T_neq = 285,
+    T_leq = 286,
+    T_geq = 287,
+    T_id = 288,
+    T_int_const = 289,
+    T_char_const = 290,
+    T_string_const = 291,
+    T_mod = 292
   };
 #endif
 
