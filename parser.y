@@ -66,9 +66,8 @@ program:
 ;
 
 func-def:
-  "def" header ':' func-def-list stmt-plus-list "end"
+  "def" header ':' func-def-list stmt-list-plus "end"
 ;
-
 
 func-def-list:
     /* nothing */
@@ -84,12 +83,12 @@ header:
 
 formal-list:
     /* nothing */
-  | formal
+  | formal formal-list-plus
 ;
 
 formal:
-    "ref" type T_id formal-list-plus
-  | type T_id formal-list-plus
+    "ref" type T_id id-list
+  | type T_id id-list
 ;
 
 formal-list-plus:
@@ -103,22 +102,121 @@ type: "int" | "bool" | "char" | type '[' ']' | "list" '[' type ']'
 func-decl: "decl" header
 ;
 
-var-def: type T_id var-def-list
+var-def: type T_id id-list
 ;
 
-var-def-list:
+id-list:
     /* nothing */
-  | ',' T_id var-def-list
+  | ',' T_id id-list
 ;
 
-stmt-plus-list:
+stmt-list-plus:
     stmt
-  | stmt stmt-plus-list
+  | stmt stmt-list-plus
 ;
 
-stmt: "stmt"
+stmt:
+    simple
+  | "exit"
+  | "return" expr
+  | if-stmt
+  | "for" simple-list ';' expr ';' simple-list ':' stmt-list-plus "end"
 ;
 
+if-stmt:
+    "if" expr ':' stmt-list-plus elif-stmt else-stmt "end"
+;
+
+elif-stmt:
+    /* nothing */
+  | "elif" expr ':' stmt-list-plus elif-stmt
+;
+
+else-stmt:
+    /* nothing */
+  | "else" ':' stmt-list-plus
+;
+
+simple:
+    "skip"
+  | atom ":=" expr
+  | call
+;
+simple-list:
+    simple simple-list-plus
+;
+
+simple-list-plus:
+    /* nothing */
+  | ',' simple-list
+;
+
+call:
+    T_id '(' expr-list ')'
+;
+
+expr-list:
+    expr expr-list-plus
+;
+
+expr-list-plus:
+    /* nothing */
+  | ',' expr expr-list-plus
+;
+
+atom:
+    T_id
+  | T_string_const
+  | atom '[' expr ']'
+  | call
+;
+
+expr:
+    atom
+  | T_int_const
+  | T_char_const
+  | '(' expr ')'
+  | sign expr
+  | expr math-op expr
+  | expr comp-op expr
+  | "true"
+  | "false"
+  | "not" expr
+  | expr logic-op expr
+  | "new" type '[' expr ']'
+  | "nil"
+  | "nil?" '(' expr ')'
+  | expr '#' expr
+  | "head" '(' expr ')'
+  | "tail" '(' expr ')'
+;
+
+sign:
+    '+'
+  | '-'
+;
+
+math-op:
+    '+'
+  | '-'
+  | '-'
+  | '/'
+  | "mod"
+;
+
+comp-op:
+    '='
+  | "<>"
+  | '>'
+  | '<'
+  | ">="
+  | "<="
+;
+
+logic-op:
+    "and"
+  | "or"
+;
 
 %%
 
