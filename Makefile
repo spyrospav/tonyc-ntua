@@ -3,7 +3,7 @@
 CXX=c++
 CXXFLAGS= -std=c++11
 
-default: compiler
+default: tony
 
 lexer.cpp: lexer.l
 	flex -s -o lexer.cpp lexer.l
@@ -16,8 +16,8 @@ parser.hpp parser.cpp: parser.y
 
 compiler: parser.cpp
 
-parser.o: parser.cpp lexer.hpp
-	
+parser.o: parser.cpp lexer.hpp parser.hpp
+
 lexer.o: lexer.cpp lexer.hpp parser.hpp
 
 tony: lexer.o parser.o

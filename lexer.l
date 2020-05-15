@@ -59,11 +59,9 @@ E \\(n|t|r|0|\'|\"|\\|x{H}{H})
 \'([^\'\"\\]|{E})\' { return T_char_const; }
 \"([^\n\'\"\\]|{E})*\" { return T_string_const; }
 
-[\,\;\:] { return yytext[0]; }
-[+\-\*/#=<>]
+[\,\;\:] { return yytext[0]; } // dsdsds
+[+\-\*/#=<>] { return yytext[0]; }
 [()\[\]+\-/%*=]   { return yytext[0]; }
-
-{W}+    { /* nothing */ }
 
 \%.*\n  { lineno++; }
 
@@ -74,6 +72,8 @@ E \\(n|t|r|0|\'|\"|\\|x{H}{H})
 <COMMENT>\n { lineno++; }
 <COMMENT>"*"+ { /* nothing */ }
 <COMMENT>[^*\n]+ { /* nothing */ }
+
+{W}+    { /* nothing */ }
 
 \n      { lineno++; }
 

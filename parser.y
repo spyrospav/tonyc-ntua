@@ -3,7 +3,7 @@
 #include "lexer.hpp"
 %}
 
-%token T_program    "program"
+
 %token T_bool       "bool"
 %token T_char       "char"
 %token T_decl       "decl"
@@ -48,7 +48,7 @@
 %left               '+'
 %left               '-'
 %right              '#'
-%left               T_mod
+%left T_mod         "mod"
 
 %nonassoc           T_assign
 %nonassoc           T_neq
@@ -64,6 +64,7 @@
 program:
   func-def
 ;
+
 
 func-def:
   "def" header ':' func-def-list stmt-list-plus "end"
@@ -129,7 +130,7 @@ if-stmt:
 
 elif-stmt:
     /* nothing */
-  | "elif" expr ':' stmt-list-plus elif-stmt
+  | "elsif" expr ':' stmt-list-plus elif-stmt
 ;
 
 else-stmt:
@@ -153,6 +154,7 @@ simple-list-plus:
 
 call:
     T_id '(' expr-list ')'
+  | T_id '('')'
 ;
 
 expr-list:
@@ -199,9 +201,9 @@ sign:
 math-op:
     '+'
   | '-'
-  | '-'
+  | '*'
   | '/'
-  | "mod"
+  | T_mod
 ;
 
 comp-op:
