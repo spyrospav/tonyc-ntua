@@ -34,30 +34,41 @@
 %token T_leq        "<="
 %token T_geq        ">="
 
-%token T_id
-%token T_int_const
+%token<var> T_id
+%token<num> T_int_const
 %token T_char_const
 %token T_string_const
 
-%left               T_and
-%nonassoc           T_not
-%left               T_or
+%left<op>               T_and
+%nonassoc<op>           T_not
+%left<op>               T_or
 
-%left               '*'
-%left               '/'
-%left               '+'
-%left               '-'
-%right              '#'
-%left T_mod         "mod"
+%left<op>               '*'
+%left<op>               '/'
+%left<op>               '+'
+%left<op>               '-'
+%right<op>              '#'
+%left<op> T_mod         "mod"
 
-%nonassoc           T_assign
-%nonassoc           T_neq
-%nonassoc           T_leq
-%nonassoc           T_geq
+%nonassoc<op>           T_assign
+%nonassoc<op>           T_neq
+%nonassoc<op>           T_leq
+%nonassoc<op>           T_geq
 
-%{
-  typedef int YYSTYPE;
-%}
+%union {
+  Block *block;
+  Stmt *stmt;
+  Expr *expr;
+  char[] var;
+  int num;
+  char[] op;
+  bool b;
+}
+
+%type<block> program stmt_list
+%type<stmt>  stmt
+%type<expr>  expr
+
 
 %%
 
