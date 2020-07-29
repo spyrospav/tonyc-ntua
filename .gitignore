@@ -1,6 +1,9 @@
 *.o
 *.cpp
+!symbol.cpp
+!error.cpp
 *.swp
 *.output
 *.out
 tony
+tonyc
