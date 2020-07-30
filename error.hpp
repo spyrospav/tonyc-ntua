@@ -19,8 +19,8 @@
  */
 
 
-#ifndef __ERROR_H__
-#define __ERROR_H__
+#ifndef __ERROR_HPP__
+#define __ERROR_HPP__
 
 
 /* ---------------------------------------------------------------------

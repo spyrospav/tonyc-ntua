@@ -19,8 +19,8 @@
  */
 
 
-#ifndef __SYMBOL_H__
-#define __SYMBOL_H__
+#ifndef __SYMBOL_HPP__
+#define __SYMBOL_HPP__
 
 
 /* ---------------------------------------------------------------------

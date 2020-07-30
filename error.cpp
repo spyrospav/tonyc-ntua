@@ -27,8 +27,8 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
-#include "general.h"
-#include "error.h"
+//#include "general.h"
+#include "error.hpp"
 
 
 /* ---------------------------------------------------------------------
