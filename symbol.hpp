@@ -83,7 +83,7 @@ struct Type_tag {
 
 /* Τύποι εγγραφών του πίνακα συμβόλων */
 
-typedef enum {            
+typedef enum {
    ENTRY_VARIABLE,                       /* Μεταβλητές                 */
    ENTRY_CONSTANT,                       /* Σταθερές                   */
    ENTRY_FUNCTION,                       /* Συναρτήσεις                */
@@ -94,7 +94,7 @@ typedef enum {
 
 /* Τύποι περάσματος παραμετρων */
 
-typedef enum {            
+typedef enum {
    PASS_BY_VALUE,                        /* Κατ' αξία                  */
    PASS_BY_REFERENCE                     /* Κατ' αναφορά               */
 } PassMode;
