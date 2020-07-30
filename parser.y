@@ -1,6 +1,7 @@
 %{
 #include <stdio.h>
 #include "lexer.hpp"
+#include <string>
 %}
 
 
@@ -59,7 +60,9 @@
   Block *block;
   Stmt *stmt;
   Expr *expr;
-  char[] var;
+  std::string var;
+  std::string string_const;
+  char char_const;
   int num;
   char[] op;
   bool b;
@@ -73,7 +76,7 @@
 %%
 
 program:
-  func-def
+  func-def //may need to create one more block
 ;
 
 
@@ -82,15 +85,15 @@ func-def:
 ;
 
 func-def-list:
-    /* nothing */
-  | func-def func-def-list
-  | func-decl func-def-list
-  | var-def func-def-list
+    /* nothing */ {$$ = new Block();}
+  | func-def func-def-list { $1->append($2); $$ = $1; } //append mallon anapoda
+  | func-decl func-def-list { $1->append($2); $$ = $1; }
+  | var-def func-def-list { $1->append($2); $$ = $1; }
 ;
 
 header:
-    type T_id '(' formal-list ')'
-  | T_id '(' formal-list ')'
+    type T_id '(' formal-list ')' {$$ = new Func($1, $2, $4);}
+  | T_id '(' formal-list ')' {$$ = new Func(NULL, $2, $4 )}
 ;
 
 formal-list:
@@ -105,104 +108,110 @@ formal:
 
 formal-list-plus:
     /* nothing */
-  | ';' formal formal-list-plus
+  | ';' formal formal-list-plus //h edw h sto formal-list 8a prepei na ftiaxnoume to list object
 ;
 
-type: "int" | "bool" | "char" | type '[' ']' | "list" '[' type ']'
+type: "int" {$$ = typeInteger;}
+  | "bool"  {$$ = typeBoolean;}
+  | "char" {$$ = typeChar;}
+  | type '[' ']' { $$ = {TYPE_IARRAY, $1, 0, 0};}
+  | "list" '[' type ']' { $$ = {TYPE_LIST, $3}}
 ;
 
 func-decl: "decl" header
 ;
 
-var-def: type T_id id-list
-;
+var-def: type T_id id-list { $3->var_append($2); $1->var_append($1); $$  = $3; }
+; //var def object has variables' type as first elemnt of list
 
 id-list:
-    /* nothing */
-  | ',' T_id id-list
+    /* nothing */ {$$  = new Var();}
+  | ',' T_id id-list {$3->var_append($2); $$ =$3; }
 ;
 
 stmt-list-plus:
-    stmt
-  | stmt stmt-list-plus
+    stmt {$$ = new Block(); $$->append_stmt($1);}
+  | stmt stmt-list-plus {$2->append($1); $$ = $2;}
 ;
 
 stmt:
-    simple
-  | "exit"
-  | "return" expr
-  | if-stmt
-  | "for" simple-list ';' expr ';' simple-list ':' stmt-list-plus "end"
-;
+    simple { $$ = $1;}
+  | "exit" { $$ = new Exit(); }
+  | "return" expr { $$ = new Return($2); }
+  | if-stmt { $$ = $1;}
+  | "for" simple-list ';' expr ';' simple-list ':' stmt-list-plus "end" { $$ = new For($2, $4, $6, $8); }
+  ;
 
 if-stmt:
-    "if" expr ':' stmt-list-plus elif-stmt else-stmt "end"
+    "if" expr ':' stmt-list-plus elif-stmt else-stmt "end" { $$ = new If($2, $4, $5, $6); }
 ;
 
 elif-stmt:
     /* nothing */
-  | "elsif" expr ':' stmt-list-plus elif-stmt
+  | "elsif" expr ':' stmt-list-plus elif-stmt { $$ = new Elsif($2, $4, $5, $6); }
 ;
 
 else-stmt:
     /* nothing */
-  | "else" ':' stmt-list-plus
+  | "else" ':' stmt-list-plus { $$ = new Else($3); }
 ;
 
 simple:
-    "skip"
-  | atom ":=" expr
-  | call
+    "skip" {$$ = new Skip();}
+  | atom ":=" expr {$$ = new Let();}
+  | call {$$ = new Call();}
 ;
+
 simple-list:
-    simple simple-list-plus
+    simple simple-list-plus { $2->append_simple($1); $$ = $2; }
 ;
 
 simple-list-plus:
-    /* nothing */
-  | ',' simple-list
+    /* nothing */ { $$ = new Simple(); }
+  | ',' simple-list { $$ = $2; }
 ;
 
 call:
-    T_id '(' expr-list ')'
-  | T_id '('')'
+    T_id '(' expr-list ')' { $$ = new Call($1, $3); }
+  | T_id '('')' { $$ = new Call($1); }
 ;
 
 expr-list:
-    expr expr-list-plus
+    expr expr-list-plus ( $2->append_expr($1); $$ = $2; }
 ;
 
 expr-list-plus:
-    /* nothing */
-  | ',' expr expr-list-plus
+    /* nothing */{ $$ = new Expr();}
+  | ',' expr expr-list-plus { $2->append_expr($1); $$ = $2;}
 ;
 
 atom:
-    T_id
-  | T_string_const
-  | atom '[' expr ']'
-  | call
+    T_id { $$ = new Id($1); }
+  | T_string_const { $$ = new String_const($1); }
+  | atom '[' expr ']' { $$ = apply_atom-expr($1, $3); }
+  | call { $$ = $1;}
 ;
 
 expr:
     atom
-  | T_int_const
-  | T_char_const
+  | T_int_const { $$ = new Int_const($1); }
+  | T_char_const { $$ = new Char_const($1); }
   | '(' expr ')'
-  | sign expr
-  | expr math-op expr
-  | expr comp-op expr
-  | "true"
-  | "false"
-  | "not" expr
-  | expr logic-op expr
-  | "new" type '[' expr ']'
+  | sign expr {$$ = new Sign($1, $2);}
+  | expr math-op expr {$$ = new Math-op($1, $2, $3);   }
+  | expr comp-op expr {$$ = new Comp-op($1, $2, $3);   }
+  | "true" { $$ = new Logic($1); }
+  | "false" { $$ = new Logic($1); }
+  | "not" expr      {$$ = new Logic-op($2); }
+  | expr logic-op expr { $$ = new Logic-op($1, $2, $3); }
+  | "new" type '[' expr ']' { $$ = new New-expr($2, $4); } //periergo
   | "nil"
-  | "nil?" '(' expr ')'
-  | expr '#' expr
-  | "head" '(' expr ')'
-  | "tail" '(' expr ')'
+  | "nil?" '(' expr ')'  {$$ = new List-op($1, $3);}
+  | expr '#' expr       {$$ = new List-op($1, $2, $3); }
+  | "head" '(' expr ')' {$$ = new List-op($1, $3);}
+  | "tail" '(' expr ')' {$$ = new List-op($1, $3);}
 ;
+
 
 sign:
     '+'
