@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include "lexer.hpp"
 #include <string>
+#include "ast.hpp"
+
 %}
 
 
@@ -64,31 +66,31 @@
   std::string string_const;
   char char_const;
   int num;
-  char[] op;
+  std:string op;
   bool b;
 }
 
-%type<block> program stmt_list
+%type<block> program stmt_list func-def-list
 %type<stmt>  stmt
 %type<expr>  expr
 
 
 %%
 
+
 program:
-  func-def //may need to create one more block
+  func-def { $1->sem(); }
 ;
 
-
 func-def:
-  "def" header ':' func-def-list stmt-list-plus "end"
+  "def" header ':' func-def-list stmt-list-plus "end" { $$ = new Program($2, $4, $5); }
 ;
 
 func-def-list:
-    /* nothing */ {$$ = new Block();}
-  | func-def func-def-list { $1->append($2); $$ = $1; } //append mallon anapoda
-  | func-decl func-def-list { $1->append($2); $$ = $1; }
-  | var-def func-def-list { $1->append($2); $$ = $1; }
+    /* nothing */ { $$ = new Block(); }
+  | func-def func-def-list { $2->append($1); $$ = $2; } //append (twn block) mallon anapoda
+  | func-decl func-def-list { $2->append($1); $$ = $2; }
+  | var-def func-def-list { $2->append($1); $$ = $2; }
 ;
 
 header:
@@ -97,41 +99,41 @@ header:
 ;
 
 formal-list:
-    /* nothing */
-  | formal formal-list-plus
+    /* nothing */ { $$ = new Arg_List(); }
+  | formal formal-list-plus { $2->arg_list_append($1); $$ = $2; }
 ;
 
 formal:
-    "ref" type T_id id-list
-  | type T_id id-list
-;
+    "ref" var-def { $$ = new Arg(PASS_BY_REFERENCE, $2); }
+  | var-def { $$ = new Arg(PASS_BY_VALUE, $2); }
+; //DIKIA mas aplopoihsh ston orismo
 
 formal-list-plus:
-    /* nothing */
-  | ';' formal formal-list-plus //h edw h sto formal-list 8a prepei na ftiaxnoume to list object
+    /* nothing */ { $$ = new Arg_List(); } //argument list of same type
+  | ';' formal formal-list-plus { $2->arg_list_append($1); $$ = $2; }//(  int a,b ; char c, d)
 ;
 
-type: "int" {$$ = typeInteger;}
-  | "bool"  {$$ = typeBoolean;}
-  | "char" {$$ = typeChar;}
-  | type '[' ']' { $$ = {TYPE_IARRAY, $1, 0, 0};}
+type: "int" { $$ = typeInteger; }
+  | "bool"  { $$ = typeBoolean; }
+  | "char" { $$ = typeChar; }
+  | type '[' ']' { $$ = { TYPE_IARRAY, $1, 0, 0}; }
   | "list" '[' type ']' { $$ = {TYPE_LIST, $3}}
 ;
 
-func-decl: "decl" header
+func-decl: "decl" header { $$ = $2; }
 ;
 
-var-def: type T_id id-list { $3->var_append($2); $1->var_append($1); $$  = $3; }
-; //var def object has variables' type as first elemnt of list
+var-def: type T_id id-list { $3->var_append($2); $3->var_type($1); $$ = $3; }
+;
 
 id-list:
-    /* nothing */ {$$  = new Var();}
-  | ',' T_id id-list {$3->var_append($2); $$ =$3; }
+    /* nothing */ { $$ = new Var(); }
+  | ',' T_id id-list { $3->var_append($2); $$ =$3; }
 ;
 
 stmt-list-plus:
-    stmt {$$ = new Block(); $$->append_stmt($1);}
-  | stmt stmt-list-plus {$2->append($1); $$ = $2;}
+    stmt { $$ = new Block(); $$->append_stmt($1); }
+  | stmt stmt-list-plus { $2->append($1); $$ = $2; }
 ;
 
 stmt:
@@ -188,7 +190,7 @@ expr-list-plus:
 atom:
     T_id { $$ = new Id($1); }
   | T_string_const { $$ = new String_const($1); }
-  | atom '[' expr ']' { $$ = apply_atom-expr($1, $3); }
+  | atom '[' expr ']' { $$ = new Apply_atom_expr($1, $3); }
   | call { $$ = $1;}
 ;
 
@@ -198,20 +200,19 @@ expr:
   | T_char_const { $$ = new Char_const($1); }
   | '(' expr ')' { $$ = $2; }
   | sign expr {$$ = new Sign($1, $2);}
-  | expr math-op expr {$$ = new Math-op($1, $2, $3);   }
-  | expr comp-op expr {$$ = new Comp-op($1, $2, $3);   }
+  | expr math-op expr {$$ = new Math_op($1, $2, $3);   }
+  | expr comp-op expr {$$ = new Comp_op($1, $2, $3);   }
   | "true" { $$ = new Logic($1); }
   | "false" { $$ = new Logic($1); }
-  | "not" expr      {$$ = new Logic-op($2); }
-  | expr logic-op expr { $$ = new Logic-op($1, $2, $3); }
-  | "new" type '[' expr ']' { $$ = new New-expr($2, $4); } //periergo
-  | "nil"
-  | "nil?" '(' expr ')'  {$$ = new List-op($1, $3);}
-  | expr '#' expr       {$$ = new List-op($1, $2, $3); }
-  | "head" '(' expr ')' {$$ = new List-op($1, $3);}
-  | "tail" '(' expr ')' {$$ = new List-op($1, $3);}
+  | "not" expr {$$ = new Logic_op($2); }
+  | expr logic-op expr { $$ = new Logic_op($1, $2, $3); }
+  | "new" type '[' expr ']' { $$ = new New_expr($2, $4); } //periergo
+  | "nil" { $$ = new Nil(); }
+  | "nil?" '(' expr ')'  {$$ = new List_op($1, $3);}
+  | expr '#' expr       {$$ = new List_op($1, $2, $3); }
+  | "head" '(' expr ')' {$$ = new List_op($1, $3);}
+  | "tail" '(' expr ')' {$$ = new List_op($1, $3);}
 ;
-
 
 sign:
     '+' { $$ = $1; }
