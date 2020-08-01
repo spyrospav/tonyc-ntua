@@ -5,7 +5,7 @@
 #include <map>
 #include <vector>
 
-#include "symbol.hpp"
+#include "symbol.h"
 
 void yyerror(const char *msg);
 
@@ -51,19 +51,21 @@ class Var: public AST {
     Var() : var_list(), type(NULL) {};
     virtual void printOn(std::ostream &out) const override {
       out << "Var(s)(";
-      for (int i = 0; i < var_list.size()-1; i++)
-        out << var_list[i] << ", ";
+      for (int i = 0; i < var_list.size()-1; i++){
+        std::string s = var_list[i];
+        out << s << ", ";
+      }
       out << var_list[var_list.size()-1];
-      out << " with Type " << type;
+      out << " with Type " << type << ")" << endl;;
     }
-    void var_append(std::string d) { var_list.push_back(d); }
+    void var_append(const char*& d) { var_list.push_back(d); }
     void var_type(Type t) { type = t; }
     virtual void sem() override {
       for (int i = 0; i < var_list.size(); i++)
-        newVariable(var_list[i].c_str(), type);
+        newVariable(var_list[i], type);
     }
     private:
-      std::vector<std::string> var_list;
+      std::vector<const char *> var_list;
       Type type;
 };
 
@@ -77,7 +79,6 @@ public:
     for (Var *d : var_list) delete d;
   }
   void append_var(Var *d) { var_list.push_back(d); }
-
 
   virtual void printOn(std::ostream &out) const override {
     out << "Block(";

@@ -1,0 +1,5 @@
+def program ():
+int a, b
+char c, d
+bool e
+end

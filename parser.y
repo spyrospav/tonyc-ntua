@@ -3,7 +3,7 @@
 #include "lexer.hpp"
 #include <string>
 #include "ast.hpp"
-#include "symbol.hpp"
+#include "symbol.h"
 %}
 
 
@@ -63,7 +63,7 @@
   Stmt *stmt;
   Expr *expr;
   Var *var_list;
-  char *var;
+  const char *var;
   char *string_const;
   char char_const;
   int num;
@@ -87,20 +87,20 @@ program:
 ;
 
 func-def:
-  //"def" header ':' func-def-list stmt-list-plus "end" { $$ = new Program($2, $4, $5); }
-  "def" header ':' func-def-list stmt-list-plus "end" { }//$$ = new Program($2, $4, $5); }
+  //T_def header ':' func-def-list stmt-list-plus T_end { std::cout <<"den eftane" << std::endl;}//$$ = new Program($2, $4, $5); }
+  T_def header ':' func-def-list T_end { std::cout <<"den eftane" << std::endl;}//$$ = new Program($2, $4, $5); }
 ;
 
 func-def-list:
     /* nothing */ { $$ = new Block(); }
-  //| func-def func-def-list { }//$2->append($1); $$ = $2; } //append (twn block) mallon anapoda
-  //| func-decl func-def-list { }//$2->append($1); $$ = $2; }
-  | var-def func-def-list { $2->append_var($1); $$ = $2; }
+  | func-def func-def-list { }//$2->append($1); $$ = $2; } //append (twn block) mallon anapoda
+  | func-decl func-def-list { }//$2->append($1); $$ = $2; }
+  | var-def func-def-list { $2->append_var($1); std::cout << *$1 << std::endl; $$ = $2; }
 ;
 
 header:
-    type T_id '(' formal-list ')' {}//$$ = new Func($1, $2, $4);}
-  | T_id '(' formal-list ')' {}//$$ = new Func(NULL, $2, $4 )}
+    type T_id '(' formal-list ')' {std::cout << "eggs" << std::endl;}//$$ = new Func($1, $2, $4);}
+  | T_id '(' formal-list ')' {std::cout << "eggs" << std::endl;}//$$ = new Func(NULL, $2, $4 )}
 ;
 
 formal-list:

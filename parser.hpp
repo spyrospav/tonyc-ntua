@@ -93,7 +93,7 @@ union YYSTYPE
   Stmt *stmt;
   Expr *expr;
   Var *var_list;
-  char *var;
+  const char *var;
   char *string_const;
   char char_const;
   int num;

@@ -56,7 +56,7 @@ E \\(n|t|r|0|\'|\"|\\|x{H}{H})
 "<="     { return T_leq; }
 ">="     { return T_geq; }
 
-{L}({L}|{D}|_|\?)* { return T_id; }
+{L}({L}|{D}|_|\?)* { yylval.var = yytext; return T_id; }
 {D}+    { return T_int_const; }
 
 \'([^\'\"\\]|{E})\' { return T_char_const; }
