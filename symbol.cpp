@@ -12,10 +12,10 @@
  *
  *  Comments: (in Greek iso-8859-7)
  *  ---------
- *  Εθνικό Μετσόβιο Πολυτεχνείο.
- *  Σχολή Ηλεκτρολόγων Μηχανικών και Μηχανικών Υπολογιστών.
- *  Τομέας Τεχνολογίας Πληροφορικής και Υπολογιστών.
- *  Εργαστήριο Τεχνολογίας Λογισμικού
+ *  οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½.
+ *  οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½.
+ *  οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½.
+ *  οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½
  */
 
 
@@ -27,21 +27,21 @@
 #include <string.h>
 #include <stdarg.h>
 
-//#include "general.h"
-#include "error.hpp"
-#include "symbol.hpp"
+#include "general.h"
+#include "error.h"
+#include "symbol.h"
 
 
 /* ---------------------------------------------------------------------
-   ------------- Καθολικές μεταβλητές του πίνακα συμβόλων --------------
+   ------------- οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ --------------
    --------------------------------------------------------------------- */
 
-Scope        * currentScope;           /* Τρέχουσα εμβέλεια              */
-unsigned int   quadNext;               /* Αριθμός επόμενης τετράδας      */
-unsigned int   tempNumber;             /* Αρίθμηση των temporaries       */
+Scope        * currentScope;           /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½              */
+unsigned int   quadNext;               /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½      */
+unsigned int   tempNumber;             /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ temporaries       */
 
-static unsigned int   hashTableSize;   /* Μέγεθος πίνακα κατακερματισμού */
-static SymbolEntry ** hashTable;       /* Πίνακας κατακερματισμού        */
+static unsigned int   hashTableSize;   /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ */
+static SymbolEntry ** hashTable;       /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½        */
 
 static struct Type_tag typeConst [] = {
     { TYPE_VOID,    NULL, 0, 0 },
@@ -59,7 +59,7 @@ const Type typeReal    = &(typeConst[4]);
 
 
 /* ---------------------------------------------------------------------
-   ------- Υλοποίηση βοηθητικών συναρτήσεων του πίνακα συμβόλων --------
+   ------- οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ --------
    --------------------------------------------------------------------- */
 
 typedef unsigned long int HashType;
@@ -131,23 +131,23 @@ void strAppendString (char * buffer, RepString str)
 
 
 /* ---------------------------------------------------------------------
-   ------ Υλοποίηση των συναρτήσεων χειρισμού του πίνακα συμβόλων ------
+   ------ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ ------
    --------------------------------------------------------------------- */
 
 void initSymbolTable (unsigned int size)
 {
     unsigned int i;
 
-    /* Διάφορες αρχικοποιήσεις */
+    /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ */
 
     currentScope = NULL;
     quadNext     = 1;
     tempNumber   = 1;
 
-    /* Αρχικοποίηση του πίνακα κατακερματισμού */
+    /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ */
 
     hashTableSize = size;
-    hashTable = (SymbolEntry **) new(size * sizeof(SymbolEntry *));
+    hashTable = (SymbolEntry **) my_new(size * sizeof(SymbolEntry *));
 
     for (i = 0; i < size; i++)
         hashTable[i] = NULL;
@@ -157,18 +157,18 @@ void destroySymbolTable ()
 {
     unsigned int i;
 
-    /* Καταστροφή του πίνακα κατακερματισμού */
+    /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ */
 
     for (i = 0; i < hashTableSize; i++)
         if (hashTable[i] != NULL)
             destroyEntry(hashTable[i]);
 
-    delete(hashTable);
+    my_delete(hashTable);
 }
 
 void openScope ()
 {
-    Scope * newScope = (Scope *) new(sizeof(Scope));
+    Scope * newScope = (Scope *) my_new(sizeof(Scope));
 
     newScope->negOffset = START_NEGATIVE_OFFSET;
     newScope->parent    = currentScope;
@@ -196,7 +196,7 @@ void closeScope ()
     }
 
     currentScope = currentScope->parent;
-    delete(t);
+    my_delete(t);
 }
 
 static void insertEntry (SymbolEntry * e)
@@ -211,7 +211,7 @@ static SymbolEntry * newEntry (const char * name)
 {
     SymbolEntry * e;
 
-    /* Έλεγχος αν υπάρχει ήδη */
+    /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ */
 
     for (e = currentScope->entries; e != NULL; e = e->nextInScope)
         if (strcmp(name, e->id) == 0) {
@@ -219,10 +219,10 @@ static SymbolEntry * newEntry (const char * name)
             return NULL;
         }
 
-    /* Αρχικοποίηση όλων εκτός: entryType και u */
+    /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½: entryType οΏ½οΏ½οΏ½ u */
 
-    e = (SymbolEntry *) new(sizeof(SymbolEntry));
-    e->id = (const char *) new(strlen(name) + 1);
+    e = (SymbolEntry *) my_new(sizeof(SymbolEntry));
+    e->id = (const char *) my_new(strlen(name) + 1);
 
     strcpy((char *) (e->id), name);
     e->hashValue    = PJW_hash(name) % hashTableSize;
@@ -276,7 +276,7 @@ SymbolEntry * newConstant (const char * name, Type type, ...)
             if (equalType(type->refType, typeChar)) {
                 RepString str = va_arg(ap, RepString);
 
-                value.vString = (const char *) new(strlen(str) + 1);
+                value.vString = (const char *) my_new(strlen(str) + 1);
                 strcpy((char *) (value.vString), str);
                 break;
             }
@@ -514,7 +514,7 @@ void destroyEntry (SymbolEntry * e)
             destroyType(e->u.eFunction.resultType);
             break;
         case ENTRY_PARAMETER:
-            /* Οι παράμετροι καταστρέφονται μαζί με τη συνάρτηση */
+            /* οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½ οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ */
             return;
         case ENTRY_TEMPORARY:
             destroyType(e->u.eTemporary.type);
@@ -553,7 +553,7 @@ SymbolEntry * lookupEntry (const char * name, LookupType type, bool err)
 
 Type typeArray (RepInteger size, Type refType)
 {
-    Type n = (Type) new(sizeof(struct Type_tag));
+    Type n = (Type) my_new(sizeof(struct Type_tag));
 
     n->kind     = TYPE_ARRAY;
     n->refType  = refType;
@@ -567,7 +567,7 @@ Type typeArray (RepInteger size, Type refType)
 
 Type typeIArray (Type refType)
 {
-    Type n = (Type) new(sizeof(struct Type_tag));
+    Type n = (Type) my_new(sizeof(struct Type_tag));
 
     n->kind     = TYPE_IARRAY;
     n->refType  = refType;
@@ -580,7 +580,7 @@ Type typeIArray (Type refType)
 
 Type typePointer (Type refType)
 {
-    Type n = (Type) new(sizeof(struct Type_tag));
+    Type n = (Type) my_new(sizeof(struct Type_tag));
 
     n->kind     = TYPE_POINTER;
     n->refType  = refType;

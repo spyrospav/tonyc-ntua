@@ -2,6 +2,7 @@
 *.cpp
 !symbol.cpp
 !error.cpp
+!general.cpp
 *.swp
 *.output
 *.out
