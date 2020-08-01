@@ -1,6 +1,9 @@
 %option noyywrap
 
+
+
 %{
+#include "ast.hpp"
 #include <stdio.h>
 #include "parser.hpp"
 #include "lexer.hpp"

@@ -14,14 +14,25 @@ lexer: lexer.cpp parser.hpp
 parser.hpp parser.cpp: parser.y
 	bison -dv -o parser.cpp parser.y
 
-compiler: parser.cpp
+symbol.o: symbol.cpp symbol.hpp
+	$(CXX) $(CXXFLAGS) -c symbol.cpp
 
-parser.o: parser.cpp lexer.hpp parser.hpp
+error.o: error.cpp
+	$(CXX) $(CXXFLAGS) -c error.cpp
 
-lexer.o: lexer.cpp lexer.hpp parser.hpp
+general.o: general.cpp
+	$(CXX) $(CXXFLAGS) -c general.cpp
 
-tony: lexer.o parser.o
-	$(CXX) $(CXXFLAGS) -o tony lexer.o parser.o
+error.o    : error.cpp error.hpp
+symbol.o   : symbol.cpp symbol.hpp error.hpp
+general.o	 : general.cpp general.hpp error.hpp
+
+parser.o: parser.cpp lexer.hpp parser.hpp symbol.hpp
+
+lexer.o: lexer.cpp lexer.hpp parser.hpp symbol.hpp ast.hpp
+
+tony: lexer.o parser.o symbol.o error.o general.o
+	$(CXX) $(CXXFLAGS) -o tony lexer.o parser.o symbol.o error.o general.o
 
 clean:
 	$(RM) lexer.cpp parser.cpp parser.hpp parser.output *.o
