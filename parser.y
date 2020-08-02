@@ -4,6 +4,7 @@
 #include <string>
 #include "ast.hpp"
 #include "symbol.h"
+
 %}
 
 
@@ -70,37 +71,40 @@
   char *op;
   bool b;
   Type type;
+  Arg *arg;
+  Arg_List *arg_list;
 }
 
 %type<block> program func-def-list func-def func-decl
 %type<stmt>  stmt
 %type<expr>  expr
 %type<type>  type
-%type<var_list>   id-list
-%type<var_list> var-def
+%type<var_list> id-list var-def
+%type<arg_list> formal-list formal-list-plus
+%type<arg> formal
 
 %%
 
 
 program:
-  func-def { $1->sem(); }
+  func-def { std::cout << *$1 << std::endl; $1->sem(); }
 ;
 
 func-def:
-  //T_def header ':' func-def-list stmt-list-plus T_end { std::cout <<"den eftane" << std::endl;}//$$ = new Program($2, $4, $5); }
-  T_def header ':' func-def-list T_end { std::cout <<"den eftane" << std::endl;}//$$ = new Program($2, $4, $5); }
+  //T_def header ':' func-def-list stmt-list-plus T_end { }//$$ = new Program($2, $4, $5); }
+  T_def header ':' func-def-list T_end { $$ = $4; }//$$ = new Program($2, $4, $5); }
 ;
 
 func-def-list:
     /* nothing */ { $$ = new Block(); }
   | func-def func-def-list { }//$2->append($1); $$ = $2; } //append (twn block) mallon anapoda
   | func-decl func-def-list { }//$2->append($1); $$ = $2; }
-  | var-def func-def-list { $2->append_var($1); std::cout << *$1 << std::endl; $$ = $2; }
+  | var-def func-def-list { std::cout << "appending var: " << *$1 << std::endl; $2->append_var($1);  $$ = $2; }
 ;
 
 header:
-    type T_id '(' formal-list ')' {std::cout << "eggs" << std::endl;}//$$ = new Func($1, $2, $4);}
-  | T_id '(' formal-list ')' {std::cout << "eggs" << std::endl;}//$$ = new Func(NULL, $2, $4 )}
+    type T_id '(' formal-list ')' {}//$$ = new Func($1, $2, $4);}
+  | T_id '(' formal-list ')' {}//$$ = new Func(typeVoid, $2, $4 )}
 ;
 
 formal-list:
@@ -109,13 +113,13 @@ formal-list:
 ;
 
 formal:
-    "ref" var-def { }//$$ = new Arg(PASS_BY_REFERENCE, $2); }
-  | var-def { }//$$ = new Arg(PASS_BY_VALUE, $2); }
+    "ref" var-def { $$ = new Arg(PASS_BY_REFERENCE, $2); std::cout << *$$ << std::endl; }
+  | var-def { $$ = new Arg(PASS_BY_VALUE, $1); std::cout << *$$ << std::endl; }
 ; //DIKIA mas aplopoihsh ston orismo
 
 formal-list-plus:
-    /* nothing */ { }//$$ = new Arg_List(); } //argument list of same type
-  | ';' formal formal-list-plus { }//$2->arg_list_append($1); $$ = $2; }//(  int a,b ; char c, d)
+    /* nothing */ { $$ = new Arg_List(); }
+  | ';' formal formal-list-plus { $3->push_back($2); $$ = $3; }
 ;
 
 type: "int" { $$ = typeInteger; }
@@ -128,11 +132,11 @@ type: "int" { $$ = typeInteger; }
 func-decl: "decl" header { }//$$ = $2; }
 ;
 
-var-def: type T_id id-list { $3->var_append($2); $3->var_type($1); $$ = $3; }
+var-def: type T_id id-list { $3->var_append($2); $3->var_type($1); $$ = $3;  }
 ;
 
 id-list:
-    /* nothing */ { $$ = new Var(); }
+    /* nothing */ { $$ = new Var();}
   | ',' T_id id-list { $3->var_append($2); $$ =$3; }
 ;
 

@@ -1,0 +1,5 @@
+def program ():
+  int a
+  def fun (int c, d; ref char e):
+  end
+end

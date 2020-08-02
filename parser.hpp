@@ -87,7 +87,7 @@ extern int yydebug;
 
 union YYSTYPE
 {
-#line 61 "parser.y" /* yacc.c:1909  */
+#line 62 "parser.y" /* yacc.c:1909  */
 
   Block *block;
   Stmt *stmt;
@@ -100,8 +100,10 @@ union YYSTYPE
   char *op;
   bool b;
   Type type;
+  Arg *arg;
+  Arg_List *arg_list;
 
-#line 105 "parser.hpp" /* yacc.c:1909  */
+#line 107 "parser.hpp" /* yacc.c:1909  */
 };
 
 typedef union YYSTYPE YYSTYPE;
