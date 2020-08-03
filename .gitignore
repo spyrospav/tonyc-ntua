@@ -6,7 +6,7 @@
 *.swp
 *.output
 *.out
+parser.hpp
 tony
 tonyc
 temp/*
-parser.hpp

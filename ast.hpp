@@ -56,10 +56,10 @@ protected:
   Type type;
 };
 
-class Var: public AST {
+class VarList: public AST {
   public:
-    Var() : var_list(), type(NULL) {};
-    ~Var() {
+    VarList() : var_list(), type(NULL) {};
+    ~VarList() {
       var_list.clear();
     }
     virtual void printOn(std::ostream &out) const override {
@@ -69,9 +69,9 @@ class Var: public AST {
         out << s << ", ";
       }
       out << var_list[var_list.size()-1];
-      out << ")" << " with Type " << type << std::endl;;
+      out << ")" << " with Type " << type;
     }
-    void var_append(const char* d) { var_list.push_back(d); }
+    void var_append(const char* d) { var_list.insert(var_list.begin(), d); }
     void var_type(Type t) { type = t; }
     std::vector<const char * > getVarList() {return var_list;}
     Type getType() {return type;}
@@ -88,7 +88,7 @@ class Var: public AST {
 
 class Arg: public AST {
   public:
-    Arg(PassMode pass, Var *v): passmode(pass)
+    Arg(PassMode pass, VarList *v): passmode(pass)
     {
       var_list = v->getVarList();
       type = v->getType();
@@ -111,7 +111,7 @@ class Arg: public AST {
     Type type;
 };
 
-typedef std::vector<Arg *> Arg_List;
+typedef std::vector<Arg *> ArgList;
 
 class Stmt: public AST {
 };
@@ -120,29 +120,31 @@ class Block: public Stmt {
 public:
   Block(): var_list(), size(0) {}
   ~Block() {
-    for (Var *d : var_list) delete d;
+    for (VarList *d : var_list) delete d;
   }
-  void append_var(Var *d) { std::cout << "Add var in block!" << std::endl; var_list.push_back(d); }
-
+  void append_varlist(VarList *d) { std::cout << "Add var in block!" << std::endl; var_list.insert(var_list.begin(), d); }
+  //void append_arglist(ArgList *a) { }
   virtual void printOn(std::ostream &out) const override {
     out << "Block(";
     bool first = true;
-    for (Var *d : var_list) {
+    for (VarList *d : var_list) {
       if (!first) out << ", ";
       first = false;
-      out << *d;
+      out <<  std::endl << *d;
     }
-    out << ")";
+    out << std::endl << ")";
   }
 
   virtual void sem() override {
     std::cout << "open in block" << std::endl;
     openScope();
-    for (Var *v : var_list) v->sem();
+    for (VarList *v : var_list) v->sem();
+    //for (ArgList)
     closeScope();
   }
 private:
-  std::vector<Var *> var_list;
+  std::vector<VarList *> var_list;
+  ArgList arg_list;
   int size;
 };
 

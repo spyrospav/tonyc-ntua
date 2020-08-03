@@ -63,7 +63,7 @@
   Block *block;
   Stmt *stmt;
   Expr *expr;
-  Var *var_list;
+  VarList *varlist;
   const char *var;
   char *string_const;
   char char_const;
@@ -72,22 +72,22 @@
   bool b;
   Type type;
   Arg *arg;
-  Arg_List *arg_list;
+  ArgList *arglist;
 }
 
 %type<block> program func-def-list func-def func-decl
 %type<stmt>  stmt
 %type<expr>  expr
 %type<type>  type
-%type<var_list> id-list var-def
-%type<arg_list> formal-list formal-list-plus
+%type<varlist> id-list var-def
+%type<arglist> formal-list formal-list-plus
 %type<arg> formal
 
 %%
 
 
 program:
-  func-def { std::cout << *$1 << std::endl; $1->sem(); }
+  func-def { std::cout<<"Start!" << std::endl; std::cout << *$1 << std::endl; $1->sem(); }
 ;
 
 func-def:
@@ -99,7 +99,7 @@ func-def-list:
     /* nothing */ { $$ = new Block(); }
   | func-def func-def-list { }//$2->append($1); $$ = $2; } //append (twn block) mallon anapoda
   | func-decl func-def-list { }//$2->append($1); $$ = $2; }
-  | var-def func-def-list { std::cout << "appending var: " << *$1 << std::endl; $2->append_var($1);  $$ = $2; }
+  | var-def func-def-list { std::cout << "appending var: " << *$1 << std::endl; $2->append_varlist($1);  $$ = $2; }
 ;
 
 header:
@@ -108,7 +108,7 @@ header:
 ;
 
 formal-list:
-    /* nothing */ { }//$$ = new Arg_List(); }
+    /* nothing */ { }//$$ = new ArgList(); }
   | formal formal-list-plus { }//$2->arg_list_append($1); $$ = $2; }
 ;
 
@@ -118,7 +118,7 @@ formal:
 ; //DIKIA mas aplopoihsh ston orismo
 
 formal-list-plus:
-    /* nothing */ { $$ = new Arg_List(); }
+    /* nothing */ { $$ = new ArgList(); }
   | ';' formal formal-list-plus { $3->push_back($2); $$ = $3; }
 ;
 
@@ -136,7 +136,7 @@ var-def: type T_id id-list { $3->var_append($2); $3->var_type($1); $$ = $3;  }
 ;
 
 id-list:
-    /* nothing */ { $$ = new Var();}
+    /* nothing */ { $$ = new VarList();}
   | ',' T_id id-list { $3->var_append($2); $$ =$3; }
 ;
 
