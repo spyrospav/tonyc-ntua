@@ -78,7 +78,7 @@ enum Pardef{                               /* ��������� ��
     PARDEF_DEFINE,                      /* �� ���� �������    */
     PARDEF_CHECK                        /* �� ���� �������    */
 };
- 
+
 typedef struct Type_tag * Type;
 
 struct Type_tag {
@@ -231,5 +231,6 @@ bool          equalType          (Type type1, Type type2);
 void          printType          (Type type);
 void          printMode          (PassMode mode);
 
+void          printSymbolTable   ();
 
 #endif
