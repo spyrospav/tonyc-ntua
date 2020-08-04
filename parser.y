@@ -60,7 +60,7 @@
 %nonassoc<op>           T_geq
 
 %union {
-  Block *block;
+  FuncBlock *funcblock;
   Stmt *stmt;
   Expr *expr;
   VarList *varlist;
@@ -73,48 +73,50 @@
   Type type;
   Arg *arg;
   ArgList *arglist;
+  Header *header;
 }
 
-%type<block> program func-def-list func-def func-decl
+%type<funcblock> program func-def-list func-def func-decl
 %type<stmt>  stmt
 %type<expr>  expr
 %type<type>  type
 %type<varlist> id-list var-def
 %type<arglist> formal-list formal-list-plus
 %type<arg> formal
+%type<header> header
 
 %%
 
 
 program:
-  func-def { std::cout<<"Start!" << std::endl; std::cout << *$1 << std::endl; $1->sem(); }
+  {std::cout << "~~!!~~ MAIN PROGRAM (START) ~~!!~~" << std::endl; } func-def { std::cout << *$2; $2->sem();  std::cout << "~~!!~~ MAIN PROGRAM (END) ~~!!~~" << std::endl; }
 ;
 
 func-def:
   //T_def header ':' func-def-list stmt-list-plus T_end { }//$$ = new Program($2, $4, $5); }
-  T_def header ':' func-def-list T_end { $$ = $4; }//$$ = new Program($2, $4, $5); }
+  T_def header ':' func-def-list T_end { std::cout<<"~~~~~~~~~FUNC Start~~~~~~~~~!" << std::endl; $$ = $4; $$->assignHeader($2); std::cout << *$$ << std::endl; std::cout << "~~~~~~~~~FUNC End!~~~~~~~~~" << std::endl;}//$$ = new Program($2, $4, $5); }
 ;
 
 func-def-list:
-    /* nothing */ { $$ = new Block(); }
+    /* nothing */ { $$ = new FuncBlock(); }
   | func-def func-def-list { }//$2->append($1); $$ = $2; } //append (twn block) mallon anapoda
   | func-decl func-def-list { }//$2->append($1); $$ = $2; }
-  | var-def func-def-list { std::cout << "appending var: " << *$1 << std::endl; $2->append_varlist($1);  $$ = $2; }
+  | var-def func-def-list { $2->append_varlist($1);  $$ = $2; }
 ;
 
 header:
-    type T_id '(' formal-list ')' {}//$$ = new Func($1, $2, $4);}
-  | T_id '(' formal-list ')' {}//$$ = new Func(typeVoid, $2, $4 )}
+    type T_id '(' formal-list ')' { $$ = new Header($1, $2, $4); }
+  | T_id '(' formal-list ')' { $$ = new Header(typeVoid, $1, $3); }
 ;
 
 formal-list:
-    /* nothing */ { }//$$ = new ArgList(); }
-  | formal formal-list-plus { }//$2->arg_list_append($1); $$ = $2; }
+    /* nothing */ { $$ = new ArgList(); }
+  | formal formal-list-plus { $2->push_back($1); $$ = $2; }
 ;
 
 formal:
-    "ref" var-def { $$ = new Arg(PASS_BY_REFERENCE, $2); std::cout << *$$ << std::endl; }
-  | var-def { $$ = new Arg(PASS_BY_VALUE, $1); std::cout << *$$ << std::endl; }
+    "ref" var-def { $$ = new Arg(PASS_BY_REFERENCE, $2); }// std::cout << *$$ << std::endl; }
+  | var-def { $$ = new Arg(PASS_BY_VALUE, $1); }//std::cout << *$$ << std::endl; }
 ; //DIKIA mas aplopoihsh ston orismo
 
 formal-list-plus:

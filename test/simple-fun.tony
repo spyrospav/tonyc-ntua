@@ -1,5 +1,7 @@
 def program ():
   int a
-  def fun (int c, d; ref char e):
+  def int fun (int c, d; ref char e):
+  end
+  def proc ():
   end
 end

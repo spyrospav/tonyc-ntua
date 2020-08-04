@@ -1,0 +1,20 @@
+Block:{
+Func-def{
+
+}
+Var-def{
+
+}
+Func-def{
+
+}
+Var-def{
+
+}
+Stmt-list{
+
+}
+private:
+  std::vector <Block *> funclist;
+  std::vector <Varlist *> varlist;
+}

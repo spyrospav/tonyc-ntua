@@ -32,7 +32,7 @@ E \\(n|t|r|0|\'|\"|\\|x{H}{H})
 "def"    { return T_def; }
 "else"   { return T_else; }
 "elsif"  { return T_elsif; }
-"end"    { std::cout << "Lexer is finished" << std::endl; return T_end; }
+"end"    { return T_end; }
 "exit"   { return T_exit; }
 "false"  { return T_false; }
 "for"    { return T_for; }
@@ -98,6 +98,7 @@ int main () {
     token = lexer.yylex();
     printf("token=%d, lexeme=\"%s\"\n", token, lexer.YYText());
   } while (token != T_eof);
+
 }
 #else
 

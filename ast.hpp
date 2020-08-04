@@ -11,16 +11,20 @@ void yyerror(const char *msg);
 
 inline std::ostream& operator<<(std::ostream &out, Type t) {
   int a;
-  if (t == typeInteger) {
+  if (t == typeVoid) {
+    a = 0;
+  }
+  else if (t == typeInteger){
     a = 1;
   }
   else if (t == typeBoolean) {
     a = 2;
   }
-  else {
+  else if (t == typeChar){
     a = 3;
   }
   switch (a) {
+    case 0: out << "void"; break;
     case 1: out << "int";  break;
     case 2: out << "bool"; break;
     case 3: out << "char"; break;
@@ -103,7 +107,7 @@ class Arg: public AST {
         out << s << ", ";
       }
       out << var_list[var_list.size()-1];
-      out << ")" << " with Type " << type << " and pass by " << passmode << std::endl;;
+      out << ")" << " with Type " << type << " and pass by " << passmode;
     }
   private:
     PassMode passmode;
@@ -116,17 +120,61 @@ typedef std::vector<Arg *> ArgList;
 class Stmt: public AST {
 };
 
-class Block: public Stmt {
+class Header: public AST {
 public:
-  Block(): var_list(), size(0) {}
-  ~Block() {
+  Header(Type t, const char * s, ArgList *a): type(t), name(s), arg_list(a) {}
+  ~Header(){
+    arg_list->clear();
+  }
+  Type getHeaderType() { return type; }
+  const char * getHeaderName() { return name; }
+  ArgList *getHeaderArgList() { return arg_list; }
+  virtual void printOn(std::ostream &out) const override {
+    out << "Header with name " << name << " and type " << type << "(";
+    bool first = true;
+    for (std::vector<Arg *>::iterator it = arg_list->begin(); it != arg_list->end(); ++it){
+      if (!first) out << ", ";
+      first = false;
+      out << std::endl << **it; //asterakia mou (anastasia yiousef)
+    }
+    out << std::endl << ")";
+  }
+
+private:
+  Type type;
+  const char * name;
+  ArgList *arg_list;
+};
+
+class FuncBlock: public Stmt {
+public:
+  FuncBlock(): var_list(), size(0) {}
+  ~FuncBlock() {
     for (VarList *d : var_list) delete d;
   }
-  void append_varlist(VarList *d) { std::cout << "Add var in block!" << std::endl; var_list.insert(var_list.begin(), d); }
+  void append_varlist(VarList *d) {
+    std::cout << "Add var in block!" << std::endl;
+    var_list.insert(var_list.begin(), d);
+    sequence.append(0);
+  }
+  void assignHeader(Header *header) {
+    name = header->getHeaderName();
+    arg_list = header->getHeaderArgList();
+    type = header->getHeaderType();
+    sequence.append(1);
+  }
   //void append_arglist(ArgList *a) { }
   virtual void printOn(std::ostream &out) const override {
-    out << "Block(";
+    out << "Block(" << std::endl;
+    out << "Header with name " << name << " and type " << type << "(";
     bool first = true;
+    for (std::vector<Arg *>::iterator it = arg_list->begin(); it != arg_list->end(); ++it){
+      if (!first) out << ", ";
+      first = false;
+      out << std::endl << **it; //asterakia mou (anastasia yiousef)
+    }
+    out << std::endl << ")";
+    first = true;
     for (VarList *d : var_list) {
       if (!first) out << ", ";
       first = false;
@@ -144,8 +192,27 @@ public:
   }
 private:
   std::vector<VarList *> var_list;
-  ArgList arg_list;
+  ArgList *arg_list;
   int size;
+  Type type;
+  const char * name;
+  std::vector<FuncBlock *> func_list;
+  std::vector<Stmt *> stmt_list;
+  std::vector<int> sequence;
 };
+
+
+
+/*
+class Func: public Block {
+public:
+
+    Func(inputs....) : Block(inputs...)
+    {
+
+    }
+
+};*/
+
 
 #endif
