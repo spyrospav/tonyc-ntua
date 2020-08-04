@@ -1,14 +1,13 @@
 %option noyywrap
 
-
-
 %{
 #include "ast.hpp"
 #include <stdio.h>
 #include "parser.hpp"
 #include "lexer.hpp"
+#include "general.h"
 
-int lineno = 1;
+//int linecount = 1;
 int comment_level = 0;
 
 #define T_eof 0
@@ -66,19 +65,19 @@ E \\(n|t|r|0|\'|\"|\\|x{H}{H})
 [+\-\*/#=<>] { return yytext[0]; }
 [()\[\]+\-/%*=]   { return yytext[0]; }
 
-\%.*\n  { lineno++; }
+\%.*\n  { linecount++; }
 
 "<*" { BEGIN(COMMENT); }
-<COMMENT>"<*" { ++comment_level; fprintf(stdout, "Im in line %d with comment_level %d \n", lineno, comment_level); }
+<COMMENT>"<*" { ++comment_level; fprintf(stdout, "Im in line %d with comment_level %d \n", linecount, comment_level); }
 <COMMENT>"*"+">" { if(comment_level) --comment_level;
                    else BEGIN(INITIAL); }
-<COMMENT>\n { lineno++; }
+<COMMENT>\n { linecount++; }
 <COMMENT>"*"+ { /* nothing */ }
 <COMMENT>[^*\n]+ { /* nothing */ }
 
 {W}+    { /* nothing */ }
 
-\n      { lineno++; }
+\n      { linecount++; }
 
 .       { yyerror("a"); }
 
@@ -86,7 +85,7 @@ E \\(n|t|r|0|\'|\"|\\|x{H}{H})
 
 void yyerror(const char *msg) {
   fprintf(stderr, "Illegal character with code %d in line %d \n",
-                    yytext[0], lineno, msg);
+                    yytext[0], linecount, msg);
       exit(1);
 }
 /*

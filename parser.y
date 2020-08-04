@@ -94,13 +94,18 @@ program:
 
 func-def:
   //T_def header ':' func-def-list stmt-list-plus T_end { }//$$ = new Program($2, $4, $5); }
-  T_def header ':' func-def-list T_end { std::cout<<"~~~~~~~~~FUNC Start~~~~~~~~~!" << std::endl; $$ = $4; $$->assignHeader($2); std::cout << *$$ << std::endl; std::cout << "~~~~~~~~~FUNC End!~~~~~~~~~" << std::endl;}//$$ = new Program($2, $4, $5); }
+  T_def header ':' func-def-list T_end {
+    std::cout<<"~~~~~~~~~FUNC Start~~~~~~~~~!" << std::endl;
+    $$ = $4; $2->setHeaderDef(DEF); $$->assignHeader($2);
+    std::cout << *$$ << std::endl;
+    std::cout << "~~~~~~~~~FUNC End!~~~~~~~~~" << std::endl;
+  }
 ;
 
 func-def-list:
     /* nothing */ { $$ = new FuncBlock(); }
-  | func-def func-def-list { }//$2->append($1); $$ = $2; } //append (twn block) mallon anapoda
-  | func-decl func-def-list { }//$2->append($1); $$ = $2; }
+  | func-def func-def-list { $2->append_fun($1); $$=$2; }
+  | func-decl func-def-list { $2->append_fun($1); $$=$2; }
   | var-def func-def-list { $2->append_varlist($1);  $$ = $2; }
 ;
 
@@ -131,7 +136,7 @@ type: "int" { $$ = typeInteger; }
   //| "list" '[' type ']' { $$ = {TYPE_LIST, $3}}
 ;
 
-func-decl: "decl" header { }//$$ = $2; }
+func-decl: "decl" header { $2->setHeaderDef(DECL); $$ = new FuncBlock(); $$->assignHeader($2); std::cout << *$$ <<std::endl;}
 ;
 
 var-def: type T_id id-list { $3->var_append($2); $3->var_type($1); $$ = $3;  }

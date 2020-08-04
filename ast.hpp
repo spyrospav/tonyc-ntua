@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "symbol.h"
+#include "error.h"
 
 void yyerror(const char *msg);
 
@@ -77,7 +78,7 @@ class VarList: public AST {
     }
     void var_append(const char* d) { var_list.insert(var_list.begin(), d); }
     void var_type(Type t) { type = t; }
-    std::vector<const char * > getVarList() {return var_list;}
+    std::vector<const char * > getVarList() { return var_list; }
     Type getType() {return type;}
     virtual void sem() override {
       for (int i = 0; i < var_list.size(); i++) {
@@ -109,6 +110,9 @@ class Arg: public AST {
       out << var_list[var_list.size()-1];
       out << ")" << " with Type " << type << " and pass by " << passmode;
     }
+    void sem_(SymbolEntry *p) {
+      for (const char *name: var_list) newParameter(name, type, passmode, p);
+    }
   private:
     PassMode passmode;
     std::vector<const char * > var_list;
@@ -120,6 +124,11 @@ typedef std::vector<Arg *> ArgList;
 class Stmt: public AST {
 };
 
+enum HeaderDef {
+  DECL,
+  DEF
+};
+
 class Header: public AST {
 public:
   Header(Type t, const char * s, ArgList *a): type(t), name(s), arg_list(a) {}
@@ -129,21 +138,33 @@ public:
   Type getHeaderType() { return type; }
   const char * getHeaderName() { return name; }
   ArgList *getHeaderArgList() { return arg_list; }
+  void setHeaderDef(HeaderDef h) { hdef = h; }
   virtual void printOn(std::ostream &out) const override {
     out << "Header with name " << name << " and type " << type << "(";
     bool first = true;
     for (std::vector<Arg *>::iterator it = arg_list->begin(); it != arg_list->end(); ++it){
       if (!first) out << ", ";
       first = false;
-      out << std::endl << **it; //asterakia mou (anastasia yiousef)
+      out << std::endl << **it;
     }
     out << std::endl << ")";
+  }
+  virtual void sem() override {
+    SymbolEntry * p = newFunction(name);
+    if (hdef == DECL) {
+      forwardFunction(p);
+    }
+    openScope();
+    for (Arg *a: *arg_list) { a->sem_(p); }
+    endFunctionHeader(p, type);
+    closeScope();
   }
 
 private:
   Type type;
   const char * name;
   ArgList *arg_list;
+  HeaderDef hdef;
 };
 
 class FuncBlock: public Stmt {
@@ -155,26 +176,20 @@ public:
   void append_varlist(VarList *d) {
     std::cout << "Add var in block!" << std::endl;
     var_list.insert(var_list.begin(), d);
-    sequence.append(0);
+    sequence.insert(sequence.begin(), VARIABLE);
   }
-  void assignHeader(Header *header) {
-    name = header->getHeaderName();
-    arg_list = header->getHeaderArgList();
-    type = header->getHeaderType();
-    sequence.append(1);
+  void append_fun(FuncBlock *f){
+    std::cout << "Add func in block!" << std::endl;
+    func_list.insert(func_list.begin(), f);
+    sequence.insert(sequence.begin(), FUNCTION);
   }
-  //void append_arglist(ArgList *a) { }
+  void assignHeader(Header *h) {
+    header = h;
+  }
   virtual void printOn(std::ostream &out) const override {
     out << "Block(" << std::endl;
-    out << "Header with name " << name << " and type " << type << "(";
+    out << *header;
     bool first = true;
-    for (std::vector<Arg *>::iterator it = arg_list->begin(); it != arg_list->end(); ++it){
-      if (!first) out << ", ";
-      first = false;
-      out << std::endl << **it; //asterakia mou (anastasia yiousef)
-    }
-    out << std::endl << ")";
-    first = true;
     for (VarList *d : var_list) {
       if (!first) out << ", ";
       first = false;
@@ -186,33 +201,39 @@ public:
   virtual void sem() override {
     std::cout << "open in block" << std::endl;
     openScope();
-    for (VarList *v : var_list) v->sem();
-    //for (ArgList)
+    //sem for current function block
+    //header->sem();
+
+    //sem for variables in block and also for children function definition
+    int v = 0, f = 0;
+    std::cout << "Seq size " << sequence.size() << std::endl;
+    for (std::vector<DefType>::iterator it = sequence.begin(); it < sequence.end(); it++){
+      if (*it == FUNCTION) {
+        func_list[f]->sem();
+        f++;
+      }
+      else if (*it == VARIABLE) {
+        var_list[v]->sem();
+        v++;
+      }
+    }
+    //for (Stmt *stmt : stmt_list) stmt->sem();
     closeScope();
   }
 private:
+  Header *header;
+  std::vector<Stmt *> def_list;
   std::vector<VarList *> var_list;
-  ArgList *arg_list;
-  int size;
-  Type type;
-  const char * name;
   std::vector<FuncBlock *> func_list;
   std::vector<Stmt *> stmt_list;
-  std::vector<int> sequence;
+
+  enum DefType {
+    FUNCTION,
+    VARIABLE,
+    DECLARATION
+  };
+  std::vector<DefType> sequence;
+  int size;
 };
-
-
-
-/*
-class Func: public Block {
-public:
-
-    Func(inputs....) : Block(inputs...)
-    {
-
-    }
-
-};*/
-
 
 #endif

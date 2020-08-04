@@ -2,6 +2,7 @@ def program ():
   int a
   def int fun (int c, d; ref char e):
   end
+  decl fun2 (int a; char d)
   def proc ():
   end
 end
