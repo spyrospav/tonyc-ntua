@@ -1,0 +1,11 @@
+def program() :
+  int a
+  bool b
+  def pipis(ref int c):
+    int mesa
+    def pelopidas (int a):
+      char f
+    end
+  end
+  int testekso
+end

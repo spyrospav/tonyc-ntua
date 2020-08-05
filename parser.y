@@ -5,6 +5,7 @@
 #include "ast.hpp"
 #include "symbol.h"
 
+bool first = true;
 %}
 
 
@@ -89,16 +90,15 @@
 
 
 program:
-  {std::cout << "~~!!~~ MAIN PROGRAM (START) ~~!!~~" << std::endl; } func-def { std::cout << *$2; $2->sem();  std::cout << "~~!!~~ MAIN PROGRAM (END) ~~!!~~" << std::endl; }
+  { initSymbolTable(1024); openScope(); printSymbolTable(); }
+    func-def { $2->setMain(); std::cout << *$2; $2->sem(); }
 ;
 
 func-def:
-  //T_def header ':' func-def-list stmt-list-plus T_end { }//$$ = new Program($2, $4, $5); }
+  //T_def header ':' func-def-list stmt-list-plus T_end { }
   T_def header ':' func-def-list T_end {
-    std::cout<<"~~~~~~~~~FUNC Start~~~~~~~~~!" << std::endl;
     $$ = $4; $2->setHeaderDef(DEF); $$->assignHeader($2);
     std::cout << *$$ << std::endl;
-    std::cout << "~~~~~~~~~FUNC End!~~~~~~~~~" << std::endl;
   }
 ;
 
@@ -120,9 +120,9 @@ formal-list:
 ;
 
 formal:
-    "ref" var-def { $$ = new Arg(PASS_BY_REFERENCE, $2); }// std::cout << *$$ << std::endl; }
-  | var-def { $$ = new Arg(PASS_BY_VALUE, $1); }//std::cout << *$$ << std::endl; }
-; //DIKIA mas aplopoihsh ston orismo
+    "ref" var-def { $$ = new Arg(PASS_BY_REFERENCE, $2); }
+  | var-def { $$ = new Arg(PASS_BY_VALUE, $1); }
+;
 
 formal-list-plus:
     /* nothing */ { $$ = new ArgList(); }
@@ -139,7 +139,7 @@ type: "int" { $$ = typeInteger; }
 func-decl: "decl" header { $2->setHeaderDef(DECL); $$ = new FuncBlock(); $$->assignHeader($2); std::cout << *$$ <<std::endl;}
 ;
 
-var-def: type T_id id-list { $3->var_append($2); $3->var_type($1); $$ = $3;  }
+var-def: type T_id id-list { $3->var_append($2); $3->var_type($1); $$ = $3; }
 ;
 
 id-list:

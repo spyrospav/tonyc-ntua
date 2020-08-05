@@ -1,0 +1,19 @@
+def p ():
+
+      char s1, s2, s3
+      int i1, i2
+
+      decl f (int x; char y)
+
+      def pr (int p1, p2; bool p3):
+         bool b1
+         int i1
+         def pipis (int pipos):
+          char lol
+         end
+      end
+
+      def f (int x; char y):
+      end
+
+end

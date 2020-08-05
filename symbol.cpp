@@ -347,6 +347,7 @@ SymbolEntry * newFunction (const char * name)
     if (e == NULL) {
         e = newEntry(name);
         if (e != NULL) {
+
             e->entryType = ENTRY_FUNCTION;
             e->u.eFunction.isForward = false;
             e->u.eFunction.pardef = PARDEF_DEFINE;
@@ -731,6 +732,7 @@ void printSymbolTable ()
                         break;
 #endif
                 }
+                printf("Nesting level: %d\n", e->nestingLevel);
                 e = e->nextInScope;
                 if (e != NULL)
                     printf(", ");

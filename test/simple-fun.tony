@@ -1,8 +1,11 @@
 def program ():
   int a
+  int abs
   def int fun (int c, d; ref char e):
   end
   decl fun2 (int a; char d)
-  def proc ():
+  bool f
+  def fun2 (int a; char d):
+    bool e
   end
 end

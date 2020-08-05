@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream &out, Type t) {
 class AST {
   public:
     AST() {
-      initSymbolTable(1024);
+
     }
     virtual ~AST() {
       destroySymbolTable();
@@ -82,7 +82,7 @@ class VarList: public AST {
     Type getType() {return type;}
     virtual void sem() override {
       for (int i = 0; i < var_list.size(); i++) {
-        std::cout << "trying to insert to symbol table! variable " << var_list[i] << std::endl;
+        //std::cout << "trying to insert to symbol table! variable " << var_list[i] << std::endl;
         newVariable(var_list[i], type);
       }
     }
@@ -135,10 +135,12 @@ public:
   ~Header(){
     arg_list->clear();
   }
+
   Type getHeaderType() { return type; }
   const char * getHeaderName() { return name; }
   ArgList *getHeaderArgList() { return arg_list; }
   void setHeaderDef(HeaderDef h) { hdef = h; }
+
   virtual void printOn(std::ostream &out) const override {
     out << "Header with name " << name << " and type " << type << "(";
     bool first = true;
@@ -150,16 +152,20 @@ public:
     out << std::endl << ")";
   }
   virtual void sem() override {
-    SymbolEntry * p = newFunction(name);
-    if (hdef == DECL) {
-      forwardFunction(p);
+    SymbolEntry * p = lookupEntry(name, LOOKUP_CURRENT_SCOPE, false);
+    if (p == NULL) {
+      p = newFunction(name);
+      if (hdef == DECL) {
+        forwardFunction(p);
+      }
+      openScope();
+      printSymbolTable();
+      for (Arg *a: *arg_list) { a->sem_(p); }
+      endFunctionHeader(p, type);
+      printSymbolTable();
+      //closeScope();
     }
-    openScope();
-    for (Arg *a: *arg_list) { a->sem_(p); }
-    endFunctionHeader(p, type);
-    closeScope();
   }
-
 private:
   Type type;
   const char * name;
@@ -167,12 +173,19 @@ private:
   HeaderDef hdef;
 };
 
+enum DefType {
+  FUNCTION,
+  VARIABLE,
+  DECLARATION
+};
+
 class FuncBlock: public Stmt {
 public:
-  FuncBlock(): var_list(), size(0) {}
+  FuncBlock(): var_list(), size(0), isMain(false) {}
   ~FuncBlock() {
     for (VarList *d : var_list) delete d;
   }
+
   void append_varlist(VarList *d) {
     std::cout << "Add var in block!" << std::endl;
     var_list.insert(var_list.begin(), d);
@@ -186,6 +199,23 @@ public:
   void assignHeader(Header *h) {
     header = h;
   }
+
+  void setMain() {
+    isMain = true;
+    checkHeader();
+  }
+  void checkHeader() {
+    Type type = header->getHeaderType();
+    if (!equalType(type, typeVoid)) {
+      fatal("Main function should be of type void");
+    }
+    ArgList *arglist = header->getHeaderArgList();
+
+    if (!arglist->empty()) {
+      fatal("Main function should not have arguments");
+    }
+  }
+
   virtual void printOn(std::ostream &out) const override {
     out << "Block(" << std::endl;
     out << *header;
@@ -199,14 +229,8 @@ public:
   }
 
   virtual void sem() override {
-    std::cout << "open in block" << std::endl;
-    openScope();
-    //sem for current function block
     header->sem();
-
-    //sem for variables in block and also for children function definition
     int v = 0, f = 0;
-    std::cout << "Seq size " << sequence.size() << std::endl;
     for (std::vector<DefType>::iterator it = sequence.begin(); it < sequence.end(); it++){
       if (*it == FUNCTION) {
         func_list[f]->sem();
@@ -218,22 +242,18 @@ public:
       }
     }
     //for (Stmt *stmt : stmt_list) stmt->sem();
+    printSymbolTable();
     closeScope();
   }
+
 private:
   Header *header;
-  std::vector<Stmt *> def_list;
   std::vector<VarList *> var_list;
   std::vector<FuncBlock *> func_list;
   std::vector<Stmt *> stmt_list;
-
-  enum DefType {
-    FUNCTION,
-    VARIABLE,
-    DECLARATION
-  };
   std::vector<DefType> sequence;
   int size;
+  bool isMain;
 };
 
 #endif
