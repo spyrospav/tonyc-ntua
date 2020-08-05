@@ -132,7 +132,7 @@ formal-list-plus:
 type: "int" { $$ = typeInteger; }
   | "bool"  { $$ = typeBoolean; }
   | "char" { $$ = typeChar; }
-  //| type '[' ']' { $$ = { TYPE_IARRAY, $1, 0, 0}; }
+  | type '[' ']' {$$ = typeArray(0, $1);}//{ Type tmp =  {TYPE_IARRAY, $1, 0, 0}; $$ = tmp; }
   //| "list" '[' type ']' { $$ = {TYPE_LIST, $3}}
 ;
 

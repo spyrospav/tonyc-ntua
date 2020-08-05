@@ -55,7 +55,7 @@ public:
   virtual int eval() const = 0;
   void type_check(Type t) {
     sem();
-    if (type != t) yyerror("Type mismatch");
+    if (!equalType(type, t)) yyerror("Type mismatch ");
   }
 protected:
   Type type;
