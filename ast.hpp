@@ -202,7 +202,7 @@ public:
     std::cout << "open in block" << std::endl;
     openScope();
     //sem for current function block
-    //header->sem();
+    header->sem();
 
     //sem for variables in block and also for children function definition
     int v = 0, f = 0;
