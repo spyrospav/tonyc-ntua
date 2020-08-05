@@ -732,7 +732,7 @@ void printSymbolTable ()
                         break;
 #endif
                 }
-                printf("Nesting level: %d\n", e->nestingLevel);
+                //printf(" Nesting level: %d\n", e->nestingLevel);
                 e = e->nextInScope;
                 if (e != NULL)
                     printf(", ");

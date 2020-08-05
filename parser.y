@@ -132,7 +132,7 @@ formal-list-plus:
 type: "int" { $$ = typeInteger; }
   | "bool"  { $$ = typeBoolean; }
   | "char" { $$ = typeChar; }
-  | type '[' ']' {$$ = typeArray(0, $1);}//{ Type tmp =  {TYPE_IARRAY, $1, 0, 0}; $$ = tmp; }
+  | type '[' ']' {$$ = typeIArray($1);}//{ Type tmp =  {TYPE_IARRAY, $1, 0, 0}; $$ = tmp; }
   //| "list" '[' type ']' { $$ = {TYPE_LIST, $3}}
 ;
 
@@ -176,7 +176,7 @@ else-stmt:
 
 simple:
     "skip" {}//$$ = new Skip();}
-  | atom ":=" expr {}//$$ = new Let();}
+  | atom ":=" expr { } //$$ = new Let();}
   | call {}//$$ = new Call();}
 ;
 
@@ -205,23 +205,23 @@ expr-list-plus:
 
 atom:
     T_id {}// $$ = new Id($1); }
-  | T_string_const { }//$$ = new String_const($1); }
+  | T_string_const { } //$$ = new StringConst($1); }
   | atom '[' expr ']' {}// $$ = new Apply_atom_expr($1, $3); }
   | call { }//$$ = $1;}
 ;
 
 expr:
     atom {}// $$ = $1; }
-  | T_int_const {}// $$ = new Int_const($1); }
-  | T_char_const {}// $$ = new Char_const($1); }
-  | '(' expr ')' {}// $$ = $2; }
-  | sign expr {}//$$ = new Sign($1, $2);}
-  | expr math-op expr {}//$$ = new Math_op($1, $2, $3);   }
-  | expr comp-op expr {}//$$ = new Comp_op($1, $2, $3);   }
-  | "true" { }//$$ = new Logic($1); }
-  | "false" { }//$$ = new Logic($1); }
-  | "not" expr {}//$$ = new Logic_op($2); }
-  | expr logic-op expr { }//$$ = new Logic_op($1, $2, $3); }
+  | T_int_const { $$ = new IntConst($1); }
+  | T_char_const { $$ = new CharConst($1); }
+  | '(' expr ')' { $$ = $2; }
+  | sign expr { $$ = new UnOp($1, $2); }
+  | expr math-op expr { $$ = new BinOp($1, $2, $3); }
+  | expr comp-op expr { $$ = new BinOp($1, $2, $3); }
+  | "true" { $$ = new BoolConst($1); }
+  | "false" { $$ = new BoolConst($1); }
+  | "not" expr {$$ = new UnOp($2); }
+  | expr logic-op expr { $$ = new BinOp($1, $2, $3); }
   | "new" type '[' expr ']' {}// $$ = new New_expr($2, $4); } //periergo
   | "nil" { }//$$ = new Nil(); }
   | "nil?" '(' expr ')'  {}//$$ = new List_op($1, $3);}

@@ -5,7 +5,7 @@ def p ():
 
       decl f (int x; char y)
 
-      def pr (int p1, p2; bool p3):
+      def int pr (int p1, p2; bool p3):
          bool b1
          int i1
          def pipis (int pipos):
@@ -13,7 +13,7 @@ def p ():
          end
       end
 
-      def f (int x; char y):
+      def int[][] f (int x; char y):
       end
 
 end

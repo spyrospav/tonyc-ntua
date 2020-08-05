@@ -24,11 +24,15 @@ inline std::ostream& operator<<(std::ostream &out, Type t) {
   else if (t == typeChar){
     a = 3;
   }
+  else if (t->kind == TYPE_IARRAY) {
+    a = 4;
+  }
   switch (a) {
     case 0: out << "void"; break;
     case 1: out << "int";  break;
     case 2: out << "bool"; break;
     case 3: out << "char"; break;
+    case 4: out << "array of type " << t->refType; break;
   }
   return out;
 }
@@ -48,17 +52,6 @@ class AST {
 inline std::ostream& operator<< (std::ostream &out, const AST &t) {
   t.printOn(out);
   return out;
-};
-
-class Expr: public AST {
-public:
-  virtual int eval() const = 0;
-  void type_check(Type t) {
-    sem();
-    if (!equalType(type, t)) yyerror("Type mismatch ");
-  }
-protected:
-  Type type;
 };
 
 class VarList: public AST {
@@ -229,7 +222,7 @@ public:
   }
 
   virtual void sem() override {
-    header->sem();
+    if (!isMain) header->sem();
     int v = 0, f = 0;
     for (std::vector<DefType>::iterator it = sequence.begin(); it < sequence.end(); it++){
       if (*it == FUNCTION) {
@@ -255,5 +248,224 @@ private:
   int size;
   bool isMain;
 };
+
+// EXPRESSIONS (e.g atoms, constants, operations applied to expressions )
+
+class Expr : public AST {
+public:
+  //virtual void compile() const = 0; UNCOMMENT WHEN COMPILE IS IMPLEMENTED ON other classes
+  void type_check(Type t) {
+    sem();
+    if (!equalType(type, t))
+      yyerror("Type mismatch");
+  }
+  bool isBasicType(Type t) {
+    return (t->type == typeChar || t->type == tybeBoolean || t->type == typeInteger);
+  }
+
+protected:
+  Type type;
+};
+
+class Atom : public Expr {
+  public:
+
+
+};
+
+class IntConst : public Expr {
+  IntConst(int n) : num(n) {}
+  virtual void printOn(std::ostream &out) const override {
+    out << "IntConst(" << num << ")";
+  }
+  /*
+  virtual void compile() const override {
+    std::cout << "  pushl $" << num << "\n";
+  }
+  */
+  virtual void sem() override { type = typeInteger; }
+
+  private:
+    int num;
+};
+
+class CharConst : public Expr {
+  CharConst(char c) : character(c) {}
+  virtual void printOn(std::ostream &out) const override {
+    out << "CharConst(" << char << ")";
+  }
+  /*
+  virtual void compile() const override {
+    std::cout << "  pushl $" << num << "\n";
+  }
+  */
+  virtual void sem() override { type = typeCharacter; }
+
+  private:
+    char character;
+};
+
+class BoolConst : public Expr {
+  BoolConst(const char * s) {
+    if (s == "false") logic = false;
+    else if (s == "true") logic = true;
+  }
+  virtual void printOn(std::ostream &out) const override {
+    out << "Logic(" << logic << ")";
+  }
+  /*
+  virtual void compile() const override {
+    std::cout << "  pushl $" << num << "\n";
+  }
+  */
+  virtual void sem() override { type = typeBoolean; }
+
+  private:
+    bool logic;
+};
+
+class Id : public Expr {
+public:
+  Id(const char * v) : var(v) {}
+  virtual void printOn(std::ostream &out) const override {
+    out << "Id(" << var << "@" << ")";
+  }
+  /*
+  virtual void compile() const override {
+    if (nestingDiff == 0)
+      // Local variable.
+      std::cout << "  pushl " << 4 * offset << "(%ebp)\n";
+    else {
+      // Non-local variable; follow nestingDiff access links.
+      std::cout << "  movl 0(%ebp), %esi\n";
+      for (int i = 1; i < nestingDiff; ++i)
+        std::cout << "  movl 0(%esi), %esi\n";
+      std::cout << "  pushl " << 4 * offset << "(%esi)\n";
+    }
+  }
+  */
+  virtual void sem() override {
+    SymbolEntry *e = lookupEntry(var);
+    type = e->type;
+  }
+
+private:
+  const char * var;
+};
+
+class BinOp : public Expr {
+public:
+  BinOp(Expr *l, const char *o, Expr *r) : left(l), op(o), right(r) {}
+  ~BinOp() {
+    delete left;
+    delete right;
+  }
+  virtual void printOn(std::ostream &out) const override {
+    out << op << "(" << *left << ", " << *right << ")";
+  }
+  virtual void compile() const override {
+    /*left->compile();
+    right->compile();
+    std::cout << "  popl %ebx\n"  // right
+              << "  popl %eax\n"; // left
+    switch (op) {
+    case '+':
+      std::cout << "  addl %ebx, %eax\n"
+                << "  pushl %eax\n";
+      break;
+    case '-':
+      std::cout << "  subl %ebx, %eax\n"
+                << "  pushl %eax\n";
+      break;
+    case '*':
+      std::cout << "  mull %ebx\n"
+                << "  pushl %eax\n";
+      break;
+    case '/':
+      std::cout << "  cdq\n"
+                << "  divl %ebx\n"
+                << "  pushl %eax\n";
+      break;
+    case '%':
+      std::cout << "  cdq\n"
+                << "  divl %ebx\n"
+                << "  pushl %edx\n";
+      break;
+    } */
+  }
+  virtual void sem() override {
+
+    switch (op) {
+    case "+":
+    case "-":
+    case "*":
+    case "/":
+    case "mod":
+      left->type_check(typeInteger);
+      right->type_check(typeInteger);
+      type = typeInteger;
+      break;
+    case "=":
+    case "<>":
+    case "<":
+    case ">":
+    case "<=":
+    case ">=":
+      //operands must be of same BASIC(int, char or bool) type.
+      if (!equalType(left, right) || !isBasicType(left->type) || isBasicType(right->type))
+        yyerror("Operands must be an instance of same basic types");
+      type = typeBoolean;
+      break;
+    }
+    case "and":
+    case "or":
+      left->type_check(typeBoolean);
+      right->type_check(typeBoolean);
+      type = typeBoolean;
+      break;
+  }
+
+private:
+  Expr *left;
+  const char *op; //operators can be multi-character
+  Expr *right;
+
+};
+
+class UnOp : public Expr {
+public:
+  UnOp(const char *o, Expr *e) : op(o), expr(e) {}
+  ~UnOp() {
+    delete expr;
+  }
+  virtual void printOn(std::ostream &out) const override {
+    out << op << "(" << *expr << ")";
+  }
+  virtual void compile() const override {};
+
+  virtual void sem() override {
+    switch(op) {
+      case "+":
+      case "-":
+        expr->type_check(typeInteger);
+        type = typeInteger;
+        break;
+      case "not":
+        expr->type_check(typeBoolean);
+        type=typeBoolean;
+        break;
+    }
+  }
+
+private:
+  const char *op; //operators can be multi-character
+  Expr *expr;
+  Type type;
+};
+
+
+
+// STATEMENTS (e.g Let, If.. else ...)
+
 
 #endif
