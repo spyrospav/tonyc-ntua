@@ -105,7 +105,7 @@ class Arg: public AST {
       out << var_list[var_list.size()-1];
       out << ")" << " with Type " << type << " and pass by " << passmode;
     }
-    void sem_(SymbolEntry *p) {
+    void sem(SymbolEntry *p) {
       for (const char *name: var_list) newParameter(name, type, passmode, p);
     }
   private:
@@ -155,7 +155,7 @@ public:
       }
       openScope();
       printSymbolTable();
-      for (Arg *a: *arg_list) { a->sem_(p); }
+      for (Arg *a: *arg_list) { a->sem(p); }
       endFunctionHeader(p, type);
       printSymbolTable();
       //closeScope();
@@ -269,10 +269,10 @@ class Expr : public AST {
     Type type;
 };
 
+typedef std::vector<Expr *> ExprList;
+
 class Atom : public Expr {
   public:
-
-
 };
 
 class IntConst : public Expr {
@@ -346,13 +346,28 @@ public:
     }
   }
   */
+  const char *getIdName() { return var; }
+  EntryType getEntryType() {
+    return entry;
+  }
   virtual void sem() override {
     SymbolEntry *e = lookupEntry(var,LOOKUP_CURRENT_SCOPE, false);
-    type = e->u.eVariable.type;
+    if(e==NULL) {fatal("Id has not been declared");}
+    entry = e->entryType;
+    if (entry == ENTRY_VARIABLE ) {
+      type = e->u.eVariable.type;
+    }
+    else if (entry == ENTRY_FUNCTION ) {
+      type = e->u.eFunction.resultType;
+    }
+    else if (entry == ENTRY_PARAMETER ) {
+      type = e->u.eParameter.type;
+    }
   }
 
 private:
   const char * var;
+  EntryType entry;
 };
 
 class BinOp : public Expr {
@@ -467,25 +482,64 @@ class StringConst: public Expr {
 };
 
 // STATEMENTS (e.g Let, If.. else ...)
+typedef std::vector<Stmt *> StmtList;
+
+class Call: public Stmt{
+  public:
+    Call(Id *v): id(v), exprlist(NULL) {}
+    Call(Id *v, ExprList *e): id(v), exprlist(e) {}
+    ~Call() {
+      exprlist->clear();
+    }
+    virtual void printOn(std::ostream &out) const override {
+      out << "Call(" << id << "with expressions";
+      bool first = true;
+      for (std::vector<Expr *>::iterator it = exprlist->begin(); it != exprlist->end(); ++it){
+        if (!first) out << ", ";
+        first = false;
+        out << std::endl << **it;
+      }
+      out << std::endl << ")";
+    }
+    virtual void sem() override {
+      id->sem();
+      EntryType entry = id->getEntryType();
+      if (entry != ENTRY_FUNCTION) {
+        fatal("Object %s is not callable", id->getIdName());
+      }
+      for (Expr *expr: *exprlist) { expr->sem(); }
+    }
+  private:
+    Id *id;
+    ExprList *exprlist;
+};
 
 class Let: public Stmt {
 public:
-  Let(char v, Expr *e): var(v), offset(-1), expr(e) {}
+  Let(Id *v, Expr *e): var(v),  expr(e) {}
+  /*
+  Let(Call *call, Expr *e) {
+    fatal("Cannot assign to non l-value");
+  }
+  Let(StringConst *s, Expr *e) {
+    fatal("Cannot assign to non l-value");
+  }
+  */
   ~Let() { delete expr; }
   virtual void printOn(std::ostream &out) const override {
     out << "Let(" << var << " = " << *expr << ")";
-  }
-  virtual void run() const override {
-    rt_stack[offset] = expr->eval();
+
   }
   virtual void sem() override {
-    SymbolEntry *lhs = st.lookup(var);
-    expr->type_check(lhs->type);
-    offset = lhs->offset;
+    var->sem();
+    EntryType entry_type = var->getEntryType();
+    if (entry_type == ENTRY_FUNCTION) {
+      fatal("Cannot assign value to function %s ", var->getIdName());
+    }
+    expr->type_check(var->getType());
   }
 private:
-  char var;
-  int offset;
+  Id *var;
   Expr *expr;
 };
 

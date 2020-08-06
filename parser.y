@@ -64,7 +64,9 @@ bool first = true;
   FuncBlock *funcblock;
   Stmt *stmt;
   Expr *expr;
+  ExprList *exprlist;
   VarList *varlist;
+  StmtList *stmtlist;
   const char *var;
   char *string_const;
   char char_const;
@@ -76,18 +78,22 @@ bool first = true;
   Arg *arg;
   ArgList *arglist;
   Header *header;
-
+  Call *call;
 }
 
 %type<funcblock> program func-def-list func-def func-decl
-%type<stmt>  stmt
-%type<expr>  expr
+%type<stmt>  stmt simple
+%type<expr>  expr atom lvalue
 %type<type>  type
 %type<varlist> id-list var-def
 %type<arglist> formal-list formal-list-plus
 %type<arg> formal
 %type<header> header
 %type<op> math-op comp-op logic-op sign
+%type<exprlist> expr-list-plus expr-list
+%type<call> call
+%type<stmtlist> stmt-list-plus simple-list simple-list-plus
+
 %%
 
 
@@ -97,8 +103,7 @@ program:
 ;
 
 func-def:
-  //T_def header ':' func-def-list stmt-list-plus T_end { }
-  T_def header ':' func-def-list T_end {
+  T_def header ':' func-def-list stmt-list-plus T_end {
     $$ = $4; $2->setHeaderDef(DEF); $$->assignHeader($2);
     std::cout << *$$ << std::endl;
   }
@@ -150,16 +155,16 @@ id-list:
 ;
 
 stmt-list-plus:
-    stmt { }//$$ = new Block(); $$->append_stmt($1); }
-  | stmt stmt-list-plus { }//$2->append($1); $$ = $2; }
+    stmt { $$ = new StmtList(); $$->push_back($1); }
+  | stmt stmt-list-plus { $2->push_back($1); $$ = $2; }
 ;
 
 stmt:
-    simple { }//$$ = $1;}
-  | "exit" { }//$$ = new Exit(); }
-  | "return" expr { }//$$ = new Return($2); }
-  | if-stmt { }//$$ = $1;}
-  | "for" simple-list ';' expr ';' simple-list ':' stmt-list-plus "end" { }//$$ = new For($2, $4, $6, $8); }
+    simple { $$ = $1;}
+  //| "exit" { }//$$ = new Exit(); }
+  //| "return" expr { }//$$ = new Return($2); }
+  //| if-stmt { }//$$ = $1;}
+  //| "for" simple-list ';' expr ';' simple-list ':' stmt-list-plus "end" { }//$$ = new For($2, $4, $6, $8); }
   ;
 
 if-stmt:
@@ -177,43 +182,48 @@ else-stmt:
 ;
 
 simple:
-    "skip" {}//$$ = new Skip();}
-  | atom ":=" expr { $$ = new Let($1, $3);}
-  | call {}//$$ = new Call();}
+    lvalue ":=" expr { $$ = new Let($1, $3); }
+//  | "skip" {}//$$ = new Skip();}
+  | call {$$ = new Call();}
 ;
 
 simple-list:
-    simple simple-list-plus { }//$2->append_simple($1); $$ = $2; }
+    simple simple-list-plus { $2->append_simple($1); $$ = $2; }
 ;
 
 simple-list-plus:
-    /* nothing */ { }//$$ = new Simple(); }
-  | ',' simple-list { }//$$ = $2; }
+    /* nothing */ { $$ = new SimpleList(); }
+  | ',' simple-list { $$ = $2; }
 ;
 
 call:
-    T_id '(' expr-list ')' { }//$$ = new Call($1, $3); }
-  | T_id '('')' { }//$$ = new Call($1); }
+    T_id '(' expr-list ')' { $$ = new Call($1, $3); }
+  | T_id '('')' { $$ = new Call($1); }
 ;
 
 expr-list:
-    expr expr-list-plus {}// $2->append_expr($1); $$ = $2; }
+    expr expr-list-plus { $2->push_back($1); $$ = $2; }
 ;
 
 expr-list-plus:
-    /* nothing */{ }//$$ = new Expr();}
-  | ',' expr expr-list-plus {}// $2->append_expr($1); $$ = $2;}
+    /* nothing */{ $$ = new ExprList();}
+  | ',' expr expr-list-plus { $3->push_back($2); $$ = $3;}
+;
+
+lvalue:
+    T_id { $$ = new Id($1); }
+//  | atom '[' expr ']' {}// $$ = new Apply_atom_expr($1, $3); }
 ;
 
 atom:
-    T_id {}// $$ = new Id($1); }
-  | T_string_const { } //$$ = new StringConst($1); }
-  | atom '[' expr ']' {}// $$ = new Apply_atom_expr($1, $3); }
-  | call { }//$$ = $1;}
+    T_id { $$ = new Id($1); }
+//  | atom '[' expr ']' {}// $$ = new Apply_atom_expr($1, $3); }
+  | T_string_const { $$ = new StringConst($1); }
+  | call { $$ = $1; }
 ;
 
 expr:
-    atom {}// $$ = $1; }
+    atom { $$ = $1; }
   | T_int_const { $$ = new IntConst($1); }
   | T_char_const { $$ = new CharConst($1); }
   | '(' expr ')' { $$ = $2; }
@@ -222,9 +232,9 @@ expr:
   | expr comp-op expr { $$ = new BinOp($1, $2, $3); }
   | "true" { $$ = new BoolConst($1); }
   | "false" { $$ = new BoolConst($1); }
-  | "not" expr {$$ = new UnOp($2); }
+  | "not" expr {$$ = new UnOp($1, $2); }
   | expr logic-op expr { $$ = new BinOp($1, $2, $3); }
-  | "new" type '[' expr ']' { $4->type_check(typeInteger);  $$ = new NewArray($2, $4->); }
+//  | "new" type '[' expr ']' { $4->type_check(typeInteger);  $$ = new NewArray($2, $4->); }
   | "nil" { }//$$ = new Nil(); }
   | "nil?" '(' expr ')'  {}//$$ = new ListOp($1, $3);}
   | expr '#' expr       {}//$$ = new ListOp($1, $2, $3); }
@@ -238,8 +248,8 @@ sign:
 ;
 
 math-op:
-    '+' {}
-  | '-' {}
+    '+' { }
+  | '-' { }
   | '*' { }
   | '/' { }
   | T_mod { }
@@ -255,8 +265,8 @@ comp-op:
 ;
 
 logic-op:
-    "and" { }//$$ = $1; }
-  | "or"  { }//$$ = $1; }
+    "and" { }
+  | "or"  { }
 ;
 
 %%
