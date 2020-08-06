@@ -17,7 +17,6 @@ bool first = true;
 %token T_elsif      "elsif"
 %token T_end        "end"
 %token T_exit       "exit"
-%token T_false      "false"
 %token T_for        "for"
 %token T_head       "head"
 %token T_if         "if"
@@ -30,7 +29,6 @@ bool first = true;
 %token T_return     "return"
 %token T_skip       "skip"
 %token T_tail       "tail"
-%token T_true       "true"
 %token T_not        "not"
 %token T_and        "and"
 %token T_or         "or"
@@ -39,10 +37,12 @@ bool first = true;
 %token T_leq        "<="
 %token T_geq        ">="
 
+%token<logic> T_false      "false"
+%token<logic> T_true       "true"
 %token<var> T_id
 %token<num> T_int_const
-%token T_char_const
-%token T_string_const
+%token<char_const> T_char_const
+%token<string_const> T_string_const
 
 %left<op>               T_and
 %nonassoc<op>           T_not
@@ -68,6 +68,7 @@ bool first = true;
   const char *var;
   char *string_const;
   char char_const;
+  bool logic;
   int num;
   char *op;
   bool b;
@@ -75,6 +76,7 @@ bool first = true;
   Arg *arg;
   ArgList *arglist;
   Header *header;
+
 }
 
 %type<funcblock> program func-def-list func-def func-decl
@@ -85,7 +87,7 @@ bool first = true;
 %type<arglist> formal-list formal-list-plus
 %type<arg> formal
 %type<header> header
-
+%type<op> math-op comp-op logic-op sign
 %%
 
 
@@ -132,8 +134,8 @@ formal-list-plus:
 type: "int" { $$ = typeInteger; }
   | "bool"  { $$ = typeBoolean; }
   | "char" { $$ = typeChar; }
-  | type '[' ']' {$$ = typeIArray($1);}//{ Type tmp =  {TYPE_IARRAY, $1, 0, 0}; $$ = tmp; }
-  //| "list" '[' type ']' { $$ = {TYPE_LIST, $3}}
+  | type '[' ']' {$$ = typeIArray($1); }
+  | "list" '[' type ']' { $$ = typeList($3); }
 ;
 
 func-decl: "decl" header { $2->setHeaderDef(DECL); $$ = new FuncBlock(); $$->assignHeader($2); std::cout << *$$ <<std::endl;}
@@ -176,7 +178,7 @@ else-stmt:
 
 simple:
     "skip" {}//$$ = new Skip();}
-  | atom ":=" expr { } //$$ = new Let();}
+  | atom ":=" expr { $$ = new Let($1, $3);}
   | call {}//$$ = new Call();}
 ;
 
@@ -222,34 +224,34 @@ expr:
   | "false" { $$ = new BoolConst($1); }
   | "not" expr {$$ = new UnOp($2); }
   | expr logic-op expr { $$ = new BinOp($1, $2, $3); }
-  | "new" type '[' expr ']' {}// $$ = new New_expr($2, $4); } //periergo
+  | "new" type '[' expr ']' { $4->type_check(typeInteger);  $$ = new NewArray($2, $4->); }
   | "nil" { }//$$ = new Nil(); }
-  | "nil?" '(' expr ')'  {}//$$ = new List_op($1, $3);}
-  | expr '#' expr       {}//$$ = new List_op($1, $2, $3); }
-  | "head" '(' expr ')' {}//$$ = new List_op($1, $3);}
-  | "tail" '(' expr ')' {}//$$ = new List_op($1, $3);}
+  | "nil?" '(' expr ')'  {}//$$ = new ListOp($1, $3);}
+  | expr '#' expr       {}//$$ = new ListOp($1, $2, $3); }
+  | "head" '(' expr ')' {}//$$ = new ListOp($1, $3);}
+  | "tail" '(' expr ')' {}//$$ = new ListOp($1, $3);}
 ;
 
 sign:
-    '+' { }//$$ = $1; }
-  | '-' { }//$$ = $1; }
+    '+' { }
+  | '-' { }
 ;
 
 math-op:
-    '+' {}// $$ = $1; }
-  | '-' {}// $$ = $1; }
-  | '*' { }//$$ = $1; }
-  | '/' { }//$$ = $1; }
-  | T_mod { }//$$ = $1; }
+    '+' {}
+  | '-' {}
+  | '*' { }
+  | '/' { }
+  | T_mod { }
 ;
 
 comp-op:
-    '='   { }//$$ = $1; }
-  | "<>"  { }//$$ = $1; }
-  | '>'   { }//$$ = $1; }
-  | '<'   { }//$$ = $1; }
-  | ">="  { }//$$ = $1; }
-  | "<="  { }//$$ = $1; }
+    '='   { }
+  | "<>"  { }
+  | '>'   { }
+  | '<'   { }
+  | ">="  { }
+  | "<="  { }
 ;
 
 logic-op:

@@ -4,6 +4,8 @@
 #include <iostream>
 #include <map>
 #include <vector>
+#include <cstring>
+#include <stdio.h>
 
 #include "symbol.h"
 #include "error.h"
@@ -252,19 +254,19 @@ private:
 // EXPRESSIONS (e.g atoms, constants, operations applied to expressions )
 
 class Expr : public AST {
-public:
-  //virtual void compile() const = 0; UNCOMMENT WHEN COMPILE IS IMPLEMENTED ON other classes
-  void type_check(Type t) {
-    sem();
-    if (!equalType(type, t))
-      yyerror("Type mismatch");
-  }
-  bool isBasicType(Type t) {
-    return (t->type == typeChar || t->type == tybeBoolean || t->type == typeInteger);
-  }
-
-protected:
-  Type type;
+  public:
+    //virtual void compile() const = 0; UNCOMMENT WHEN COMPILE IS IMPLEMENTED ON other classes
+    void type_check(Type t) {
+      sem();
+      if (!equalType(type, t))
+        yyerror("Type mismatch");
+    }
+    bool isBasicType(Type t) {
+      return (equalType(t, typeChar) || equalType(t, typeBoolean) || equalType(t, typeInteger));
+    }
+    Type getType() { return type; }
+  protected:
+    Type type;
 };
 
 class Atom : public Expr {
@@ -292,14 +294,14 @@ class IntConst : public Expr {
 class CharConst : public Expr {
   CharConst(char c) : character(c) {}
   virtual void printOn(std::ostream &out) const override {
-    out << "CharConst(" << char << ")";
+    out << "CharConst(" << character << ")";
   }
   /*
   virtual void compile() const override {
     std::cout << "  pushl $" << num << "\n";
   }
   */
-  virtual void sem() override { type = typeCharacter; }
+  virtual void sem() override { type = typeChar; }
 
   private:
     char character;
@@ -345,8 +347,8 @@ public:
   }
   */
   virtual void sem() override {
-    SymbolEntry *e = lookupEntry(var);
-    type = e->type;
+    SymbolEntry *e = lookupEntry(var,LOOKUP_CURRENT_SCOPE, false);
+    type = e->u.eVariable.type;
   }
 
 private:
@@ -363,8 +365,9 @@ public:
   virtual void printOn(std::ostream &out) const override {
     out << op << "(" << *left << ", " << *right << ")";
   }
+  /*
   virtual void compile() const override {
-    /*left->compile();
+    left->compile();
     right->compile();
     std::cout << "  popl %ebx\n"  // right
               << "  popl %eax\n"; // left
@@ -391,38 +394,25 @@ public:
                 << "  divl %ebx\n"
                 << "  pushl %edx\n";
       break;
-    } */
+    }
   }
+  */
   virtual void sem() override {
-
-    switch (op) {
-    case "+":
-    case "-":
-    case "*":
-    case "/":
-    case "mod":
+    if (strcmp(op, "+") || strcmp(op, "-") || strcmp(op, "*") || strcmp(op, "/") || strcmp(op, "mod")){
       left->type_check(typeInteger);
       right->type_check(typeInteger);
       type = typeInteger;
-      break;
-    case "=":
-    case "<>":
-    case "<":
-    case ">":
-    case "<=":
-    case ">=":
-      //operands must be of same BASIC(int, char or bool) type.
-      if (!equalType(left, right) || !isBasicType(left->type) || isBasicType(right->type))
+    }
+    else if (strcmp(op, "=") || strcmp(op, "<>") || strcmp(op, "<") || strcmp(op, ">") || strcmp(op, "<=") || strcmp(op, ">=")){
+      if (!equalType(left->getType(), right->getType()) || !isBasicType(left->getType()) || isBasicType(right->getType()))
         yyerror("Operands must be an instance of same basic types");
       type = typeBoolean;
-      break;
     }
-    case "and":
-    case "or":
+    else if (strcmp(op, "and") || strcmp(op, "or")){
       left->type_check(typeBoolean);
       right->type_check(typeBoolean);
       type = typeBoolean;
-      break;
+    }
   }
 
 private:
@@ -441,19 +431,16 @@ public:
   virtual void printOn(std::ostream &out) const override {
     out << op << "(" << *expr << ")";
   }
-  virtual void compile() const override {};
+  //virtual void compile() const override {};
 
   virtual void sem() override {
-    switch(op) {
-      case "+":
-      case "-":
-        expr->type_check(typeInteger);
-        type = typeInteger;
-        break;
-      case "not":
-        expr->type_check(typeBoolean);
-        type=typeBoolean;
-        break;
+    if (strcmp(op, "=") || strcmp(op, "-")) {
+      expr->type_check(typeInteger);
+      type = typeInteger;
+    }
+    else if (strcmp(op, "not")) {
+      expr->type_check(typeBoolean);
+      type=typeBoolean;
     }
   }
 
@@ -463,9 +450,44 @@ private:
   Type type;
 };
 
-
+class StringConst: public Expr {
+  public:
+    StringConst(const char * s) : stringconst(s) {}
+    ~StringConst() {}
+    virtual void printOn(std::ostream &out) const override {
+      out << "Const string" << "(" << stringconst << ")";
+    }
+    //virtual void compile() const override {};
+    virtual void sem() override {
+      size_t size = strlen(stringconst);
+      type = typeArray(size, typeChar);
+    }
+  private:
+    const char * stringconst;
+};
 
 // STATEMENTS (e.g Let, If.. else ...)
+
+class Let: public Stmt {
+public:
+  Let(char v, Expr *e): var(v), offset(-1), expr(e) {}
+  ~Let() { delete expr; }
+  virtual void printOn(std::ostream &out) const override {
+    out << "Let(" << var << " = " << *expr << ")";
+  }
+  virtual void run() const override {
+    rt_stack[offset] = expr->eval();
+  }
+  virtual void sem() override {
+    SymbolEntry *lhs = st.lookup(var);
+    expr->type_check(lhs->type);
+    offset = lhs->offset;
+  }
+private:
+  char var;
+  int offset;
+  Expr *expr;
+};
 
 
 #endif

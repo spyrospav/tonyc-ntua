@@ -70,7 +70,8 @@ enum Type_ {
       TYPE_REAL,                        /* �����������               */
       TYPE_ARRAY,                       /* ������� ������� ��������  */
       TYPE_IARRAY,                      /* ������� �������� �������� */
-      TYPE_POINTER
+      TYPE_POINTER,
+      TYPE_LIST
 };
 
 enum Pardef{                               /* ��������� ����������  */
@@ -225,6 +226,7 @@ SymbolEntry * lookupEntry        (const char * name, LookupType type,
 Type          typeArray          (RepInteger size, Type refType);
 Type          typeIArray         (Type refType);
 Type          typePointer        (Type refType);
+Type          typeList           (Type refType);
 void          destroyType        (Type type);
 unsigned int  sizeOfType         (Type type);
 bool          equalType          (Type type1, Type type2);

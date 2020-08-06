@@ -48,7 +48,7 @@ static struct Type_tag typeConst [] = {
     { TYPE_INTEGER, NULL, 0, 0 },
     { TYPE_BOOLEAN, NULL, 0, 0 },
     { TYPE_CHAR,    NULL, 0, 0 },
-    { TYPE_REAL,    NULL, 0, 0 }
+    { TYPE_REAL,    NULL, 0, 0 },
 };
 
 const Type typeVoid    = &(typeConst[0]);
@@ -592,6 +592,19 @@ Type typePointer (Type refType)
     return n;
 }
 
+Type typeList (Type refType)
+{
+    Type n = (Type) my_new(sizeof(struct Type_tag));
+
+    n->kind     = TYPE_LIST;
+    n->refType  = refType;
+    n->refCount = 1;
+
+    refType->refCount++;
+
+    return n;
+}
+
 void destroyType (Type type)
 {
     switch (type->kind) {
@@ -636,7 +649,9 @@ bool equalType (Type type1, Type type2)
                 return false;
         case TYPE_IARRAY:
         case TYPE_POINTER:
+        //case TYPE_LIST:
             return equalType(type1->refType, type2->refType);
+
     }
     return true;
 }
@@ -676,6 +691,9 @@ void printType (Type type)
             printf("^");
             printType(type->refType);
             break;
+        case TYPE_LIST:
+              printf("list of ");
+              printType(type->refType);
     }
 }
 
