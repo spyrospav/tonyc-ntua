@@ -6,6 +6,7 @@
 #include <vector>
 #include <cstring>
 #include <stdio.h>
+//#include <utility>
 
 #include "symbol.h"
 #include "error.h"
@@ -119,6 +120,8 @@ typedef std::vector<Arg *> ArgList;
 class Stmt: public AST {
 };
 
+typedef std::vector<Stmt *> StmtList;
+
 enum HeaderDef {
   DECL,
   DEF
@@ -174,6 +177,7 @@ enum DefType {
   DECLARATION
 };
 
+
 class FuncBlock: public Stmt {
 public:
   FuncBlock(): var_list(), size(0), isMain(false) {}
@@ -191,6 +195,7 @@ public:
     func_list.insert(func_list.begin(), f);
     sequence.insert(sequence.begin(), FUNCTION);
   }
+
   void assignHeader(Header *h) {
     header = h;
   }
@@ -210,7 +215,7 @@ public:
       fatal("Main function should not have arguments");
     }
   }
-
+  void append_stmtlist(StmtList *stmtl) { stmt_list = stmtl; }
   virtual void printOn(std::ostream &out) const override {
     out << "Block(" << std::endl;
     out << *header;
@@ -245,7 +250,7 @@ private:
   Header *header;
   std::vector<VarList *> var_list;
   std::vector<FuncBlock *> func_list;
-  std::vector<Stmt *> stmt_list;
+  StmtList *stmt_list;
   std::vector<DefType> sequence;
   int size;
   bool isMain;
@@ -265,8 +270,10 @@ class Expr : public AST {
       return (equalType(t, typeChar) || equalType(t, typeBoolean) || equalType(t, typeInteger));
     }
     Type getType() { return type; }
+    bool isLValue() { return lval; }
   protected:
     Type type;
+    bool lval;
 };
 
 typedef std::vector<Expr *> ExprList;
@@ -285,7 +292,7 @@ class IntConst : public Expr {
     std::cout << "  pushl $" << num << "\n";
   }
   */
-  virtual void sem() override { type = typeInteger; }
+  virtual void sem() override { lval = false; type = typeInteger; }
 
   private:
     int num;
@@ -301,7 +308,7 @@ class CharConst : public Expr {
     std::cout << "  pushl $" << num << "\n";
   }
   */
-  virtual void sem() override { type = typeChar; }
+  virtual void sem() override { lval = false; type = typeChar; }
 
   private:
     char character;
@@ -320,7 +327,7 @@ class BoolConst : public Expr {
     std::cout << "  pushl $" << num << "\n";
   }
   */
-  virtual void sem() override { type = typeBoolean; }
+  virtual void sem() override { lval = false; type = typeBoolean; }
 
   private:
     bool logic;
@@ -351,6 +358,7 @@ public:
     return entry;
   }
   virtual void sem() override {
+    lval = true;
     SymbolEntry *e = lookupEntry(var,LOOKUP_CURRENT_SCOPE, false);
     if(e==NULL) {fatal("Id has not been declared");}
     entry = e->entryType;
@@ -413,6 +421,7 @@ public:
   }
   */
   virtual void sem() override {
+    lval = false;
     if (strcmp(op, "+") || strcmp(op, "-") || strcmp(op, "*") || strcmp(op, "/") || strcmp(op, "mod")){
       left->type_check(typeInteger);
       right->type_check(typeInteger);
@@ -449,6 +458,7 @@ public:
   //virtual void compile() const override {};
 
   virtual void sem() override {
+    lval = false;
     if (strcmp(op, "=") || strcmp(op, "-")) {
       expr->type_check(typeInteger);
       type = typeInteger;
@@ -474,6 +484,7 @@ class StringConst: public Expr {
     }
     //virtual void compile() const override {};
     virtual void sem() override {
+      lval = false;
       size_t size = strlen(stringconst);
       type = typeArray(size, typeChar);
     }
@@ -482,13 +493,12 @@ class StringConst: public Expr {
 };
 
 // STATEMENTS (e.g Let, If.. else ...)
-typedef std::vector<Stmt *> StmtList;
 
-class Call: public Stmt{
+class CallStmt: public Stmt{
   public:
-    Call(Id *v): id(v), exprlist(NULL) {}
-    Call(Id *v, ExprList *e): id(v), exprlist(e) {}
-    ~Call() {
+    CallStmt(Id *v): id(v), exprlist(NULL) {}
+    CallStmt(Id *v, ExprList *e): id(v), exprlist(e) {}
+    ~CallStmt() {
       exprlist->clear();
     }
     virtual void printOn(std::ostream &out) const override {
@@ -507,16 +517,176 @@ class Call: public Stmt{
       if (entry != ENTRY_FUNCTION) {
         fatal("Object %s is not callable", id->getIdName());
       }
-      for (Expr *expr: *exprlist) { expr->sem(); }
+      SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_CURRENT_SCOPE, false);
+      if (!equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression must of type Void.");
+      SymbolEntry *args = p->u.eFunction.firstArgument;
+      int i = 0 ;
+      bool isLast = false;
+      for (Expr *expr: *exprlist) {
+        expr->sem();
+        if (!equalType(expr->getType(), args->u.eParameter.type)){
+          fatal("Wrong parameter type at position %d", i);
+        }
+        args = args->u.eParameter.next;
+        if(args == p->u.eFunction.lastArgument &&  expr != *exprlist->end()) {
+          fatal("Expected less arguments for function but was given  %d", i+1);
+        }
+        i++;
+      }
+      if (args != p->u.eFunction.lastArgument) fatal("Expected more arguments but was given %d", i);
     }
   private:
     Id *id;
     ExprList *exprlist;
 };
 
+class CallExpr : public Expr {
+public:
+  CallExpr(Id *v): id(v), exprlist(NULL) {}
+  CallExpr(Id *v, ExprList *e): id(v), exprlist(e) {}
+  ~CallExpr() {
+    exprlist->clear();
+  }
+  virtual void printOn(std::ostream &out) const override {
+    out << "Call(" << id << "with expressions";
+    bool first = true;
+    for (std::vector<Expr *>::iterator it = exprlist->begin(); it != exprlist->end(); ++it){
+      if (!first) out << ", ";
+      first = false;
+      out << std::endl << **it;
+    }
+    out << std::endl << ")";
+  }
+  virtual void sem() override {
+    id->sem();
+    EntryType entry = id->getEntryType();
+    if (entry != ENTRY_FUNCTION) {
+      fatal("Object %s is not callable", id->getIdName());
+    }
+    SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_CURRENT_SCOPE, false);
+    if (equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression should not be of type Void.");
+    SymbolEntry *args = p->u.eFunction.firstArgument;
+    int i = 0 ;
+    bool isLast = false;
+    for (Expr *expr: *exprlist) {
+      expr->sem();
+      if (!equalType(expr->getType(), args->u.eParameter.type)){
+        fatal("Wrong parameter type at position %d", i);
+      }
+      args = args->u.eParameter.next;
+      if(args == p->u.eFunction.lastArgument &&  expr != *exprlist->end()) {
+        fatal("Expected less arguments for function but was given  %d", i+1);
+      }
+      i++;
+    }
+    if (args != p->u.eFunction.lastArgument) fatal("Expected more arguments but was given %d", i);
+  }
+private:
+  Id *id;
+  ExprList *exprlist;
+};
+
+class Skip : public Stmt {
+  public:
+    Skip() {}
+    ~Skip() {}
+    virtual void printOn(std::ostream &out) const override {
+      out << "Empty instruction" << std::endl;
+    }
+    virtual void sem() override {}
+};
+
+class For : public Stmt {
+public:
+  For(StmtList *sl1, Expr *e, StmtList *sl2, StmtList *sl3 ):
+  init_list(sl1), terminate_expr(e), next_list(sl2),  stmt_list(sl3) {}
+  ~For() {
+    init_list->clear();
+    next_list->clear();
+    stmt_list->clear();
+  }
+  virtual void printOn(std::ostream &out) const override {
+    out << "For( \n     Init statement(): ";
+    //for (StmtList::iterator it = init_list->begin();  it != init_list->end(); ++it) {}
+
+
+
+
+
+
+
+
+    out << std::endl << ")";
+
+
+
+
+  }
+
+  virtual void sem() override {
+      for (Stmt *s: *init_list) s->sem();
+      for (Stmt *s: *next_list) s->sem();
+      for (Stmt *s: *stmt_list) s->sem();
+      terminate_expr->sem();
+
+      //check if terminate expression is boolean
+      if (!equalType(terminate_expr->getType(),typeBoolean)) {
+        fatal("terminate expression in for loop should be of type Bool");
+      }
+  }
+
+private:
+  StmtList *init_list, *next_list, *stmt_list;
+  Expr *terminate_expr;
+};
+
+typedef std::pair<Expr*, StmtList *> IfPair;
+typedef std::vector<IfPair> IfPairList;
+
+class If : public Stmt {
+public:
+  If(Expr *c1, StmtList* s1, IfPairList *elseIf , StmtList *Last ):
+  elif(elseIf), s_last(Last)
+  {
+    full_list = new IfPairList();
+    full_list = elif;
+
+    IfPair  temp = std::make_pair(c1,s1);
+    full_list->insert(full_list->begin(), temp);
+  }
+  ~If() {
+    full_list->clear();
+  }
+  virtual void sem() override {
+    for(IfPair a: *full_list) {
+      Expr *e = a.first;
+      e->sem();
+      if (!equalType(e->getType(), typeBoolean)) fatal("Conditional should be of type bool");
+
+      for (Stmt *s: *a.second) {
+        s->sem();
+      }
+    }
+    for (Stmt *s: *s_last) {
+      s->sem();
+    }
+  }
+  virtual void printOn(std::ostream &out) const override {
+    out << "If";
+
+    out << std::endl << ")";
+  }
+
+private:
+  IfPairList *elif, *full_list;
+  StmtList *s_last;
+};
+
+
+
 class Let: public Stmt {
 public:
-  Let(Id *v, Expr *e): var(v),  expr(e) {}
+  Let(Expr *v, Expr *e): var(v),  expr(e) {}
   /*
   Let(Call *call, Expr *e) {
     fatal("Cannot assign to non l-value");
@@ -528,18 +698,22 @@ public:
   ~Let() { delete expr; }
   virtual void printOn(std::ostream &out) const override {
     out << "Let(" << var << " = " << *expr << ")";
-
   }
   virtual void sem() override {
     var->sem();
+    if (!var->isLValue()) fatal("Can't assign value to non lvalue");
+    /*
     EntryType entry_type = var->getEntryType();
+
     if (entry_type == ENTRY_FUNCTION) {
-      fatal("Cannot assign value to function %s ", var->getIdName());
+      fatal("cannot assign value to a function");
+      //fatal("Cannot assign value to function %s ", var->getIdName());
     }
+    */
     expr->type_check(var->getType());
   }
 private:
-  Id *var;
+  Expr *var;
   Expr *expr;
 };
 

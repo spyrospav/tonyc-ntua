@@ -78,11 +78,13 @@ bool first = true;
   Arg *arg;
   ArgList *arglist;
   Header *header;
-  Call *call;
+  CallStmt *callstmt;
+  CallExpr *callexpr;
+  IfPairList *ifpairlist;
 }
 
 %type<funcblock> program func-def-list func-def func-decl
-%type<stmt>  stmt simple
+%type<stmt>  stmt simple if-stmt
 %type<expr>  expr atom lvalue
 %type<type>  type
 %type<varlist> id-list var-def
@@ -91,9 +93,10 @@ bool first = true;
 %type<header> header
 %type<op> math-op comp-op logic-op sign
 %type<exprlist> expr-list-plus expr-list
-%type<call> call
-%type<stmtlist> stmt-list-plus simple-list simple-list-plus
-
+%type<callstmt> call-stmt
+%type<callexpr> call-expr
+%type<stmtlist> stmt-list-plus simple-list simple-list-plus else-stmt
+%type<ifpairlist> elif-stmt
 %%
 
 
@@ -104,7 +107,7 @@ program:
 
 func-def:
   T_def header ':' func-def-list stmt-list-plus T_end {
-    $$ = $4; $2->setHeaderDef(DEF); $$->assignHeader($2);
+    $$ = $4; $2->setHeaderDef(DEF); $$->assignHeader($2); $$->append_stmtlist($5);
     std::cout << *$$ << std::endl;
   }
 ;
@@ -156,51 +159,55 @@ id-list:
 
 stmt-list-plus:
     stmt { $$ = new StmtList(); $$->push_back($1); }
-  | stmt stmt-list-plus { $2->push_back($1); $$ = $2; }
+  | stmt stmt-list-plus { $2->insert($2->begin(), $1); $$ = $2; }
 ;
 
 stmt:
     simple { $$ = $1;}
   //| "exit" { }//$$ = new Exit(); }
   //| "return" expr { }//$$ = new Return($2); }
-  //| if-stmt { }//$$ = $1;}
-  //| "for" simple-list ';' expr ';' simple-list ':' stmt-list-plus "end" { }//$$ = new For($2, $4, $6, $8); }
+  | if-stmt { $$ = $1;}
+  | "for" simple-list ';' expr ';' simple-list ':' stmt-list-plus "end" { $$ = new For($2, $4, $6, $8); }
   ;
 
 if-stmt:
-    "if" expr ':' stmt-list-plus elif-stmt else-stmt "end" { }//$$ = new If($2, $4, $5, $6); }
+    "if" expr ':' stmt-list-plus elif-stmt else-stmt "end" { $$ = new If($2, $4, $5, $6); }
 ;
 
 elif-stmt:
-    /* nothing */
-  | "elsif" expr ':' stmt-list-plus elif-stmt { }//$$ = new Elsif($2, $4, $5, $6); }
+    /* nothing */ {$$ = new IfPairList();}
+  | "elsif" expr ':' stmt-list-plus elif-stmt { $5->insert($5->begin(), std::make_pair($2, $4)); $$ = $5; }
 ;
 
 else-stmt:
-    /* nothing */
-  | "else" ':' stmt-list-plus { }//$$ = new Else($3); }
+    /* nothing */ { $$ = new StmtList(); }
+  | "else" ':' stmt-list-plus { $$ = $3; }
 ;
 
 simple:
-    lvalue ":=" expr { $$ = new Let($1, $3); }
-//  | "skip" {}//$$ = new Skip();}
-  | call {$$ = new Call();}
+    atom ":=" expr { $$ = new Let($1, $3); }
+  | "skip" { $$ = new Skip(); }
+  | call-stmt { $$ = $1; }
 ;
 
 simple-list:
-    simple simple-list-plus { $2->append_simple($1); $$ = $2; }
+    simple simple-list-plus { $2->insert($2->begin(), $1); $$ = $2; }
 ;
 
 simple-list-plus:
-    /* nothing */ { $$ = new SimpleList(); }
+    /* nothing */ { $$ = new StmtList(); }
   | ',' simple-list { $$ = $2; }
 ;
 
-call:
-    T_id '(' expr-list ')' { $$ = new Call($1, $3); }
-  | T_id '('')' { $$ = new Call($1); }
+call-stmt:
+    T_id '(' expr-list ')' { $$ = new CallStmt($1, $3); }
+  | T_id '('')' { $$ = new CallStmt($1); }
 ;
 
+call-expr:
+    T_id '(' expr-list ')' { $$ = new CallExpr($1, $3); }
+  | T_id '('')' { $$ = new CallExpr($1); }
+;
 expr-list:
     expr expr-list-plus { $2->push_back($1); $$ = $2; }
 ;
@@ -219,7 +226,7 @@ atom:
     T_id { $$ = new Id($1); }
 //  | atom '[' expr ']' {}// $$ = new Apply_atom_expr($1, $3); }
   | T_string_const { $$ = new StringConst($1); }
-  | call { $$ = $1; }
+  | call-expr { $$ = $1; }
 ;
 
 expr:
