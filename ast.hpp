@@ -452,17 +452,19 @@ public:
   */
   virtual void sem() override {
     lval = false;
-    if (strcmp(op, "+") || strcmp(op, "-") || strcmp(op, "*") || strcmp(op, "/") || strcmp(op, "mod")){
+    if (!strcmp(op, "+") || !strcmp(op, "-") || !strcmp(op, "*") || !strcmp(op, "/") || !strcmp(op, "mod")){
       left->type_check(typeInteger);
       right->type_check(typeInteger);
       type = typeInteger;
     }
-    else if (strcmp(op, "=") || strcmp(op, "<>") || strcmp(op, "<") || strcmp(op, ">") || strcmp(op, "<=") || strcmp(op, ">=")){
-      if (!equalType(left->getType(), right->getType()) || !isBasicType(left->getType()) || isBasicType(right->getType()))
-        yyerror("Operands must be an instance of same basic types");
+    else if (!strcmp(op, "=") || !strcmp(op, "<>") || !strcmp(op, "<") || !strcmp(op, ">") || !strcmp(op, "<=") || !strcmp(op, ">=")){
+      left->sem();
+      right->sem();
+      if (!equalType(left->getType() , right->getType()) || !isBasicType(left->getType()) || !isBasicType(right->getType()))
+        fatal("Operands must be an instance of same basic types");
       type = typeBoolean;
     }
-    else if (strcmp(op, "and") || strcmp(op, "or")){
+    else if (!strcmp(op, "and") || !strcmp(op, "or")){
       left->type_check(typeBoolean);
       right->type_check(typeBoolean);
       type = typeBoolean;
@@ -471,9 +473,8 @@ public:
 
 private:
   Expr *left;
-  const char *op; //operators can be multi-character
+  const char *op;
   Expr *right;
-
 };
 
 class UnOp : public Expr {
@@ -489,11 +490,11 @@ public:
 
   virtual void sem() override {
     lval = false;
-    if (strcmp(op, "=") || strcmp(op, "-")) {
+    if (!strcmp(op, "=") || !strcmp(op, "-")) {
       expr->type_check(typeInteger);
       type = typeInteger;
     }
-    else if (strcmp(op, "not")) {
+    else if (!strcmp(op, "not")) {
       expr->type_check(typeBoolean);
       type=typeBoolean;
     }
@@ -657,33 +658,32 @@ public:
     stmt_list->clear();
   }
   virtual void printOn(std::ostream &out) const override {
-    out << "For( \n     Init statement(): ";
-    //for (StmtList::iterator it = init_list->begin();  it != init_list->end(); ++it) {}
-
-
-
-
-
-
-
-
-    out << std::endl << ")";
-
-
-
-
+    out << "For( " << std::endl << "Init statement(s) :" << std::endl;
+    for (Stmt *stmt: *init_list) {
+      out << *stmt;
+    }
+    out << "Loop condition: " << *terminate_expr;
+    out << std::endl;
+    out << "Loop update statement(s): ";
+    for (Stmt *stmt: *next_list) {
+      out << *stmt;
+    }
+    out << "Loop statement(s): ";
+    for (Stmt *stmt: *stmt_list) {
+      out << *stmt;
+    }
+    out << ")";
   }
 
   virtual void sem() override {
       setStmtType(SIMPLE_STMT);
       for (Stmt *s: *init_list) s->sem();
+      terminate_expr->sem();
       for (Stmt *s: *next_list) s->sem();
       for (Stmt *s: *stmt_list) s->sem();
-      terminate_expr->sem();
 
-      //check if terminate expression is boolean
       if (!equalType(terminate_expr->getType(),typeBoolean)) {
-        fatal("terminate expression in for loop should be of type Bool");
+        fatal("Terminate expression in for loop should be of type Bool");
       }
   }
 
@@ -709,6 +709,27 @@ public:
   ~If() {
     full_list->clear();
   }
+  virtual void printOn(std::ostream &out) const override {
+    out << "If(" << std::endl;
+    bool isFirst = true;
+    for (IfPair cond_st: *full_list) {
+        if(isFirst) {
+          out << "If with conditional: "<< *cond_st.first<< " statement(s): " << std::endl;
+          for (Stmt *stmt: *cond_st.second) {
+            out << *stmt;
+          }
+          isFirst = false;
+        }
+        else{
+          out << "ElseIf conditional: " << *cond_st.first << " with statement(s): " << std::endl;
+          for (Stmt *stmt: *cond_st.second) {
+            out << *stmt;
+          }
+        }
+    }
+    out <<  ")";
+
+  }
   virtual void sem() override {
     setStmtType(SIMPLE_STMT);
     for(IfPair a: *full_list) {
@@ -723,11 +744,6 @@ public:
     for (Stmt *s: *s_last) {
       s->sem();
     }
-  }
-  virtual void printOn(std::ostream &out) const override {
-    out << "If";
-
-    out << std::endl << ")";
   }
 
 private:

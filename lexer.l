@@ -24,7 +24,7 @@ E \\(n|t|r|0|\'|\"|\\|x{H}{H})
 
 %%
 
-"and"    { return T_and; }
+"and"    { yylval.op = strdup(yytext); return T_and; }
 "bool"   { return T_bool; }
 "char"   { return T_char; }
 "decl"   { return T_decl; }
@@ -39,21 +39,21 @@ E \\(n|t|r|0|\'|\"|\\|x{H}{H})
 "if"     { return T_if; }
 "int"    { return T_int; }
 "list"   { return T_list; }
-"mod"    { return T_mod; }
+"mod"    { yylval.op = strdup(yytext); return T_mod; }
 "new"    { return T_new; }
 "nil"    { return T_nil; }
 "nil?"   { return T_nil_quest; }
-"not"    { return T_not; }
-"or"     { return T_or; }
+"not"    { yylval.op = strdup(yytext); return T_not; }
+"or"     { yylval.op = strdup(yytext); return T_or; }
 "ref"    { return T_ref; }
 "return" { return T_return; }
 "skip"   { return T_skip; }
 "tail"   { return T_tail; }
 "true"   { return T_true; }
 ":="     { return T_assign; }
-"<>"     { return T_neq; }
-"<="     { return T_leq; }
-">="     { return T_geq; }
+"<>"     { yylval.op = strdup(yytext); return T_neq; }
+"<="     { yylval.op = strdup(yytext); return T_leq; }
+">="     { yylval.op = strdup(yytext); return T_geq; }
 
 {L}({L}|{D}|_|\?)* {  yylval.var = strdup(yytext); return T_id; }
 {D}+    { yylval.num = atoi(yytext); return T_int_const; }
@@ -61,7 +61,7 @@ E \\(n|t|r|0|\'|\"|\\|x{H}{H})
 \'([^\'\"\\]|{E})\' { yylval.char_const = yytext[1];  return T_char_const; }
 \"([^\n\'\"\\]|{E})*\" { yylval.string_const = strdup(yytext);  return T_string_const; }
 
-[\,\;\:] { return yytext[0]; } // dsdsds
+[\,\;\:] { return yytext[0]; }
 [+\-\*/#=<>] { yylval.op = strdup(yytext); return yytext[0]; }
 [()\[\]+\-/%*=]   { return yytext[0]; }
 

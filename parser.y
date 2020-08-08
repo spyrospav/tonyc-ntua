@@ -72,7 +72,7 @@ bool first = true;
   char char_const;
   bool logic;
   int num;
-  char *op;
+  const char *op;
   bool b;
   Type type;
   Arg *arg;

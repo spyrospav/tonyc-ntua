@@ -1,0 +1,8 @@
+def program():
+  int a
+  a := 1
+  if a > 1 :
+    skip
+    a := 3
+  end
+end
