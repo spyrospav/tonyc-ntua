@@ -200,13 +200,13 @@ simple-list-plus:
 ;
 
 call-stmt:
-    T_id '(' expr-list ')' { $$ = new CallStmt($1, $3); }
-  | T_id '('')' { $$ = new CallStmt($1); }
+    T_id '(' expr-list ')' { $$ = new CallStmt(new Id($1), $3); }
+  | T_id '('')' { $$ = new CallStmt(new Id($1)); }
 ;
 
 call-expr:
-    T_id '(' expr-list ')' { $$ = new CallExpr($1, $3); }
-  | T_id '('')' { $$ = new CallExpr($1); }
+    T_id '(' expr-list ')' { $$ = new CallExpr(new Id($1), $3); }
+  | T_id '('')' { $$ = new CallExpr(new Id($1)); }
 ;
 expr-list:
     expr expr-list-plus { $2->push_back($1); $$ = $2; }

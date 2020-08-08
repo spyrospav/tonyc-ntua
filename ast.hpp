@@ -283,52 +283,52 @@ class Atom : public Expr {
 };
 
 class IntConst : public Expr {
-  IntConst(int n) : num(n) {}
-  virtual void printOn(std::ostream &out) const override {
-    out << "IntConst(" << num << ")";
-  }
-  /*
-  virtual void compile() const override {
-    std::cout << "  pushl $" << num << "\n";
-  }
-  */
-  virtual void sem() override { lval = false; type = typeInteger; }
-
+  public:
+    IntConst(int n) : num(n) {}
+    virtual void printOn(std::ostream &out) const override {
+      out << "IntConst(" << num << ")";
+    }
+    ~IntConst() {}
+    /*
+    virtual void compile() const override {
+      std::cout << "  pushl $" << num << "\n";
+    }
+    */
+    virtual void sem() override { lval = false; type = typeInteger; }
   private:
     int num;
 };
 
 class CharConst : public Expr {
-  CharConst(char c) : character(c) {}
-  virtual void printOn(std::ostream &out) const override {
-    out << "CharConst(" << character << ")";
-  }
-  /*
-  virtual void compile() const override {
-    std::cout << "  pushl $" << num << "\n";
-  }
-  */
-  virtual void sem() override { lval = false; type = typeChar; }
-
+  public:
+    CharConst(char c) : character(c) {}
+    virtual void printOn(std::ostream &out) const override {
+      out << "CharConst(" << character << ")";
+    }
+    ~CharConst() {}
+    /*
+    virtual void compile() const override {
+      std::cout << "  pushl $" << num << "\n";
+    }
+    */
+    virtual void sem() override { lval = false; type = typeChar; }
   private:
     char character;
 };
 
 class BoolConst : public Expr {
-  BoolConst(const char * s) {
-    if (s == "false") logic = false;
-    else if (s == "true") logic = true;
-  }
-  virtual void printOn(std::ostream &out) const override {
-    out << "Logic(" << logic << ")";
-  }
-  /*
-  virtual void compile() const override {
-    std::cout << "  pushl $" << num << "\n";
-  }
-  */
-  virtual void sem() override { lval = false; type = typeBoolean; }
-
+  public:
+    BoolConst(bool b): logic(b) {}
+    ~BoolConst() {}
+    virtual void printOn(std::ostream &out) const override {
+      out << "Logic(" << logic << ")";
+    }
+    /*
+    virtual void compile() const override {
+      std::cout << "  pushl $" << num << "\n";
+    }
+    */
+    virtual void sem() override { lval = false; type = typeBoolean; }
   private:
     bool logic;
 };
