@@ -1,0 +1,8 @@
+def program():
+  def int x(int b, c, d):
+    b := 1
+    c := 3
+  end
+  int a
+  a := x(1, false, true)
+end

@@ -97,6 +97,8 @@ bool first = true;
 %type<callexpr> call-expr
 %type<stmtlist> stmt-list-plus simple-list simple-list-plus else-stmt
 %type<ifpairlist> elif-stmt
+
+
 %%
 
 
@@ -165,8 +167,8 @@ stmt-list-plus:
 
 stmt:
     simple { $$ = $1;}
-  //| "exit" { }//$$ = new Exit(); }
-  //| "return" expr { }//$$ = new Return($2); }
+  | "exit" { $$ = new Exit(); }
+  | "return" expr { $$ = new Return($2); }
   | if-stmt { $$ = $1;}
   | "for" simple-list ';' expr ';' simple-list ':' stmt-list-plus "end" { $$ = new For($2, $4, $6, $8); }
   ;
@@ -210,12 +212,12 @@ call-expr:
   | T_id '('')' { $$ = new CallExpr(new Id($1)); }
 ;
 expr-list:
-    expr expr-list-plus { $2->push_back($1); $$ = $2; }
+    expr expr-list-plus { $2->insert($2->begin(), $1); $$ = $2; }
 ;
 
 expr-list-plus:
     /* nothing */{ $$ = new ExprList();}
-  | ',' expr expr-list-plus { $3->push_back($2); $$ = $3;}
+  | ',' expr expr-list-plus { $3->insert($3->begin(), $2); $$ = $3;}
 ;
 
 lvalue:

@@ -40,6 +40,12 @@ inline std::ostream& operator<<(std::ostream &out, Type t) {
   return out;
 }
 
+enum StmtType{
+  SIMPLE_STMT,
+  RETURN,
+  EXIT
+};
+
 class AST {
   public:
     AST() {
@@ -118,6 +124,12 @@ class Arg: public AST {
 typedef std::vector<Arg *> ArgList;
 
 class Stmt: public AST {
+  public:
+    virtual Type getReturnType() { return typeVoid; }
+    void setStmtType(StmtType s) { stmttype = s; }
+    StmtType getStmtType() { return stmttype; }
+  private:
+    StmtType stmttype;
 };
 
 typedef std::vector<Stmt *> StmtList;
@@ -178,7 +190,7 @@ enum DefType {
 };
 
 
-class FuncBlock: public Stmt {
+class FuncBlock: public AST {
 public:
   FuncBlock(): var_list(), size(0), isMain(false) {}
   ~FuncBlock() {
@@ -236,6 +248,7 @@ public:
   virtual void sem() override {
     if (!isMain) header->sem();
     int v = 0, f = 0;
+    bool existsReturn = false;
     for (std::vector<DefType>::iterator it = sequence.begin(); it < sequence.end(); it++){
       if (*it == FUNCTION) {
         func_list[f]->sem();
@@ -246,7 +259,19 @@ public:
         v++;
       }
     }
-    for (Stmt *stmt : *stmt_list) stmt->sem();
+    for (Stmt *stmt : *stmt_list) {
+      stmt->sem();
+      if(stmt->getStmtType() == EXIT && header->getHeaderType() != typeVoid)
+        fatal("Exit can only be used inside void function blocks");
+      if(stmt->getStmtType() == RETURN){
+        existsReturn = true;
+        if(!equalType(header->getHeaderType(), stmt->getReturnType()))
+          fatal("Return type does not match function type");
+      }
+    }
+    if(!existsReturn && !equalType(header->getHeaderType(), typeVoid)) {
+      fatal("Non void function must have a return statement.");
+    }
     printSymbolTable();
     closeScope();
   }
@@ -517,6 +542,7 @@ class CallStmt: public Stmt{
       out << std::endl << ")";
     }
     virtual void sem() override {
+      setStmtType(SIMPLE_STMT);
       id->sem();
       EntryType entry = id->getEntryType();
       if (entry != ENTRY_FUNCTION) {
@@ -524,21 +550,31 @@ class CallStmt: public Stmt{
       }
       SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_CURRENT_SCOPE, false);
       if (!equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression must of type Void.");
+
       SymbolEntry *args = p->u.eFunction.firstArgument;
-      int i = 0 ;
-      bool isLast = false;
+      int argsize = 0 ;
+      int exprsize = exprlist->size();
+
+      while (args != NULL) {
+        argsize++;
+        args = args->u.eParameter.next;
+      }
+      std::cout << "Arglist size is " << argsize << std::endl;
+      std::cout << "Exprlist size is " << exprsize<< std::endl;
+      if (argsize != exprsize) {
+        fatal("Expected %d arguments, but %d were given.", argsize, exprsize);
+      }
+
+      int i = 0;
+      args = p->u.eFunction.firstArgument;
       for (Expr *expr: *exprlist) {
         expr->sem();
         if (!equalType(expr->getType(), args->u.eParameter.type)){
-          fatal("Wrong parameter type at position %d", i);
+          fatal("Wrong parameter type at position %d.", i);
         }
         args = args->u.eParameter.next;
-        if(args == p->u.eFunction.lastArgument &&  expr != *exprlist->end()) {
-          fatal("Expected less arguments for function but was given  %d", i+1);
-        }
         i++;
       }
-      if (args != p->u.eFunction.lastArgument) fatal("Expected more arguments but was given %d", i);
     }
   private:
     Id *id;
@@ -570,22 +606,31 @@ public:
     }
     SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_CURRENT_SCOPE, false);
     if (equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression should not be of type Void.");
+
     SymbolEntry *args = p->u.eFunction.firstArgument;
-    int i = 0 ;
-    bool isLast = false;
+    int exprsize = exprlist->size();
+    int argsize = 0 ;
+
+    while (args != NULL) {
+      argsize++;
+      args = args->u.eParameter.next;
+    }
+    std::cout << "Arglist size is " << argsize << std::endl;
+    std::cout << "Exprlist size is " << exprsize<< std::endl;
+    if (argsize != exprsize) {
+      fatal("Expected %d arguments, but %d were given.", argsize, exprsize);
+    }
+
+    int i = 0;
+    args = p->u.eFunction.firstArgument;
     for (Expr *expr: *exprlist) {
       expr->sem();
       if (!equalType(expr->getType(), args->u.eParameter.type)){
         fatal("Wrong parameter type at position %d", i);
       }
       args = args->u.eParameter.next;
-      if(args == p->u.eFunction.lastArgument &&  expr != *exprlist->end()) {
-        fatal("Expected less arguments for function but was given  %d", i+1);
-      }
       i++;
     }
-
-    if (args != p->u.eFunction.lastArgument) fatal("Expected more arguments but was given %d", i);
   }
 private:
   Id *id;
@@ -599,7 +644,7 @@ class Skip : public Stmt {
     virtual void printOn(std::ostream &out) const override {
       out << "Empty instruction" << std::endl;
     }
-    virtual void sem() override {}
+    virtual void sem() override { setStmtType(SIMPLE_STMT); }
 };
 
 class For : public Stmt {
@@ -630,6 +675,7 @@ public:
   }
 
   virtual void sem() override {
+      setStmtType(SIMPLE_STMT);
       for (Stmt *s: *init_list) s->sem();
       for (Stmt *s: *next_list) s->sem();
       for (Stmt *s: *stmt_list) s->sem();
@@ -664,6 +710,7 @@ public:
     full_list->clear();
   }
   virtual void sem() override {
+    setStmtType(SIMPLE_STMT);
     for(IfPair a: *full_list) {
       Expr *e = a.first;
       e->sem();
@@ -688,8 +735,6 @@ private:
   StmtList *s_last;
 };
 
-
-
 class Let: public Stmt {
 public:
   Let(Expr *v, Expr *e): var(v),  expr(e) {}
@@ -706,16 +751,9 @@ public:
     out << "Let(" << *var << " = " << *expr << ")" << std::endl;
   }
   virtual void sem() override {
+    setStmtType(SIMPLE_STMT);
     var->sem();
     if (!var->isLValue()) fatal("Can't assign value to non lvalue");
-    /*
-    EntryType entry_type = var->getEntryType();
-
-    if (entry_type == ENTRY_FUNCTION) {
-      fatal("cannot assign value to a function");
-      //fatal("Cannot assign value to function %s ", var->getIdName());
-    }
-    */
     expr->type_check(var->getType());
   }
 private:
@@ -723,5 +761,33 @@ private:
   Expr *expr;
 };
 
+class Return: public Stmt {
+public:
+  Return(Expr *expr) : returnExpr(expr) {}
+  ~Return() {}
+  Type getReturnType() override { return returnType; }
+  virtual void printOn(std::ostream &out) const override {
+    out << "Return expression " << *returnExpr << std::endl;
+  }
+  virtual void sem() override {
+    setStmtType(RETURN);
+    returnExpr->sem();
+    returnType = returnExpr->getType();
+  }
+private:
+  Expr *returnExpr;
+  Type returnType;
+};
 
+class Exit: public Stmt {
+  public:
+    Exit() {};
+    ~Exit() {};
+    virtual void printOn(std::ostream &out) const override {
+      out << "Exit" << std::endl;
+    }
+    virtual void sem() override {
+      setStmtType(EXIT);
+    }
+};
 #endif

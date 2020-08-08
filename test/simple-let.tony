@@ -1,0 +1,3 @@
+def program():
+  "a" := 1
+  end

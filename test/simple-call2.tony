@@ -1,0 +1,9 @@
+def program():
+  bool a, c
+  int b
+  def int xas():
+    skip
+  end
+  a := true
+  xas(5) := 1
+end

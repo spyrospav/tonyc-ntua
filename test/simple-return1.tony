@@ -1,0 +1,8 @@
+def program():
+  int a
+  def int x():
+    int a
+    skip
+  end
+  a := 1
+end
