@@ -216,6 +216,7 @@ public:
     }
   }
   void append_stmtlist(StmtList *stmtl) { stmt_list = stmtl; }
+
   virtual void printOn(std::ostream &out) const override {
     out << "Block(" << std::endl;
     out << *header;
@@ -225,7 +226,11 @@ public:
       first = false;
       out <<  std::endl << *d;
     }
-    out << std::endl << ")";
+    out << std::endl;
+    for (Stmt *stmt: *stmt_list) {
+      out << *stmt;
+    }
+    out << ")";
   }
 
   virtual void sem() override {
@@ -241,7 +246,7 @@ public:
         v++;
       }
     }
-    //for (Stmt *stmt : stmt_list) stmt->sem();
+    for (Stmt *stmt : *stmt_list) stmt->sem();
     printSymbolTable();
     closeScope();
   }
@@ -264,7 +269,7 @@ class Expr : public AST {
     void type_check(Type t) {
       sem();
       if (!equalType(type, t))
-        yyerror("Type mismatch");
+        fatal("Type mismatch");
     }
     bool isBasicType(Type t) {
       return (equalType(t, typeChar) || equalType(t, typeBoolean) || equalType(t, typeInteger));
@@ -697,7 +702,7 @@ public:
   */
   ~Let() { delete expr; }
   virtual void printOn(std::ostream &out) const override {
-    out << "Let(" << var << " = " << *expr << ")";
+    out << "Let(" << *var << " = " << *expr << ")" << std::endl;
   }
   virtual void sem() override {
     var->sem();

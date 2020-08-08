@@ -56,13 +56,13 @@ E \\(n|t|r|0|\'|\"|\\|x{H}{H})
 ">="     { return T_geq; }
 
 {L}({L}|{D}|_|\?)* {  yylval.var = strdup(yytext); return T_id; }
-{D}+    { return T_int_const; }
+{D}+    { yylval.num = atoi(yytext); return T_int_const; }
 
-\'([^\'\"\\]|{E})\' { return T_char_const; }
-\"([^\n\'\"\\]|{E})*\" { return T_string_const; }
+\'([^\'\"\\]|{E})\' { yylval.char_const = yytext[1];  return T_char_const; }
+\"([^\n\'\"\\]|{E})*\" { yylval.string_const = strdup(yytext);  return T_string_const; }
 
 [\,\;\:] { return yytext[0]; } // dsdsds
-[+\-\*/#=<>] { return yytext[0]; }
+[+\-\*/#=<>] { yylval.op = strdup(yytext); return yytext[0]; }
 [()\[\]+\-/%*=]   { return yytext[0]; }
 
 \%.*\n  { linecount++; }

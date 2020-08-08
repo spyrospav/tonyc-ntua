@@ -1,0 +1,7 @@
+def program():
+  def int x(int b):
+    b := 1
+  end
+  int a
+  a := x(5)
+end

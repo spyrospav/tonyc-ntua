@@ -1,6 +1,7 @@
 def program ():
 int a, b
-char a
-char c, d
-bool e
+char c
+b := 3
+a := 1 + ( 3 * b )
+c := 'a'
 end
