@@ -507,7 +507,7 @@ class CallStmt: public Stmt{
       exprlist->clear();
     }
     virtual void printOn(std::ostream &out) const override {
-      out << "Call(" << id << "with expressions";
+      out << "CallStmt(" << *id << "with expressions";
       bool first = true;
       for (std::vector<Expr *>::iterator it = exprlist->begin(); it != exprlist->end(); ++it){
         if (!first) out << ", ";
@@ -553,7 +553,7 @@ public:
     exprlist->clear();
   }
   virtual void printOn(std::ostream &out) const override {
-    out << "Call(" << id << "with expressions";
+    out << "Call(" << *id << "with expressions";
     bool first = true;
     for (std::vector<Expr *>::iterator it = exprlist->begin(); it != exprlist->end(); ++it){
       if (!first) out << ", ";
@@ -584,6 +584,7 @@ public:
       }
       i++;
     }
+
     if (args != p->u.eFunction.lastArgument) fatal("Expected more arguments but was given %d", i);
   }
 private:
