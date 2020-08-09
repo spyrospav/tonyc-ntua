@@ -245,7 +245,7 @@ expr:
   | "not" expr {$$ = new UnOp($1, $2); }
   | expr logic-op expr { $$ = new BinOp($1, $2, $3); }
   | "new" type '[' expr ']' { $$ = new Array($2, $4); }
-  | "nil" { } //$$ = typeList(typeVoid); } $$ = new Nil()
+  | "nil" { $$ = new Nil(); }
   | "nil?" '(' expr ')'  { $$ = new ListUnOp("nil?", $3); }
   | expr '#' expr       {$$ = new ListBinOp($2, $1, $3); }
   | "head" '(' expr ')' { $$ = new ListUnOp("head", $3); }

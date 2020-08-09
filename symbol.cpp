@@ -49,7 +49,7 @@ static struct Type_tag typeConst [] = {
     { TYPE_BOOLEAN, NULL, 0, 0 },
     { TYPE_CHAR,    NULL, 0, 0 },
     { TYPE_REAL,    NULL, 0, 0 },
-    { TYPE_LIST,    TYPE_ANY, 0, 0}
+    { TYPE_ANY,     NULL, 0, 0 }
 };
 
 const Type typeVoid    = &(typeConst[0]);
@@ -58,7 +58,6 @@ const Type typeBoolean = &(typeConst[2]);
 const Type typeChar    = &(typeConst[3]);
 const Type typeReal    = &(typeConst[4]);
 const Type typeAny     = &(typeConst[5]);
-
 
 /* ---------------------------------------------------------------------
    ------- ��������� ���������� ����������� ��� ������ �������� --------
@@ -645,6 +644,7 @@ unsigned int sizeOfType (Type type)
 
 bool equalType (Type type1, Type type2)
 {
+    if (type1->kind == TYPE_ANY || type2->kind == TYPE_ANY) return true;
     if (type1->kind != type2->kind)
         return false;
     switch (type1->kind) {
@@ -654,9 +654,12 @@ bool equalType (Type type1, Type type2)
         case TYPE_IARRAY:
         case TYPE_POINTER:
             return equalType(type1->refType, type2->refType);
+            break;
         case TYPE_LIST:
-            return equalType(type1->refType, type2->refType) || (type1->refType == TYPE_ANY || type2->refType == TYPE_ANY);
-
+            return equalType(type1->refType, type2->refType) ||
+            equalType(type1->refType, typeAny) || equalType(type2->refType, typeAny);
+        case TYPE_ANY:
+            return true;
     }
     return true;
 }

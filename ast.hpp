@@ -45,6 +45,10 @@ inline std::ostream& operator<<(std::ostream &out, Type t) {
       case TYPE_LIST:
           out << "list of ";
           out << t->refType;
+          break;
+      case TYPE_ANY:
+          out << "any type";
+          break;
   }
   return out;
 }
@@ -548,11 +552,11 @@ public:
     if(expr2->getType()->kind != TYPE_LIST)  fatal("Operand 2 must be of type list");
 
     //the following checks should NOT take place only if one of the operands is the null list
-
     if(!equalType(expr1->getType(), expr2->getType()->refType)) fatal("Operands must be of same type");
 
     if (strcmp(op, "#") == 0) type = expr1->getType();
     else std::cout << "Aliens." << std::endl;
+    type = expr2->getType();
   }
 private:
   const char *op;
@@ -594,6 +598,19 @@ private:
   Type arrayType;
   Expr *sizeExpr;
   int arraySize;
+};
+
+class Nil: public Expr {
+  public:
+    Nil() {}
+    ~Nil() {}
+    virtual void printOn(std::ostream &out) const override {
+      out << "list of any type" << std::endl;
+    }
+    virtual void sem() override {
+      type = typeList(typeAny);
+    }
+  private:
 };
 
 // STATEMENTS (e.g Let, If.. else ...)
