@@ -71,7 +71,8 @@ enum Type_ {
       TYPE_ARRAY,                       /* ������� ������� ��������  */
       TYPE_IARRAY,                      /* ������� �������� �������� */
       TYPE_POINTER,
-      TYPE_LIST
+      TYPE_LIST,
+      TYPE_ANY
 };
 
 enum Pardef{                               /* ��������� ����������  */
@@ -198,6 +199,7 @@ extern const Type typeInteger;
 extern const Type typeBoolean;
 extern const Type typeChar;
 extern const Type typeReal;
+extern const Type typeAny;
 
 
 /* ---------------------------------------------------------------------
