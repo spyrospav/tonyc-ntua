@@ -1,0 +1,16 @@
+def program():
+  int[] a
+  list[int][] b
+  list[int[]] c
+  a := new int[10]
+end
+
+<*
+expr:
+  "new" type '[' expr ']' { $$ = new Array($2, $4); }
+type:
+  "int"
+  type '[' ']' {$$ = typeIArray($1); }
+
+type = int[][][]
+*>

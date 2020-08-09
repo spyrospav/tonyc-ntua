@@ -244,12 +244,12 @@ expr:
   | "false" { $$ = new BoolConst($1); }
   | "not" expr {$$ = new UnOp($1, $2); }
   | expr logic-op expr { $$ = new BinOp($1, $2, $3); }
-//  | "new" type '[' expr ']' { $4->type_check(typeInteger);  $$ = new NewArray($2, $4->); }
-  | "nil" { }//$$ = new Nil(); }
-  | "nil?" '(' expr ')'  {}//$$ = new ListOp($1, $3);}
-  | expr '#' expr       {}//$$ = new ListOp($1, $2, $3); }
-  | "head" '(' expr ')' {}//$$ = new ListOp($1, $3);}
-  | "tail" '(' expr ')' {}//$$ = new ListOp($1, $3);}
+  | "new" type '[' expr ']' { $$ = new Array($2, $4); }
+  | "nil" { } //$$ = typeList(typeVoid); } $$ = new Nil()
+  | "nil?" '(' expr ')'  { $$ = new ListUnOp("nil?", $3); }
+  | expr '#' expr       {$$ = new ListBinOp($2, $1, $3); }
+  | "head" '(' expr ')' { $$ = new ListUnOp("head", $3); }
+  | "tail" '(' expr ')' { $$ = new ListUnOp("tail", $3); }
 ;
 
 sign:

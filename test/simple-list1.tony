@@ -1,0 +1,10 @@
+def program():
+  int c
+  list[char] d
+  list[int] a
+  list[list[bool]] b
+  skip
+  d := tail(b)
+  b := tail(b)
+  c := head(a)
+end

@@ -1,0 +1,15 @@
+def program() :
+  int[] a
+  int b, c
+  def int fun1(bool c; ref int a):
+    if c = true:
+      a := 2
+    elsif c = false:
+      a := 3
+    else:
+      a := 2
+    end
+    return a
+  end
+  b :=  fun1(true, c)
+end

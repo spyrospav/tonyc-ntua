@@ -649,7 +649,7 @@ bool equalType (Type type1, Type type2)
                 return false;
         case TYPE_IARRAY:
         case TYPE_POINTER:
-        //case TYPE_LIST:
+        case TYPE_LIST:
             return equalType(type1->refType, type2->refType);
 
     }

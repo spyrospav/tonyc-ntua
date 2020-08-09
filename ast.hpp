@@ -6,6 +6,7 @@
 #include <vector>
 #include <cstring>
 #include <stdio.h>
+#include <algorithm>
 //#include <utility>
 
 #include "symbol.h"
@@ -14,28 +15,36 @@
 void yyerror(const char *msg);
 
 inline std::ostream& operator<<(std::ostream &out, Type t) {
-  int a;
-  if (t == typeVoid) {
-    a = 0;
+
+  if (t == NULL) {
+      out << "<undefined>";
+      return out;
   }
-  else if (t == typeInteger){
-    a = 1;
-  }
-  else if (t == typeBoolean) {
-    a = 2;
-  }
-  else if (t == typeChar){
-    a = 3;
-  }
-  else if (t->kind == TYPE_IARRAY) {
-    a = 4;
-  }
-  switch (a) {
-    case 0: out << "void"; break;
-    case 1: out << "int";  break;
-    case 2: out << "bool"; break;
-    case 3: out << "char"; break;
-    case 4: out << "array of type " << t->refType; break;
+
+  switch (t->kind) {
+      case TYPE_VOID:
+          out << "void";
+          break;
+      case TYPE_INTEGER:
+          out << "integer";
+          break;
+      case TYPE_BOOLEAN:
+          out << "boolean";
+          break;
+      case TYPE_CHAR:
+          out << "char";
+          break;
+      case TYPE_ARRAY:
+          out << "array [" << t->size << "] of ";
+          out << t->refType;
+          break;
+      case TYPE_IARRAY:
+          out << "array of ";
+          out << t->refType;
+          break;
+      case TYPE_LIST:
+          out << "list of ";
+          out << t->refType;
   }
   return out;
 }
@@ -506,6 +515,50 @@ private:
   Type type;
 };
 
+class ListUnOp: public Expr {
+public:
+  ListUnOp(const char *o, Expr *e) : expr(e), op(o) {}
+  ~ListUnOp() {}
+  virtual void printOn(std::ostream &out) const override {
+    out << "Unary list operator( " << op << "( " << *expr << " ) " << std::endl;
+  }
+  virtual void sem() override {
+    expr->sem();
+    if(expr->getType()->kind != TYPE_LIST) fatal("Operand is not a list");
+    if(strcmp(op, "nil?") == 0) type = typeBoolean;
+    else if(strcmp(op, "head") == 0) type = expr->getType()->refType;
+    else if(strcmp(op, "tail") == 0) type = expr->getType();
+    else std::cout << " Aliens." << std::endl;
+  }
+private:
+  const char *op;
+  Expr *expr;
+};
+
+class ListBinOp: public Expr {
+public:
+  ListBinOp(const char *o, Expr *e1, Expr *e2): op(o), expr1(e1), expr2(e2) {}
+  ~ListBinOp() {}
+  virtual void printOn(std::ostream &out) const override {
+    out << "Binary list operator " << op << "(" << *expr1 << "," << *expr2 << ")" << std::endl;
+  }
+  virtual void sem() override {
+    expr1->sem();
+    expr2->sem();
+    if(expr2->getType()->kind != TYPE_LIST)  fatal("Operand 2 must be of type list");
+
+    //the following checks should NOT take place only if one of the operands is the null list
+
+    if(!equalType(expr1->getType(), expr2->getType()->refType)) fatal("Operands must be of same type");
+
+    if (strcmp(op, "#") == 0) type = expr1->getType();
+    else std::cout << "Aliens." << std::endl;
+  }
+private:
+  const char *op;
+  Expr *expr1, *expr2;
+};
+
 class StringConst: public Expr {
   public:
     StringConst(const char * s) : stringconst(s) {}
@@ -521,6 +574,26 @@ class StringConst: public Expr {
     }
   private:
     const char * stringconst;
+};
+
+class Array: public Expr {
+public:
+  Array(Type t, Expr *e) : arrayType(t), sizeExpr(e), arraySize(10) {}
+  ~Array() {}
+
+  virtual void printOn(std::ostream &out) const override {
+    out << "Array of type " << arrayType << " with size " << arraySize << " induced by expression " << *sizeExpr;
+  }
+
+  virtual void sem() override {
+    sizeExpr->type_check(typeInteger);
+    std::cout << "hey" << std::endl;
+    type = typeIArray(arrayType);
+  }
+private:
+  Type arrayType;
+  Expr *sizeExpr;
+  int arraySize;
 };
 
 // STATEMENTS (e.g Let, If.. else ...)
@@ -606,6 +679,7 @@ public:
       fatal("Object %s is not callable", id->getIdName());
     }
     SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_CURRENT_SCOPE, false);
+    type = p->u.eFunction.resultType;
     if (equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression should not be of type Void.");
 
     SymbolEntry *args = p->u.eFunction.firstArgument;
@@ -623,8 +697,11 @@ public:
     }
 
     int i = 0;
+    ExprList reversed = *exprlist;
+    std::reverse(reversed.begin(), reversed.end());
+
     args = p->u.eFunction.firstArgument;
-    for (Expr *expr: *exprlist) {
+    for (Expr *expr: reversed) {
       expr->sem();
       if (!equalType(expr->getType(), args->u.eParameter.type)){
         fatal("Wrong parameter type at position %d", i);
@@ -636,6 +713,7 @@ public:
 private:
   Id *id;
   ExprList *exprlist;
+  Type t;
 };
 
 class Skip : public Stmt {
