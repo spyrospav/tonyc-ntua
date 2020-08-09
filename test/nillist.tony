@@ -2,4 +2,7 @@ def main():
   list[int] a
   a := 5 # nil
   a := 6 # a
+  if a = nil:
+  skip
+  end
 end

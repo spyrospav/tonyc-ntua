@@ -527,6 +527,7 @@ public:
     out << "Unary list operator( " << op << "( " << *expr << " ) " << std::endl;
   }
   virtual void sem() override {
+    lval = false;
     expr->sem();
     if(expr->getType()->kind != TYPE_LIST) fatal("Operand is not a list");
     if(strcmp(op, "nil?") == 0) type = typeBoolean;
@@ -547,6 +548,7 @@ public:
     out << "Binary list operator " << op << "(" << *expr1 << "," << *expr2 << ")" << std::endl;
   }
   virtual void sem() override {
+    lval = false;
     expr1->sem();
     expr2->sem();
     if(expr2->getType()->kind != TYPE_LIST)  fatal("Operand 2 must be of type list");
