@@ -31,7 +31,7 @@ def writeArray (char[] msg; int n; int[] x):
   if i > 0: puts(", ") end
     puti(x[i])
   end
-  puts("\n")
+  puts("kalamata")
   end
 
   int seed, i

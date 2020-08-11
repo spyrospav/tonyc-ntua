@@ -5,7 +5,10 @@ def program() :
     int mesa
     def pelopidas (int a):
       char f
+      skip
     end
+    skip
   end
   int testekso
+  skip
 end

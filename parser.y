@@ -81,9 +81,11 @@ bool first = true;
   CallStmt *callstmt;
   CallExpr *callexpr;
   IfPairList *ifpairlist;
+  Decl *decl;
 }
 
-%type<funcblock> program func-def-list func-def func-decl
+%type<funcblock> program func-def-list func-def
+%type<decl> func-decl
 %type<stmt>  stmt simple if-stmt
 %type<expr>  expr atom
 %type<type>  type
@@ -103,7 +105,7 @@ bool first = true;
 
 
 program:
-  { initSymbolTable(1024); openScope(); printSymbolTable(); StandardLibraryInit(); }
+  { initSymbolTable(2048); openScope(); printSymbolTable(); StandardLibraryInit(); }
     func-def { $2->setMain();  $2->sem(); }
 ;
 
@@ -117,7 +119,7 @@ func-def:
 func-def-list:
     /* nothing */ { $$ = new FuncBlock(); }
   | func-def func-def-list { $2->append_fun($1); $$ = $2; }
-  | func-decl func-def-list { $2->append_fun($1); $$ = $2; }
+  | func-decl func-def-list { $2->append_decl($1); $$ = $2; }
   | var-def func-def-list { $2->append_varlist($1);  $$ = $2; }
 ;
 
@@ -148,7 +150,7 @@ type: "int" { $$ = typeInteger; }
   | "list" '[' type ']' { $$ = typeList($3); }
 ;
 
-func-decl: "decl" header { $2->setHeaderDef(DECL); $$ = new FuncBlock(); $$->assignHeader($2); }//std::cout << *$$ <<std::endl; std::cout << "aliens" << std::endl; }
+func-decl: "decl" header { $2->setHeaderDef(DECL); $$ = new Decl($2); }//std::cout << *$$ <<std::endl; std::cout << "aliens" << std::endl; }
 ;
 
 var-def: type T_id id-list { $3->var_append($2); $3->var_type($1); $$ = $3; }

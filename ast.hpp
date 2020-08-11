@@ -181,22 +181,17 @@ public:
     out << std::endl << ")";
   }
   virtual void sem() override {
-    std::cout << "in sem of header" << std::endl;
     SymbolEntry * p = lookupEntry(name, LOOKUP_CURRENT_SCOPE, false);
-    std::cout << "after lookup header" << std::endl;
-    if (p == NULL) {
-      p = newFunction(name);
-      if (hdef == DECL) {
-        forwardFunction(p);
-      }
-      openScope();
-      printSymbolTable();
-      for (Arg *a: *arg_list) { a->sem(p); }
-      endFunctionHeader(p, type);
-      printSymbolTable();
-      //closeScope();
+    p = newFunction(name);
+    if (hdef == DECL) {
+      forwardFunction(p);
     }
-    std::cout << "end of sem of header" << std::endl;
+    openScope();
+    printSymbolTable();
+    for (Arg *a: *arg_list) { a->sem(p); }
+    endFunctionHeader(p, type);
+    printSymbolTable();
+    //closeScope();
   }
 private:
   Type type;
@@ -211,6 +206,22 @@ enum DefType {
   DECLARATION
 };
 
+class Decl: public AST{
+  public:
+    Decl(Header *h): header(h) {}
+    ~Decl() {}
+    virtual void printOn(std::ostream &out) const override {
+      out << "Decl with " << *header << std::endl;
+    }
+
+    virtual void sem() override {
+      header->sem();
+      closeScope();
+    }
+  private:
+    Header *header;
+};
+
 class FuncBlock: public AST {
 public:
   FuncBlock(): var_list(), sequence(), stmt_list(NULL), size(0), isMain(false) {std::cout <<"New block" << std::endl;}
@@ -218,15 +229,21 @@ public:
     for (VarList *d : var_list) delete d;
   }
 
-  void append_varlist(VarList *d) {
+  void append_varlist(VarList *v) {
     std::cout << "Add var in block!" << std::endl;
-    var_list.insert(var_list.begin(), d);
+    var_list.insert(var_list.begin(), v);
     sequence.insert(sequence.begin(), VARIABLE);
   }
   void append_fun(FuncBlock *f){
     std::cout << "Add func in block!" << std::endl;
     func_list.insert(func_list.begin(), f);
     sequence.insert(sequence.begin(), FUNCTION);
+  }
+
+  void append_decl(Decl *d) {
+    std::cout << "Add func decl in block!" << std::endl;
+    decl_list.insert(decl_list.begin(), d);
+    sequence.insert(sequence.begin(), DECLARATION);
   }
 
   void assignHeader(Header *h) {
@@ -273,28 +290,24 @@ public:
 
   virtual void sem() override {
     if (!isMain) header->sem();
-    int v = 0, f = 0;
-    std::cout <<"aliens 1" << std::endl;
+    int v = 0, f = 0, d = 0;
     bool existsReturn = false;
     for (std::vector<DefType>::iterator it = sequence.begin(); it < sequence.end(); it++){
-      std::cout << "aliensd" << std::endl;
       if (*it == FUNCTION) {
-        std::cout << "1" << std::endl;
         func_list[f]->sem();
-        std::cout << "2" << std::endl;
         f++;
       }
       else if (*it == VARIABLE) {
-        std::cout << "3" << std::endl;
         var_list[v]->sem();
-        std::cout << "4" << std::endl;
         v++;
       }
+      else if (*it == DECLARATION) {
+        decl_list[d]->sem();
+        d++;
+      }
     }
-    std::cout << "aliens 2" << std::endl;
     if (stmt_list != NULL) {
       for (Stmt *stmt : *stmt_list) {
-        std::cout << "aliens inside stmt list" << std::endl;
         stmt->sem();
         if(stmt->getStmtType() == EXIT && header->getHeaderType() != typeVoid)
           fatal("Exit can only be used inside void function blocks");
@@ -305,13 +318,11 @@ public:
         }
       }
     }
-    std::cout << "aliens 3" << std::endl;
     if(header->getHeaderDef() == DEF && !existsReturn && !equalType(header->getHeaderType(), typeVoid)) {
       fatal("Non void function must have a return statement.");
     }
-    std::cout << "holla" << std::endl;
 
-    printSymbolTable();
+    //printSymbolTable();
     closeScope();
   }
 
@@ -319,6 +330,7 @@ private:
   Header *header;
   std::vector<VarList *> var_list;
   std::vector<FuncBlock *> func_list;
+  std::vector<Decl *> decl_list;
   StmtList *stmt_list;
   std::vector<DefType> sequence;
   int size;
@@ -676,7 +688,7 @@ class ArrayItem: public Expr{
       if (atom->getStringExpr() == STRING) stringExpr = STRING_ITEM;
       else stringExpr = OTHER;
       std::cout << "Type of atom " << atom->getType() << std::endl;
-      std::cout << "ref type of getType() " << atom->getType()->refType << std::endl;
+      std::cout << "ref type of " << atom->getType()->refType << std::endl;
       type = atom->getType()->refType;
       std :: cout << type << std::endl;
       lval = true;
@@ -710,7 +722,7 @@ public:
       fatal("Object %s is not callable", id->getIdName());
     }
     SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_CURRENT_SCOPE, false);
-    if (p->u.eFunction.isForward) fatal("Function needs to be defind before calling it.");
+    if (p->u.eFunction.isForward) fatal("Function needs to be defined before calling it.");
     type = p->u.eFunction.resultType;
     if (equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression should not be of type Void.");
 
@@ -722,8 +734,7 @@ public:
       argsize++;
       args = args->u.eParameter.next;
     }
-    std::cout << "Arglist size is " << argsize << std::endl;
-    std::cout << "Exprlist size is " << exprsize<< std::endl;
+
     if (argsize != exprsize) {
       fatal("Expected %d arguments, but %d were given.", argsize, exprsize);
     }
@@ -775,7 +786,7 @@ class CallStmt: public Stmt{
         fatal("Object %s is not callable", id->getIdName());
       }
       SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_CURRENT_SCOPE, false);
-      if (p->u.eFunction.isForward) fatal("Function needs to be defind before calling it.");
+      if (p->u.eFunction.isForward) fatal("Function needs to be defined before calling it.");
       if (!equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression must of type Void.");
 
       SymbolEntry *args = p->u.eFunction.firstArgument;
