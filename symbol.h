@@ -233,10 +233,11 @@ void          destroyType        (Type type);
 unsigned int  sizeOfType         (Type type);
 bool          equalType          (Type type1, Type type2);
 bool          isTypeAny          (Type type);
-bool          isTypeArray       (Type type);
+bool          isTypeArray        (Type type);
 void          printType          (Type type);
 void          printMode          (PassMode mode);
 
 void          printSymbolTable   ();
+void          StandardLibraryInit();
 
 #endif

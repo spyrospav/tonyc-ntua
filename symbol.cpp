@@ -786,3 +786,119 @@ void printSymbolTable ()
         }
     printf("----------------------------------------\n");
 }
+
+void StandardLibraryInit() {
+
+  SymbolEntry *p;
+
+  //decl puti (int n)
+  p = newFunction("puti");
+  openScope();
+  newParameter("n", typeInteger, PASS_BY_VALUE, p);
+  endFunctionHeader(p, typeVoid);
+  closeScope();
+
+  //decl putb (bool b)
+  p = newFunction("putb");
+  openScope();
+  newParameter("b", typeBoolean, PASS_BY_VALUE, p);
+  endFunctionHeader(p, typeVoid);
+  closeScope();
+
+  //decl putc (char c)
+  p = newFunction("putc");
+  openScope();
+  newParameter("c", typeChar, PASS_BY_VALUE, p);
+  endFunctionHeader(p, typeVoid);
+  closeScope();
+
+  //decl puts (char[] s)
+  p = newFunction("puts");
+  openScope();
+  newParameter("s", typeIArray(typeChar), PASS_BY_VALUE, p);
+  endFunctionHeader(p, typeVoid);
+  closeScope();
+
+
+  //decl int geti (int n)
+  p = newFunction("geti");
+  openScope();
+  newParameter("n", typeInteger, PASS_BY_VALUE, p);
+  endFunctionHeader(p, typeInteger);
+  closeScope();
+
+  //decl bool getb (bool b)
+  p = newFunction("getb");
+  openScope();
+  newParameter("b", typeBoolean, PASS_BY_VALUE, p);
+  endFunctionHeader(p, typeBoolean);
+  closeScope();
+
+  //decl char getc (char c)
+  p = newFunction("getc");
+  openScope();
+  newParameter("c", typeChar, PASS_BY_VALUE, p);
+  endFunctionHeader(p, typeChar);
+  closeScope();
+
+  //decl gets (int n, char[] s)
+  p = newFunction("gets");
+  openScope();
+  newParameter("n", typeInteger, PASS_BY_VALUE, p);
+  newParameter("s", typeIArray(typeChar), PASS_BY_VALUE, p);
+  endFunctionHeader(p, typeVoid);
+  closeScope();
+
+  //decl int abs (int n)
+  p = newFunction("abs");
+  openScope();
+  newParameter("n", typeInteger, PASS_BY_VALUE, p);
+  endFunctionHeader(p, typeInteger);
+  closeScope();
+
+  //decl int ord (char c)
+  p = newFunction("ord");
+  openScope();
+  newParameter("c", typeChar, PASS_BY_VALUE, p);
+  endFunctionHeader(p, typeInteger);
+  closeScope();
+
+  //decl char chr (int n)
+  p = newFunction("chr");
+  openScope();
+  newParameter("n", typeInteger, PASS_BY_VALUE, p);
+  endFunctionHeader(p, typeChar);
+  closeScope();
+
+  //decl int strlen (char[] s)
+  p = newFunction("strlen");
+  openScope();
+  newParameter("s", typeIArray(typeChar), PASS_BY_VALUE, p);
+  endFunctionHeader(p, typeInteger);
+  closeScope();
+
+  //decl int strcmp (char[] s1, s2)
+  p = newFunction("strcmp");
+  openScope();
+  newParameter("s1", typeIArray(typeChar), PASS_BY_VALUE, p);
+  newParameter("s2", typeIArray(typeChar), PASS_BY_VALUE, p);
+  endFunctionHeader(p, typeInteger);
+  closeScope();
+
+  //decl strcpy (char[] trg, src)
+  p = newFunction("strcpy");
+  openScope();
+  newParameter("trg", typeIArray(typeChar), PASS_BY_VALUE, p);
+  newParameter("src", typeIArray(typeChar), PASS_BY_VALUE, p);
+  endFunctionHeader(p, typeVoid);
+  closeScope();
+
+  //decl strcat (char[] trg, src)
+  p = newFunction("strcat");
+  openScope();
+  newParameter("trg", typeIArray(typeChar), PASS_BY_VALUE, p);
+  newParameter("src", typeIArray(typeChar), PASS_BY_VALUE, p);
+  endFunctionHeader(p, typeVoid);
+  closeScope();
+
+}

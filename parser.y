@@ -103,7 +103,7 @@ bool first = true;
 
 
 program:
-  { initSymbolTable(1024); openScope(); printSymbolTable();}
+  { initSymbolTable(1024); openScope(); printSymbolTable(); StandardLibraryInit(); }
     func-def { $2->setMain();  $2->sem(); }
 ;
 
