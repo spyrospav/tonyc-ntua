@@ -432,8 +432,10 @@ public:
   }
   virtual void sem() override {
     lval = true;
+    std::cout << "searching in symbol table for entry " << var << std::endl;
     SymbolEntry *e = lookupEntry(var,LOOKUP_CURRENT_SCOPE, false);
     if(e==NULL) {fatal("Id has not been declared");}
+    std::cout << "found it " << std::endl;
     entry = e->entryType;
     if (entry == ENTRY_VARIABLE ) {
       type = e->u.eVariable.type;
