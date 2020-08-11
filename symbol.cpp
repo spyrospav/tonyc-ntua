@@ -26,7 +26,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
-
+#include <iostream>
 #include "general.h"
 #include "error.h"
 #include "symbol.h"
@@ -644,9 +644,12 @@ unsigned int sizeOfType (Type type)
 
 bool equalType (Type type1, Type type2)
 {
-    if (type1->kind == TYPE_ANY || type2->kind == TYPE_ANY) return true;
-    if (type1->kind != type2->kind)
+    if (type1->kind != type2->kind) {
+      if (type1->kind == TYPE_ANY || type2->kind == TYPE_ANY)
+        return true;
+      else
         return false;
+    }
     switch (type1->kind) {
         case TYPE_ARRAY:
             if (type1->size != type2->size)
@@ -656,12 +659,25 @@ bool equalType (Type type1, Type type2)
             return equalType(type1->refType, type2->refType);
             break;
         case TYPE_LIST:
-            return equalType(type1->refType, type2->refType) ||
-            equalType(type1->refType, typeAny) || equalType(type2->refType, typeAny);
+            return equalType(type1->refType, type2->refType);
         case TYPE_ANY:
-            return true;
+            return false;
     }
     return true;
+}
+
+bool isTypeAny (Type type) {
+  if (type->kind == TYPE_ANY)
+    return true;
+  else
+    return false;
+}
+
+bool isTypeArray (Type type) {
+  if (type->kind == TYPE_IARRAY || type->kind == TYPE_ARRAY)
+    return true;
+  else
+    return false;
 }
 
 void printType (Type type)

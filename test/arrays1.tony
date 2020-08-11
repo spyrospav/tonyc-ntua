@@ -1,0 +1,8 @@
+def progran():
+  int[] a
+  char[][] c
+  int b
+  a := new int[10]
+  b := a[1]
+
+end

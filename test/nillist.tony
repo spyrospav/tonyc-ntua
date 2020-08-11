@@ -1,8 +1,8 @@
 def main():
   list[int] a
+  int b
   a := 5 # nil
   a := 6 # a
-  if a = nil:
-  skip
-  end
+  b := head (a)
+  b := tail (nil)
 end

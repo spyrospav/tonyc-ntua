@@ -1,0 +1,9 @@
+def program():
+  int b
+  decl int fun(int a)
+  def int fun(int a):
+    return 1
+  end
+  int a
+  a := fun(1)
+end

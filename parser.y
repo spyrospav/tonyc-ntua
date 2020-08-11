@@ -85,7 +85,7 @@ bool first = true;
 
 %type<funcblock> program func-def-list func-def func-decl
 %type<stmt>  stmt simple if-stmt
-%type<expr>  expr atom lvalue
+%type<expr>  expr atom
 %type<type>  type
 %type<varlist> id-list var-def
 %type<arglist> formal-list formal-list-plus
@@ -109,7 +109,6 @@ program:
 
 func-def:
   T_def header ':' func-def-list stmt-list-plus T_end {
-  //T_def header ':' func-def-list T_end {
     $$ = $4; $2->setHeaderDef(DEF); $$->assignHeader($2); $$->append_stmtlist($5);
     std::cout << *$$ << std::endl;
   }
@@ -117,8 +116,8 @@ func-def:
 
 func-def-list:
     /* nothing */ { $$ = new FuncBlock(); }
-  | func-def func-def-list { $2->append_fun($1); $$=$2; }
-  | func-decl func-def-list { $2->append_fun($1); $$=$2; }
+  | func-def func-def-list { $2->append_fun($1); $$ = $2; }
+  | func-decl func-def-list { $2->append_fun($1); $$ = $2; }
   | var-def func-def-list { $2->append_varlist($1);  $$ = $2; }
 ;
 
@@ -149,7 +148,7 @@ type: "int" { $$ = typeInteger; }
   | "list" '[' type ']' { $$ = typeList($3); }
 ;
 
-func-decl: "decl" header { $2->setHeaderDef(DECL); $$ = new FuncBlock(); $$->assignHeader($2); std::cout << *$$ <<std::endl;}
+func-decl: "decl" header { $2->setHeaderDef(DECL); $$ = new FuncBlock(); $$->assignHeader($2); }//std::cout << *$$ <<std::endl; std::cout << "aliens" << std::endl; }
 ;
 
 var-def: type T_id id-list { $3->var_append($2); $3->var_type($1); $$ = $3; }
@@ -220,14 +219,9 @@ expr-list-plus:
   | ',' expr expr-list-plus { $3->insert($3->begin(), $2); $$ = $3;}
 ;
 
-lvalue:
-    T_id { $$ = new Id($1); }
-//  | atom '[' expr ']' {}// $$ = new Apply_atom_expr($1, $3); }
-;
-
 atom:
     T_id { $$ = new Id($1); }
-//  | atom '[' expr ']' {}// $$ = new Apply_atom_expr($1, $3); }
+  | atom '[' expr ']' { $$ = new ArrayItem($1, $3); }
   | T_string_const { $$ = new StringConst($1); }
   | call-expr { $$ = $1; }
 ;
@@ -246,8 +240,8 @@ expr:
   | expr logic-op expr { $$ = new BinOp($1, $2, $3); }
   | "new" type '[' expr ']' { $$ = new Array($2, $4); }
   | "nil" { $$ = new Nil(); }
-  | "nil?" '(' expr ')'  { $$ = new ListUnOp("nil?", $3); }
-  | expr '#' expr       {$$ = new ListBinOp($2, $1, $3); }
+  | "nil?" '(' expr ')' { $$ = new ListUnOp("nil?", $3); }
+  | expr '#' expr { $$ = new ListBinOp($2, $1, $3); }
   | "head" '(' expr ')' { $$ = new ListUnOp("head", $3); }
   | "tail" '(' expr ')' { $$ = new ListUnOp("tail", $3); }
 ;

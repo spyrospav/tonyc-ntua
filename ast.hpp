@@ -59,6 +59,12 @@ enum StmtType{
   EXIT
 };
 
+enum StringExpr{
+  STRING,
+  STRING_ITEM,
+  OTHER
+};
+
 class AST {
   public:
     AST() {
@@ -154,7 +160,7 @@ enum HeaderDef {
 
 class Header: public AST {
 public:
-  Header(Type t, const char * s, ArgList *a): type(t), name(s), arg_list(a) {}
+  Header(Type t, const char * s, ArgList *a): type(t), name(s), arg_list(a) {std::cout << "Header " << s << std::endl;}
   ~Header(){
     arg_list->clear();
   }
@@ -163,7 +169,7 @@ public:
   const char * getHeaderName() { return name; }
   ArgList *getHeaderArgList() { return arg_list; }
   void setHeaderDef(HeaderDef h) { hdef = h; }
-
+  HeaderDef getHeaderDef() { return hdef; }
   virtual void printOn(std::ostream &out) const override {
     out << "Header with name " << name << " and type " << type << "(";
     bool first = true;
@@ -175,7 +181,9 @@ public:
     out << std::endl << ")";
   }
   virtual void sem() override {
+    std::cout << "in sem of header" << std::endl;
     SymbolEntry * p = lookupEntry(name, LOOKUP_CURRENT_SCOPE, false);
+    std::cout << "after lookup header" << std::endl;
     if (p == NULL) {
       p = newFunction(name);
       if (hdef == DECL) {
@@ -188,6 +196,7 @@ public:
       printSymbolTable();
       //closeScope();
     }
+    std::cout << "end of sem of header" << std::endl;
   }
 private:
   Type type;
@@ -202,10 +211,9 @@ enum DefType {
   DECLARATION
 };
 
-
 class FuncBlock: public AST {
 public:
-  FuncBlock(): var_list(), size(0), isMain(false) {}
+  FuncBlock(): var_list(), sequence(), stmt_list(NULL), size(0), isMain(false) {std::cout <<"New block" << std::endl;}
   ~FuncBlock() {
     for (VarList *d : var_list) delete d;
   }
@@ -246,45 +254,63 @@ public:
     out << "Block(" << std::endl;
     out << *header;
     bool first = true;
+    std::cout << "before vars" << std::endl;
     for (VarList *d : var_list) {
       if (!first) out << ", ";
       first = false;
       out <<  std::endl << *d;
     }
+    std::cout << "after vars" << std::endl;
     out << std::endl;
-    for (Stmt *stmt: *stmt_list) {
-      out << *stmt;
+    if (stmt_list != NULL) {
+      for (Stmt *stmt: *stmt_list) {
+        out << *stmt;
+      }
     }
+    std::cout << "after stmt" << std::endl;
     out << ")";
   }
 
   virtual void sem() override {
     if (!isMain) header->sem();
     int v = 0, f = 0;
+    std::cout <<"aliens 1" << std::endl;
     bool existsReturn = false;
     for (std::vector<DefType>::iterator it = sequence.begin(); it < sequence.end(); it++){
+      std::cout << "aliensd" << std::endl;
       if (*it == FUNCTION) {
+        std::cout << "1" << std::endl;
         func_list[f]->sem();
+        std::cout << "2" << std::endl;
         f++;
       }
       else if (*it == VARIABLE) {
+        std::cout << "3" << std::endl;
         var_list[v]->sem();
+        std::cout << "4" << std::endl;
         v++;
       }
     }
-    for (Stmt *stmt : *stmt_list) {
-      stmt->sem();
-      if(stmt->getStmtType() == EXIT && header->getHeaderType() != typeVoid)
-        fatal("Exit can only be used inside void function blocks");
-      if(stmt->getStmtType() == RETURN){
-        existsReturn = true;
-        if(!equalType(header->getHeaderType(), stmt->getReturnType()))
-          fatal("Return type does not match function type");
+    std::cout << "aliens 2" << std::endl;
+    if (stmt_list != NULL) {
+      for (Stmt *stmt : *stmt_list) {
+        std::cout << "aliens inside stmt list" << std::endl;
+        stmt->sem();
+        if(stmt->getStmtType() == EXIT && header->getHeaderType() != typeVoid)
+          fatal("Exit can only be used inside void function blocks");
+        if(stmt->getStmtType() == RETURN){
+          existsReturn = true;
+          if(!equalType(header->getHeaderType(), stmt->getReturnType()))
+            fatal("Return type does not match function type");
+        }
       }
     }
-    if(!existsReturn && !equalType(header->getHeaderType(), typeVoid)) {
+    std::cout << "aliens 3" << std::endl;
+    if(header->getHeaderDef() == DEF && !existsReturn && !equalType(header->getHeaderType(), typeVoid)) {
       fatal("Non void function must have a return statement.");
     }
+    std::cout << "holla" << std::endl;
+
     printSymbolTable();
     closeScope();
   }
@@ -304,7 +330,7 @@ private:
 class Expr : public AST {
   public:
     //virtual void compile() const = 0; UNCOMMENT WHEN COMPILE IS IMPLEMENTED ON other classes
-    void type_check(Type t) {
+    void type_check(Type t) { //
       sem();
       if (!equalType(type, t))
         fatal("Type mismatch");
@@ -314,9 +340,13 @@ class Expr : public AST {
     }
     Type getType() { return type; }
     bool isLValue() { return lval; }
+    StringExpr getStringExpr() { return stringExpr; }
   protected:
     Type type;
     bool lval;
+     // enumeration of valid types for a expression.
+     // used to throw error on cases like "test"[0] := 4
+    StringExpr stringExpr;
 };
 
 typedef std::vector<Expr *> ExprList;
@@ -337,7 +367,7 @@ class IntConst : public Expr {
       std::cout << "  pushl $" << num << "\n";
     }
     */
-    virtual void sem() override { lval = false; type = typeInteger; }
+    virtual void sem() override { lval = false; stringExpr = OTHER; type = typeInteger; }
   private:
     int num;
 };
@@ -354,7 +384,7 @@ class CharConst : public Expr {
       std::cout << "  pushl $" << num << "\n";
     }
     */
-    virtual void sem() override { lval = false; type = typeChar; }
+    virtual void sem() override { lval = false; stringExpr = OTHER; type = typeChar; }
   private:
     char character;
 };
@@ -371,7 +401,7 @@ class BoolConst : public Expr {
       std::cout << "  pushl $" << num << "\n";
     }
     */
-    virtual void sem() override { lval = false; type = typeBoolean; }
+    virtual void sem() override { lval = false; stringExpr = OTHER; type = typeBoolean; }
   private:
     bool logic;
 };
@@ -414,6 +444,7 @@ public:
     else if (entry == ENTRY_PARAMETER ) {
       type = e->u.eParameter.type;
     }
+    stringExpr = OTHER;
   }
 
 private:
@@ -511,6 +542,7 @@ public:
       expr->type_check(typeBoolean);
       type=typeBoolean;
     }
+    stringExpr = OTHER;
   }
 
 private:
@@ -531,9 +563,18 @@ public:
     expr->sem();
     if(expr->getType()->kind != TYPE_LIST) fatal("Operand is not a list");
     if(strcmp(op, "nil?") == 0) type = typeBoolean;
-    else if(strcmp(op, "head") == 0) type = expr->getType()->refType;
-    else if(strcmp(op, "tail") == 0) type = expr->getType();
+    else if(strcmp(op, "head") == 0) {
+      std::cout << expr->getType() << std::endl;
+      std::cout << typeList(typeAny) << std::endl;
+      if (isTypeAny(expr->getType()->refType)) fatal("Cannot apply head operator on empty list.");
+      type = expr->getType()->refType;
+     }
+    else if(strcmp(op, "tail") == 0) {
+      if (isTypeAny(expr->getType()->refType)) fatal("Cannot apply tail operator on empty list.");
+      type = expr->getType();
+    }
     else std::cout << " Aliens." << std::endl;
+    stringExpr = OTHER;
   }
 private:
   const char *op;
@@ -553,16 +594,30 @@ public:
     expr2->sem();
     if(expr2->getType()->kind != TYPE_LIST)  fatal("Operand 2 must be of type list");
 
-    //the following checks should NOT take place only if one of the operands is the null list
     if(!equalType(expr1->getType(), expr2->getType()->refType)) fatal("Operands must be of same type");
 
-    if (strcmp(op, "#") == 0) type = expr1->getType();
+    if (strcmp(op, "#") == 0) type = typeList(expr1->getType());
     else std::cout << "Aliens." << std::endl;
-    type = expr2->getType();
+    stringExpr = OTHER;
   }
 private:
   const char *op;
   Expr *expr1, *expr2;
+};
+
+class Nil: public Expr {
+  public:
+    Nil() {}
+    ~Nil() {}
+    virtual void printOn(std::ostream &out) const override {
+      out << "list of any type" << std::endl;
+    }
+    virtual void sem() override {
+      lval = false;
+      type = typeList(typeAny);
+      stringExpr = OTHER;
+    }
+  private:
 };
 
 class StringConst: public Expr {
@@ -576,102 +631,56 @@ class StringConst: public Expr {
     virtual void sem() override {
       lval = false;
       size_t size = strlen(stringconst);
-      type = typeArray(size, typeChar);
+      type = typeIArray(typeChar); //Warning: may come back
+      stringExpr = STRING;
     }
   private:
     const char * stringconst;
 };
 
 class Array: public Expr {
-public:
-  Array(Type t, Expr *e) : arrayType(t), sizeExpr(e), arraySize(10) {}
-  ~Array() {}
-
-  virtual void printOn(std::ostream &out) const override {
-    out << "Array of type " << arrayType << " with size " << arraySize << " induced by expression " << *sizeExpr;
-  }
-
-  virtual void sem() override {
-    sizeExpr->type_check(typeInteger);
-    std::cout << "hey" << std::endl;
-    type = typeIArray(arrayType);
-  }
-private:
-  Type arrayType;
-  Expr *sizeExpr;
-  int arraySize;
-};
-
-class Nil: public Expr {
   public:
-    Nil() {}
-    ~Nil() {}
+    Array(Type t, Expr *e) : arrayType(t), sizeExpr(e), arraySize(10) {}
+    ~Array() {}
+
     virtual void printOn(std::ostream &out) const override {
-      out << "list of any type" << std::endl;
+      out << "Array of type [" << arrayType << "] with size " << arraySize << " induced by expression " << *sizeExpr;
     }
+
     virtual void sem() override {
-      type = typeList(typeAny);
+      lval = false;
+      sizeExpr->type_check(typeInteger);
+      type = typeIArray(arrayType);
     }
   private:
+    Type arrayType;
+    Expr *sizeExpr;
+    int arraySize;
 };
 
-// STATEMENTS (e.g Let, If.. else ...)
-
-class CallStmt: public Stmt{
+class ArrayItem: public Expr{
   public:
-    CallStmt(Id *v): id(v), exprlist(NULL) {}
-    CallStmt(Id *v, ExprList *e): id(v), exprlist(e) {}
-    ~CallStmt() {
-      exprlist->clear();
-    }
+    ArrayItem(Expr *a, Expr *e): atom(a), expr(e) {}
+    ~ArrayItem() {}
     virtual void printOn(std::ostream &out) const override {
-      out << "CallStmt(" << *id << "with expressions";
-      bool first = true;
-      for (std::vector<Expr *>::iterator it = exprlist->begin(); it != exprlist->end(); ++it){
-        if (!first) out << ", ";
-        first = false;
-        out << std::endl << **it;
-      }
-      out << std::endl << ")";
+      out << "Item Array of type " << type << std::endl;
     }
+
     virtual void sem() override {
-      setStmtType(SIMPLE_STMT);
-      id->sem();
-      EntryType entry = id->getEntryType();
-      if (entry != ENTRY_FUNCTION) {
-        fatal("Object %s is not callable", id->getIdName());
-      }
-      SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_CURRENT_SCOPE, false);
-      if (!equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression must of type Void.");
+      expr->type_check(typeInteger);
 
-      SymbolEntry *args = p->u.eFunction.firstArgument;
-      int argsize = 0 ;
-      int exprsize = exprlist->size();
-
-      while (args != NULL) {
-        argsize++;
-        args = args->u.eParameter.next;
-      }
-      std::cout << "Arglist size is " << argsize << std::endl;
-      std::cout << "Exprlist size is " << exprsize<< std::endl;
-      if (argsize != exprsize) {
-        fatal("Expected %d arguments, but %d were given.", argsize, exprsize);
-      }
-
-      int i = 0;
-      args = p->u.eFunction.firstArgument;
-      for (Expr *expr: *exprlist) {
-        expr->sem();
-        if (!equalType(expr->getType(), args->u.eParameter.type)){
-          fatal("Wrong parameter type at position %d.", i);
-        }
-        args = args->u.eParameter.next;
-        i++;
-      }
+      atom->sem();
+      if (!isTypeArray(atom->getType())) fatal("Non array type is not subscritable");
+      if (atom->getStringExpr() == STRING) stringExpr = STRING_ITEM;
+      else stringExpr = OTHER;
+      std::cout << "Type of atom " << atom->getType() << std::endl;
+      std::cout << "ref type of getType() " << atom->getType()->refType << std::endl;
+      type = atom->getType()->refType;
+      std :: cout << type << std::endl;
+      lval = true;
     }
   private:
-    Id *id;
-    ExprList *exprlist;
+    Expr *atom, *expr;
 };
 
 class CallExpr : public Expr {
@@ -692,12 +701,14 @@ public:
     out << std::endl << ")";
   }
   virtual void sem() override {
+    lval = false;
     id->sem();
     EntryType entry = id->getEntryType();
     if (entry != ENTRY_FUNCTION) {
       fatal("Object %s is not callable", id->getIdName());
     }
     SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_CURRENT_SCOPE, false);
+    if (p->u.eFunction.isForward) fatal("Function needs to be defind before calling it.");
     type = p->u.eFunction.resultType;
     if (equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression should not be of type Void.");
 
@@ -733,6 +744,66 @@ private:
   Id *id;
   ExprList *exprlist;
   Type t;
+};
+
+// STATEMENTS (e.g Let, If.. else ...)
+
+class CallStmt: public Stmt{
+  public:
+    CallStmt(Id *v): id(v), exprlist(NULL) {}
+    CallStmt(Id *v, ExprList *e): id(v), exprlist(e) {}
+    ~CallStmt() {
+      exprlist->clear();
+    }
+    virtual void printOn(std::ostream &out) const override {
+      out << "CallStmt(" << *id << "with expressions";
+      bool first = true;
+      for (std::vector<Expr *>::iterator it = exprlist->begin(); it != exprlist->end(); ++it){
+        if (!first) out << ", ";
+        first = false;
+        out << std::endl << **it;
+      }
+      out << std::endl << ")";
+    }
+    virtual void sem() override {
+      setStmtType(SIMPLE_STMT);
+      id->sem();
+      EntryType entry = id->getEntryType();
+      if (entry != ENTRY_FUNCTION) {
+        fatal("Object %s is not callable", id->getIdName());
+      }
+      SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_CURRENT_SCOPE, false);
+      if (p->u.eFunction.isForward) fatal("Function needs to be defind before calling it.");
+      if (!equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression must of type Void.");
+
+      SymbolEntry *args = p->u.eFunction.firstArgument;
+      int argsize = 0 ;
+      int exprsize = exprlist->size();
+
+      while (args != NULL) {
+        argsize++;
+        args = args->u.eParameter.next;
+      }
+      std::cout << "Arglist size is " << argsize << std::endl;
+      std::cout << "Exprlist size is " << exprsize<< std::endl;
+      if (argsize != exprsize) {
+        fatal("Expected %d arguments, but %d were given.", argsize, exprsize);
+      }
+
+      int i = 0;
+      args = p->u.eFunction.firstArgument;
+      for (Expr *expr: *exprlist) {
+        expr->sem();
+        if (!equalType(expr->getType(), args->u.eParameter.type)){
+          fatal("Wrong parameter type at position %d.", i);
+        }
+        args = args->u.eParameter.next;
+        i++;
+      }
+    }
+  private:
+    Id *id;
+    ExprList *exprlist;
 };
 
 class Skip : public Stmt {
@@ -867,6 +938,7 @@ public:
     setStmtType(SIMPLE_STMT);
     var->sem();
     if (!var->isLValue()) fatal("Can't assign value to non lvalue");
+    if (var->getStringExpr() == STRING_ITEM) fatal("Can't assign value to item of a constant string type object");
     expr->type_check(var->getType());
   }
 private:
