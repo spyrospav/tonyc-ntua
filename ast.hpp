@@ -181,8 +181,9 @@ public:
     out << std::endl << ")";
   }
   virtual void sem() override {
-    SymbolEntry * p = lookupEntry(name, LOOKUP_CURRENT_SCOPE, false);
+    SymbolEntry * p;
     p = newFunction(name);
+    std::cout << " nestign level is " << p->nestingLevel << std::endl;
     if (hdef == DECL) {
       forwardFunction(p);
     }
@@ -190,8 +191,6 @@ public:
     //printSymbolTable();
     for (Arg *a: *arg_list) { a->sem(p); }
     endFunctionHeader(p, type);
-    //printSymbolTable();
-    //closeScope();
   }
 private:
   Type type;
@@ -289,7 +288,10 @@ public:
   }
 
   virtual void sem() override {
-    if (!isMain) header->sem();
+
+    if (!isMain) {
+      header->sem();
+    }
     std::cout << *header;
     printSymbolTable();
     int v = 0, f = 0, d = 0;
@@ -308,6 +310,8 @@ public:
         d++;
       }
     }
+    printSymbolTable();
+
     if (stmt_list != NULL) {
       for (Stmt *stmt : *stmt_list) {
         stmt->sem();
@@ -324,8 +328,8 @@ public:
       fatal("Non void function must have a return statement.");
     }
 
-    //printSymbolTable();
     closeScope();
+    //printSymbolTable();
   }
 
 private:
@@ -446,6 +450,7 @@ public:
   }
   virtual void sem() override {
     lval = true;
+    printSymbolTable();
     std::cout << "searching in symbol table for entry " << var << std::endl;
     SymbolEntry *e = lookupEntry(var,LOOKUP_CURRENT_SCOPE, false);
     if(e==NULL) {fatal("Id has not been declared");}
@@ -723,7 +728,7 @@ public:
     if (entry != ENTRY_FUNCTION) {
       fatal("Object %s is not callable", id->getIdName());
     }
-    SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_CURRENT_SCOPE, false);
+    //SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_CURRENT_SCOPE, false);
     if (p->u.eFunction.isForward) fatal("Function needs to be defined before calling it.");
     type = p->u.eFunction.resultType;
     if (equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression should not be of type Void.");
@@ -787,7 +792,7 @@ class CallStmt: public Stmt{
       if (entry != ENTRY_FUNCTION) {
         fatal("Object %s is not callable", id->getIdName());
       }
-      SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_CURRENT_SCOPE, false);
+      //SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_CURRENT_SCOPE, false);
       if (p->u.eFunction.isForward) fatal("Function needs to be defined before calling it.");
       if (!equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression must of type Void.");
 
