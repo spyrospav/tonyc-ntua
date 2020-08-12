@@ -105,14 +105,14 @@ bool first = true;
 
 
 program:
-  { initSymbolTable(2048); openScope(); printSymbolTable(); StandardLibraryInit(); }
+  { initSymbolTable(2048); openScope(); /*printSymbolTable();*/ StandardLibraryInit(); }
     func-def { $2->setMain();  $2->sem(); }
 ;
 
 func-def:
   T_def header ':' func-def-list stmt-list-plus T_end {
     $$ = $4; $2->setHeaderDef(DEF); $$->assignHeader($2); $$->append_stmtlist($5);
-    std::cout << *$$ << std::endl;
+    //std::cout << *$$ << std::endl;
   }
 ;
 
@@ -124,8 +124,8 @@ func-def-list:
 ;
 
 header:
-    type T_id '(' formal-list ')' { $$ = new Header($1, $2, $4); std::cout << *$$ << std::endl; }
-  | T_id '(' formal-list ')' {  $$ = new Header(typeVoid, $1, $3); std::cout << *$$ << std::endl; }
+    type T_id '(' formal-list ')' { $$ = new Header($1, $2, $4);}// std::cout << *$$ << std::endl; }
+  | T_id '(' formal-list ')' {  $$ = new Header(typeVoid, $1, $3);}// std::cout << *$$ << std::endl; }
 ;
 
 formal-list:

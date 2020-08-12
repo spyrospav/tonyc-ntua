@@ -1,0 +1,11 @@
+<*
+ * Test case: arrays-lists.tony
+ * Result: Pass
+ *>
+
+def program():
+  int[] a
+  list[int][] b
+  list[int[]] c
+  a := new int[10]
+end

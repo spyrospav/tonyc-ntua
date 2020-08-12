@@ -1,10 +1,15 @@
+<*
+ * Test case: lists1.tony
+ * Result: Pass
+ *>
+
 def program():
   int c
-  list[char] d
+  list[bool] d
   list[int] a
   list[list[bool]] b
   skip
-  d := tail(b)
+  d := head(b)
   b := tail(b)
   c := head(a)
 end

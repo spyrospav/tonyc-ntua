@@ -1,10 +1,8 @@
+<*
+ * Test case: hello.tony
+ * Result: Pass
+ *>
+
 def hello ():
-  def hey (int a):
-    def int holla(int b):
-      return 2
-    end
-    int a
-    a := holla(1)
-  end
   puts("Hello world!\n")
 end

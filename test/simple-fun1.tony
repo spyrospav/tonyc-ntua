@@ -1,11 +1,20 @@
+<*
+ * Test case: simple-fun1.tony
+ * Result: Pass
+ *>
+
 def program ():
   int a
-  int abs
   def int fun (int c, d; ref char e):
+    skip
+    return 5
   end
   decl fun2 (int a; char d)
   bool f
+  char e
   def fun2 (int a; char d):
     bool e
+    skip
   end
+  fun2(fun(1,2,e), 'a')
 end

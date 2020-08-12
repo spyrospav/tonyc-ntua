@@ -1,0 +1,12 @@
+<*
+ * Test case: simple-if2.tony
+ * Result: Pass
+ *>
+
+
+def program ():
+  int a
+  if b > 1:
+    skip
+  end
+end

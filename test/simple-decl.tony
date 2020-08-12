@@ -1,0 +1,16 @@
+<*
+ * Test case: simple-decl.tony
+ * Result: Fail
+ *>
+
+def main () :
+  decl int[] f(int[] a)
+  int b
+  def int[][] f(int[] a):
+    int[][] c
+    c := new int[][1]
+    c[1] := a
+    return c
+  end
+  skip  
+end

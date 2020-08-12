@@ -160,7 +160,7 @@ enum HeaderDef {
 
 class Header: public AST {
 public:
-  Header(Type t, const char * s, ArgList *a): type(t), name(s), arg_list(a) {std::cout << "Header " << s << std::endl;}
+  Header(Type t, const char * s, ArgList *a): type(t), name(s), arg_list(a) {}
   ~Header(){
     arg_list->clear();
   }
@@ -187,10 +187,10 @@ public:
       forwardFunction(p);
     }
     openScope();
-    printSymbolTable();
+    //printSymbolTable();
     for (Arg *a: *arg_list) { a->sem(p); }
     endFunctionHeader(p, type);
-    printSymbolTable();
+    //printSymbolTable();
     //closeScope();
   }
 private:
@@ -224,24 +224,24 @@ class Decl: public AST{
 
 class FuncBlock: public AST {
 public:
-  FuncBlock(): var_list(), sequence(), stmt_list(NULL), size(0), isMain(false) {std::cout <<"New block" << std::endl;}
+  FuncBlock(): var_list(), sequence(), stmt_list(NULL), size(0), isMain(false) { }
   ~FuncBlock() {
     for (VarList *d : var_list) delete d;
   }
 
   void append_varlist(VarList *v) {
-    std::cout << "Add var in block!" << std::endl;
+    //std::cout << "Add var in block!" << std::endl;
     var_list.insert(var_list.begin(), v);
     sequence.insert(sequence.begin(), VARIABLE);
   }
   void append_fun(FuncBlock *f){
-    std::cout << "Add func in block!" << std::endl;
+    //std::cout << "Add func in block!" << std::endl;
     func_list.insert(func_list.begin(), f);
     sequence.insert(sequence.begin(), FUNCTION);
   }
 
   void append_decl(Decl *d) {
-    std::cout << "Add func decl in block!" << std::endl;
+    //std::cout << "Add func decl in block!" << std::endl;
     decl_list.insert(decl_list.begin(), d);
     sequence.insert(sequence.begin(), DECLARATION);
   }
@@ -444,10 +444,10 @@ public:
   }
   virtual void sem() override {
     lval = true;
-    std::cout << "searching in symbol table for entry " << var << std::endl;
+    //std::cout << "searching in symbol table for entry " << var << std::endl;
     SymbolEntry *e = lookupEntry(var,LOOKUP_CURRENT_SCOPE, false);
     if(e==NULL) {fatal("Id has not been declared");}
-    std::cout << "found it " << std::endl;
+    //std::cout << "found it " << std::endl;
     entry = e->entryType;
     if (entry == ENTRY_VARIABLE ) {
       type = e->u.eVariable.type;
@@ -578,8 +578,8 @@ public:
     if(expr->getType()->kind != TYPE_LIST) fatal("Operand is not a list");
     if(strcmp(op, "nil?") == 0) type = typeBoolean;
     else if(strcmp(op, "head") == 0) {
-      std::cout << expr->getType() << std::endl;
-      std::cout << typeList(typeAny) << std::endl;
+      //std::cout << expr->getType() << std::endl;
+      //std::cout << typeList(typeAny) << std::endl;
       if (isTypeAny(expr->getType()->refType)) fatal("Cannot apply head operator on empty list.");
       type = expr->getType()->refType;
      }
@@ -687,10 +687,10 @@ class ArrayItem: public Expr{
       if (!isTypeArray(atom->getType())) fatal("Non array type is not subscritable");
       if (atom->getStringExpr() == STRING) stringExpr = STRING_ITEM;
       else stringExpr = OTHER;
-      std::cout << "Type of atom " << atom->getType() << std::endl;
-      std::cout << "ref type of " << atom->getType()->refType << std::endl;
+      //std::cout << "Type of atom " << atom->getType() << std::endl;
+      //std::cout << "ref type of " << atom->getType()->refType << std::endl;
       type = atom->getType()->refType;
-      std :: cout << type << std::endl;
+      //std :: cout << type << std::endl;
       lval = true;
     }
   private:
@@ -797,8 +797,7 @@ class CallStmt: public Stmt{
         argsize++;
         args = args->u.eParameter.next;
       }
-      std::cout << "Arglist size is " << argsize << std::endl;
-      std::cout << "Exprlist size is " << exprsize<< std::endl;
+
       if (argsize != exprsize) {
         fatal("Expected %d arguments, but %d were given.", argsize, exprsize);
       }

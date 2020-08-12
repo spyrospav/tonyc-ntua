@@ -1,0 +1,14 @@
+<*
+ * Test case: simple-exit2.tony
+ * Result: Fail
+ *>
+
+def main() :
+  def int a (int b):
+    list[int] x
+    x := nil
+    exit
+  end
+  int b
+  b := a(2)
+end

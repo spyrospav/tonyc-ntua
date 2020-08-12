@@ -1,3 +1,8 @@
+<*
+ * Test case: simple-let.tony
+ * Result: Fail
+ *>
+
 def program():
   "a" := 1
-  end
+end

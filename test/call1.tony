@@ -1,6 +1,12 @@
+<*
+ * Test case: call1.tony
+ * Result: Pass
+ *>
+
 def program():
   def int x(int b):
     b := 1
+    return b
   end
   int a
   a := x(5)

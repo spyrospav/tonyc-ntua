@@ -1,0 +1,13 @@
+<*
+ * Test case: simple-exit1.tony
+ * Result: Pass
+ *>
+
+def main() :
+  def a (int b):
+    list[int] x
+    x := nil
+    exit
+  end
+  a(2)
+end

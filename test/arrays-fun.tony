@@ -1,19 +1,29 @@
+<*
+ * Test case: arrays-fun.tony
+ * Result: Pass
+ *>
+
 def p ():
 
       char s1, s2, s3
       int i1, i2
 
-      decl f (int x; char y)
+      decl int[][] f (int x; char y)
 
       def int pr (int p1, p2; bool p3):
          bool b1
          int i1
          def pipis (int pipos):
           char lol
+          lol := 'a'
          end
+         pipis(3)
+         return 3
       end
 
       def int[][] f (int x; char y):
+        skip
+        return new int[][10]
       end
-
+      skip
 end

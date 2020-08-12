@@ -1,3 +1,11 @@
+<*
+ * Test case: strings2.tony
+ * Result: Pass
+ *>
+
 def program():
-  "test"[0] := 2
+  char c
+  if "test"[0] = c:
+    puts("Equal")
+  end
 end

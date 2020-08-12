@@ -1,3 +1,8 @@
+<*
+ * Test case: simple.tony
+ * Result: Pass
+ *>
+
 def main ():
 
   def bsort (int n; int[] x):
@@ -20,7 +25,9 @@ def main ():
 
             changed := true
           end
-      end
+        end
     end
   end
-  end
+  int[] x
+  bsort(5, x)
+end

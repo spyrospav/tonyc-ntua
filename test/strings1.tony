@@ -1,3 +1,8 @@
+<*
+ * Test case: strings1.tony
+ * Result: Fail
+ *>
+
 def program():
   "test" := 1
 end

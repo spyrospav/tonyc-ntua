@@ -346,7 +346,7 @@ SymbolEntry * newFunction (const char * name)
     SymbolEntry * e = lookupEntry(name, LOOKUP_CURRENT_SCOPE, false);
 
     if (e == NULL) {
-      std::cout << " making entry " << name << std::endl;
+      //std::cout << " making entry " << name << std::endl;
         e = newEntry(name);
         if (e != NULL) {
 

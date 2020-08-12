@@ -1,3 +1,8 @@
+<*
+ * Test case: bubblesort.tony
+ * Result: Pass
+ *>
+
 def main ():
 
  def bsort (int n; int[] x):
