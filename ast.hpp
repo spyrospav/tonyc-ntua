@@ -183,7 +183,7 @@ public:
   virtual void sem() override {
     SymbolEntry * p;
     p = newFunction(name);
-    std::cout << " nestign level is " << p->nestingLevel << std::endl;
+    std::cout << " nestign level of function with name "<< name <<" is " << p->nestingLevel << std::endl;
     if (hdef == DECL) {
       forwardFunction(p);
     }
@@ -289,9 +289,9 @@ public:
 
   virtual void sem() override {
 
-    if (!isMain) {
+    //if (!isMain) {
       header->sem();
-    }
+  //  }
     std::cout << *header;
     printSymbolTable();
     int v = 0, f = 0, d = 0;
@@ -326,8 +326,7 @@ public:
     }
     if(header->getHeaderDef() == DEF && !existsReturn && !equalType(header->getHeaderType(), typeVoid)) {
       fatal("Non void function must have a return statement.");
-    }
-
+    }  
     closeScope();
     //printSymbolTable();
   }
@@ -467,6 +466,7 @@ public:
     }
     stringExpr = OTHER;
   }
+
 
 private:
   const char * var;
@@ -728,7 +728,7 @@ public:
     if (entry != ENTRY_FUNCTION) {
       fatal("Object %s is not callable", id->getIdName());
     }
-    //SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_CURRENT_SCOPE, false);
+    SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_CURRENT_SCOPE, false);
     if (p->u.eFunction.isForward) fatal("Function needs to be defined before calling it.");
     type = p->u.eFunction.resultType;
     if (equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression should not be of type Void.");
@@ -792,7 +792,7 @@ class CallStmt: public Stmt{
       if (entry != ENTRY_FUNCTION) {
         fatal("Object %s is not callable", id->getIdName());
       }
-      //SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_CURRENT_SCOPE, false);
+      SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_CURRENT_SCOPE, false);
       if (p->u.eFunction.isForward) fatal("Function needs to be defined before calling it.");
       if (!equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression must of type Void.");
 
