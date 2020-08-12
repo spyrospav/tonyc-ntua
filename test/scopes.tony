@@ -1,0 +1,14 @@
+<*
+ * Test case: scopes.tony
+ * Result: Pass
+ *>
+ def program():
+  int a
+  def fun1(int b, c):
+    skip
+  end
+  def fun2(int d):
+    fun1(2,3)
+  end
+  fun2(10)
+end

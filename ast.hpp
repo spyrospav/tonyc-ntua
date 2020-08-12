@@ -290,6 +290,8 @@ public:
 
   virtual void sem() override {
     if (!isMain) header->sem();
+    std::cout << *header;
+    printSymbolTable();
     int v = 0, f = 0, d = 0;
     bool existsReturn = false;
     for (std::vector<DefType>::iterator it = sequence.begin(); it < sequence.end(); it++){
@@ -444,10 +446,10 @@ public:
   }
   virtual void sem() override {
     lval = true;
-    //std::cout << "searching in symbol table for entry " << var << std::endl;
+    std::cout << "searching in symbol table for entry " << var << std::endl;
     SymbolEntry *e = lookupEntry(var,LOOKUP_CURRENT_SCOPE, false);
     if(e==NULL) {fatal("Id has not been declared");}
-    //std::cout << "found it " << std::endl;
+    std::cout << "found it " << std::endl;
     entry = e->entryType;
     if (entry == ENTRY_VARIABLE ) {
       type = e->u.eVariable.type;
@@ -803,8 +805,11 @@ class CallStmt: public Stmt{
       }
 
       int i = 0;
+      ExprList reversed = *exprlist;
+      std::reverse(reversed.begin(), reversed.end());
+
       args = p->u.eFunction.firstArgument;
-      for (Expr *expr: *exprlist) {
+      for (Expr *expr: reversed) {
         expr->sem();
         if (!equalType(expr->getType(), args->u.eParameter.type)){
           fatal("Wrong parameter type at position %d.", i);
