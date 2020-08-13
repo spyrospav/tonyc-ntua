@@ -1,0 +1,10 @@
+<*
+ * Test case: vars1.tony
+ * Resutl: Fail
+ *>
+
+def main () :
+  if a = 1:
+    skip
+  end
+end

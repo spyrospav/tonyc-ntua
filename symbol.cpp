@@ -531,7 +531,7 @@ SymbolEntry * lookupEntry (const char * name, LookupType type, bool err)
 {
     unsigned int  hashValue = PJW_hash(name) % hashTableSize;
     SymbolEntry * e         = hashTable[hashValue];
-
+    std::cout << "Current scope nesting level: " << currentScope->nestingLevel << std::endl;
     switch (type) {
         case LOOKUP_CURRENT_SCOPE:
             while (e != NULL && e->nestingLevel == currentScope->nestingLevel)
@@ -743,6 +743,7 @@ void printSymbolTable ()
         printf("no scope\n");
     else
         while (scp != NULL) {
+            printf("Scope nesting level %d\n", scp->nestingLevel);
             printf("scope: ");
             e = scp->entries;
             while (e != NULL) {

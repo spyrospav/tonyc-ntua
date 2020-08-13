@@ -183,12 +183,12 @@ public:
   virtual void sem() override {
     SymbolEntry * p;
     p = newFunction(name);
-    std::cout << " nestign level of function with name "<< name <<" is " << p->nestingLevel << std::endl;
     if (hdef == DECL) {
       forwardFunction(p);
     }
     openScope();
-    //printSymbolTable();
+    std::cout << " nestign level of function with name "<< name <<" is " << p->nestingLevel << std::endl;
+    printSymbolTable();
     for (Arg *a: *arg_list) { a->sem(p); }
     endFunctionHeader(p, type);
   }
@@ -289,9 +289,9 @@ public:
 
   virtual void sem() override {
 
-    //if (!isMain) {
+    if (!isMain) {
       header->sem();
-  //  }
+    }
     std::cout << *header;
     printSymbolTable();
     int v = 0, f = 0, d = 0;
@@ -310,7 +310,6 @@ public:
         d++;
       }
     }
-    printSymbolTable();
 
     if (stmt_list != NULL) {
       for (Stmt *stmt : *stmt_list) {
@@ -326,9 +325,10 @@ public:
     }
     if(header->getHeaderDef() == DEF && !existsReturn && !equalType(header->getHeaderType(), typeVoid)) {
       fatal("Non void function must have a return statement.");
-    }  
+    }
+    printSymbolTable();
     closeScope();
-    //printSymbolTable();
+    printSymbolTable();
   }
 
 private:
