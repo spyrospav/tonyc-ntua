@@ -58,7 +58,7 @@ E \\(n|t|r|0|\'|\"|\\|x{H}{H})
 {L}({L}|{D}|_|\?)* {  yylval.var = strdup(yytext); return T_id; }
 {D}+    { yylval.num = atoi(yytext); return T_int_const; }
 
-\'([^\'\"\\]|{E})\' { yylval.char_const = yytext[1];  return T_char_const; }
+\'([^\'\"\\]|{E})\' { yylval.char_const = yytext[1];   return T_char_const; }
 \"([^\n\'\"\\]|{E})*\" { yylval.string_const = strdup(yytext);  return T_string_const; }
 
 [\,\;\:] { return yytext[0]; }

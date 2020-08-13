@@ -44,21 +44,30 @@ bool first = true;
 %token<char_const> T_char_const
 %token<string_const> T_string_const
 
+%token T_plus_sign   "+"
+%token T_minus_sign  "-"
+
+
+
+%left<op>               T_or
 %left<op>               T_and
 %nonassoc<op>           T_not
-%left<op>               T_or
-
-%left<op>               '*'
-%left<op>               '/'
+%nonassoc<op>           T_geq
+%nonassoc<op>           T_leq
+%nonassoc<op>           '>'
+%nonassoc<op>           '<'
+%nonassoc<op>           '='
+%nonassoc<op>           T_neq
+%right<op>              '#'
 %left<op>               '+'
 %left<op>               '-'
-%right<op>              '#'
+%left<op>               '*'
+%left<op>               '/'
 %left<op> T_mod         "mod"
+%nonassoc<op> T_plus_sign
+%nonassoc<op> T_minus_sign
 
-%nonassoc<op>           T_assign
-%nonassoc<op>           T_neq
-%nonassoc<op>           T_leq
-%nonassoc<op>           T_geq
+
 
 %union {
   FuncBlock *funcblock;
@@ -99,6 +108,7 @@ bool first = true;
 %type<callexpr> call-expr
 %type<stmtlist> stmt-list-plus simple-list simple-list-plus else-stmt
 %type<ifpairlist> elif-stmt
+
 
 
 %%
@@ -233,13 +243,28 @@ expr:
   | T_int_const { $$ = new IntConst($1); }
   | T_char_const { $$ = new CharConst($1); }
   | '(' expr ')' { $$ = $2; }
-  | sign expr { $$ = new UnOp($1, $2); }
-  | expr math-op expr { $$ = new BinOp($1, $2, $3); }
-  | expr comp-op expr { $$ = new BinOp($1, $2, $3); }
+//  | sign expr { $$ = new UnOp($1, $2); }
+  | '+' expr %prec T_plus_sign { $$ = new UnOp($1, $2); }
+  | '-' expr %prec T_minus_sign { $$ = new UnOp($1, $2); }
+//  | expr math-op expr { $$ = new BinOp($1, $2, $3); }
+  | expr '+' expr { $$ = new BinOp($1, $2, $3); }
+  | expr '-' expr { $$ = new BinOp($1, $2, $3); }
+  | expr '*' expr { $$ = new BinOp($1, $2, $3); }
+  | expr '/' expr { $$ = new BinOp($1, $2, $3); }
+  | expr T_mod expr { $$ = new BinOp($1, $2, $3); }
   | "true" { $$ = new BoolConst($1); }
   | "false" { $$ = new BoolConst($1); }
+  /* | expr logic-op expr { $$ = new BinOp($1, $2, $3);} */
   | "not" expr {$$ = new UnOp($1, $2); }
-  | expr logic-op expr { $$ = new BinOp($1, $2, $3); }
+  | expr "and" expr { $$ = new BinOp($1, $2, $3); }
+  | expr "or" expr { $$ = new BinOp($1, $2, $3); }
+  /* | expr comp-op expr { $$ = new BinOp($1, $2, $3); } */
+  | expr '=' expr { $$ = new BinOp($1, $2, $3); }
+  | expr ">=" expr { $$ = new BinOp($1, $2, $3); }
+  | expr "<=" expr { $$ = new BinOp($1, $2, $3); }
+  | expr '>' expr { $$ = new BinOp($1, $2, $3); }
+  | expr '<' expr { $$ = new BinOp($1, $2, $3); }
+  | expr "<>" expr { $$ = new BinOp($1, $2, $3); }
   | "new" type '[' expr ']' { $$ = new Array($2, $4); }
   | "nil" { $$ = new Nil(); }
   | "nil?" '(' expr ')' { $$ = new ListUnOp("nil?", $3); }
@@ -249,8 +274,10 @@ expr:
 ;
 
 sign:
-    '+' { }
-  | '-' { }
+    /* '+' {}
+  | '-' {} */
+    T_plus_sign { }
+  | T_minus_sign { }
 ;
 
 math-op:
@@ -263,7 +290,7 @@ math-op:
 
 comp-op:
     '='   { }
-  | "<>"  { }
+  | "<>"  { std::cout << " this is it " << std::endl; }
   | '>'   { }
   | '<'   { }
   | ">="  { }

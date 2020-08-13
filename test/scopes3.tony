@@ -1,0 +1,19 @@
+<*
+ * Test case: scopes3.tony
+ * Result: Fail
+ *>
+
+def program():
+  int a
+  def fun1(int b, c):
+    int b
+    def fun2(int dd):
+      int cc
+      b := 10
+      fun1(10,10)
+      skip
+    end
+    skip
+  end
+  skip
+end

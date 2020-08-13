@@ -507,6 +507,9 @@ public:
   virtual void sem() override {
     lval = false;
     if (!strcmp(op, "+") || !strcmp(op, "-") || !strcmp(op, "*") || !strcmp(op, "/") || !strcmp(op, "mod")){
+      left->sem();
+      right->sem();
+      std::cout << " left operand " << *left << " operator " << op << " right operand " << *right << std::endl;
       left->type_check(typeInteger);
       right->type_check(typeInteger);
       type = typeInteger;
@@ -514,11 +517,16 @@ public:
     else if (!strcmp(op, "=") || !strcmp(op, "<>") || !strcmp(op, "<") || !strcmp(op, ">") || !strcmp(op, "<=") || !strcmp(op, ">=")){
       left->sem();
       right->sem();
+      std::cout << " left operand " << *left << " operator " << op << " right operand " << *right << std::endl;
       if (!equalType(left->getType() , right->getType()) || !isBasicType(left->getType()) || !isBasicType(right->getType()))
         fatal("Operands must be an instance of same basic types");
       type = typeBoolean;
     }
     else if (!strcmp(op, "and") || !strcmp(op, "or")){
+      left->sem();
+      right->sem();
+      std::cout << " left operand " << *left << " operator " << op << " right operand " << *right << std::endl;
+      std::cout << " with types " << left->getType() << ", " << right->getType() << std::endl;
       left->type_check(typeBoolean);
       right->type_check(typeBoolean);
       type = typeBoolean;
@@ -966,6 +974,7 @@ public:
     out << "Return expression " << *returnExpr << std::endl;
   }
   virtual void sem() override {
+    std::cout << "We returning" << std::endl;
     setStmtType(RETURN);
     returnExpr->sem();
     returnType = returnExpr->getType();
