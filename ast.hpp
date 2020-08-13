@@ -543,7 +543,7 @@ public:
 
   virtual void sem() override {
     lval = false;
-    if (!strcmp(op, "=") || !strcmp(op, "-")) {
+    if (!strcmp(op, "+") || !strcmp(op, "-")) {
       expr->type_check(typeInteger);
       type = typeInteger;
     }
