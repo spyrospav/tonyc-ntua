@@ -826,21 +826,18 @@ void StandardLibraryInit() {
   //decl int geti (int n)
   p = newFunction("geti");
   openScope();
-  newParameter("n", typeInteger, PASS_BY_VALUE, p);
   endFunctionHeader(p, typeInteger);
   closeScope();
 
   //decl bool getb (bool b)
   p = newFunction("getb");
   openScope();
-  newParameter("b", typeBoolean, PASS_BY_VALUE, p);
   endFunctionHeader(p, typeBoolean);
   closeScope();
 
   //decl char getc (char c)
   p = newFunction("getc");
   openScope();
-  newParameter("c", typeChar, PASS_BY_VALUE, p);
   endFunctionHeader(p, typeChar);
   closeScope();
 

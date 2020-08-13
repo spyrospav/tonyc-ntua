@@ -187,7 +187,7 @@ public:
       forwardFunction(p);
     }
     openScope();
-    printSymbolTable();
+    //printSymbolTable();
     for (Arg *a: *arg_list) { a->sem(p); }
     endFunctionHeader(p, type);
   }
@@ -440,7 +440,6 @@ public:
   }
   virtual void sem() override {
     lval = true;
-    printSymbolTable();
     SymbolEntry *e = lookupEntry(var,LOOKUP_ALL_SCOPES, false);
     if (e==NULL) { fatal("Id has not been declared"); }
     entry = e->entryType;
@@ -507,9 +506,6 @@ public:
   virtual void sem() override {
     lval = false;
     if (!strcmp(op, "+") || !strcmp(op, "-") || !strcmp(op, "*") || !strcmp(op, "/") || !strcmp(op, "mod")){
-      left->sem();
-      right->sem();
-      std::cout << " left operand " << *left << " operator " << op << " right operand " << *right << std::endl;
       left->type_check(typeInteger);
       right->type_check(typeInteger);
       type = typeInteger;
@@ -517,16 +513,11 @@ public:
     else if (!strcmp(op, "=") || !strcmp(op, "<>") || !strcmp(op, "<") || !strcmp(op, ">") || !strcmp(op, "<=") || !strcmp(op, ">=")){
       left->sem();
       right->sem();
-      std::cout << " left operand " << *left << " operator " << op << " right operand " << *right << std::endl;
       if (!equalType(left->getType() , right->getType()) || !isBasicType(left->getType()) || !isBasicType(right->getType()))
         fatal("Operands must be an instance of same basic types");
       type = typeBoolean;
     }
     else if (!strcmp(op, "and") || !strcmp(op, "or")){
-      left->sem();
-      right->sem();
-      std::cout << " left operand " << *left << " operator " << op << " right operand " << *right << std::endl;
-      std::cout << " with types " << left->getType() << ", " << right->getType() << std::endl;
       left->type_check(typeBoolean);
       right->type_check(typeBoolean);
       type = typeBoolean;
@@ -720,19 +711,24 @@ public:
   }
   virtual void sem() override {
     lval = false;
+
     id->sem();
     EntryType entry = id->getEntryType();
     if (entry != ENTRY_FUNCTION) {
       fatal("Object %s is not callable", id->getIdName());
     }
+
     SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_ALL_SCOPES, false);
     if (p->u.eFunction.isForward) fatal("Function needs to be defined before calling it.");
     type = p->u.eFunction.resultType;
     if (equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression should not be of type Void.");
 
     SymbolEntry *args = p->u.eFunction.firstArgument;
-    int exprsize = exprlist->size();
-    int argsize = 0 ;
+
+    int exprsize;
+    if (exprlist == NULL) exprsize = 0;
+    else exprsize = exprlist->size();
+    int argsize = 0;
 
     while (args != NULL) {
       argsize++;
@@ -743,18 +739,19 @@ public:
       fatal("Expected %d arguments, but %d were given.", argsize, exprsize);
     }
 
-    int i = 0;
-    ExprList reversed = *exprlist;
-    std::reverse(reversed.begin(), reversed.end());
-
-    args = p->u.eFunction.firstArgument;
-    for (Expr *expr: reversed) {
-      expr->sem();
-      if (!equalType(expr->getType(), args->u.eParameter.type)){
-        fatal("Wrong parameter type at position %d", i);
+    if (exprsize){
+      int i = 0;
+      ExprList reversed = *exprlist;
+      std::reverse(reversed.begin(), reversed.end());
+      args = p->u.eFunction.firstArgument;
+      for (Expr *expr: reversed) {
+        expr->sem();
+        if (!equalType(expr->getType(), args->u.eParameter.type)){
+          fatal("Wrong parameter type at position %d", i);
+        }
+        args = args->u.eParameter.next;
+        i++;
       }
-      args = args->u.eParameter.next;
-      i++;
     }
   }
 private:
@@ -795,7 +792,9 @@ class CallStmt: public Stmt{
 
       SymbolEntry *args = p->u.eFunction.firstArgument;
       int argsize = 0 ;
-      int exprsize = exprlist->size();
+      int exprsize;
+      if (exprlist == NULL) exprsize = 0;
+      else exprsize = exprlist->size();
 
       while (args != NULL) {
         argsize++;
@@ -805,19 +804,20 @@ class CallStmt: public Stmt{
       if (argsize != exprsize) {
         fatal("Expected %d arguments, but %d were given.", argsize, exprsize);
       }
+      if (exprsize) {
+        int i = 0;
+        ExprList reversed = *exprlist;
+        std::reverse(reversed.begin(), reversed.end());
 
-      int i = 0;
-      ExprList reversed = *exprlist;
-      std::reverse(reversed.begin(), reversed.end());
-
-      args = p->u.eFunction.firstArgument;
-      for (Expr *expr: reversed) {
-        expr->sem();
-        if (!equalType(expr->getType(), args->u.eParameter.type)){
-          fatal("Wrong parameter type at position %d.", i);
+        args = p->u.eFunction.firstArgument;
+        for (Expr *expr: reversed) {
+          expr->sem();
+          if (!equalType(expr->getType(), args->u.eParameter.type)){
+            fatal("Wrong parameter type at position %d.", i);
+          }
+          args = args->u.eParameter.next;
+          i++;
         }
-        args = args->u.eParameter.next;
-        i++;
       }
     }
   private:
@@ -974,7 +974,6 @@ public:
     out << "Return expression " << *returnExpr << std::endl;
   }
   virtual void sem() override {
-    std::cout << "We returning" << std::endl;
     setStmtType(RETURN);
     returnExpr->sem();
     returnType = returnExpr->getType();

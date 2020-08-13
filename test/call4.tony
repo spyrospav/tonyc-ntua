@@ -1,0 +1,11 @@
+<*
+ * Test case: call4.tony
+ * Result: Pass
+ *>
+
+def program () :
+  def call ():
+    skip
+  end
+  call()
+end
