@@ -1,14 +1,17 @@
 <*
- * Test case: scopes.tony
- * Result: Pass
+ * Test case: scopes2.tony
+ * Result: Fail
  *>
- def program():
+
+def program():
   int a
   def fun1(int b, c):
+    int b
     skip
   end
   def fun2(int d):
     fun1(2,3)
+    b := 42
   end
   fun2(10)
 end

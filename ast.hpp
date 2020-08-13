@@ -187,7 +187,6 @@ public:
       forwardFunction(p);
     }
     openScope();
-    std::cout << " nestign level of function with name "<< name <<" is " << p->nestingLevel << std::endl;
     printSymbolTable();
     for (Arg *a: *arg_list) { a->sem(p); }
     endFunctionHeader(p, type);
@@ -229,18 +228,15 @@ public:
   }
 
   void append_varlist(VarList *v) {
-    //std::cout << "Add var in block!" << std::endl;
     var_list.insert(var_list.begin(), v);
     sequence.insert(sequence.begin(), VARIABLE);
   }
   void append_fun(FuncBlock *f){
-    //std::cout << "Add func in block!" << std::endl;
     func_list.insert(func_list.begin(), f);
     sequence.insert(sequence.begin(), FUNCTION);
   }
 
   void append_decl(Decl *d) {
-    //std::cout << "Add func decl in block!" << std::endl;
     decl_list.insert(decl_list.begin(), d);
     sequence.insert(sequence.begin(), DECLARATION);
   }
@@ -270,25 +266,21 @@ public:
     out << "Block(" << std::endl;
     out << *header;
     bool first = true;
-    std::cout << "before vars" << std::endl;
     for (VarList *d : var_list) {
       if (!first) out << ", ";
       first = false;
       out <<  std::endl << *d;
     }
-    std::cout << "after vars" << std::endl;
     out << std::endl;
     if (stmt_list != NULL) {
       for (Stmt *stmt: *stmt_list) {
         out << *stmt;
       }
     }
-    std::cout << "after stmt" << std::endl;
     out << ")";
   }
 
   virtual void sem() override {
-
     if (!isMain) {
       header->sem();
     }
@@ -328,7 +320,6 @@ public:
     }
     printSymbolTable();
     closeScope();
-    printSymbolTable();
   }
 
 private:
@@ -450,10 +441,8 @@ public:
   virtual void sem() override {
     lval = true;
     printSymbolTable();
-    std::cout << "searching in symbol table for entry " << var << std::endl;
-    SymbolEntry *e = lookupEntry(var,LOOKUP_CURRENT_SCOPE, false);
-    if(e==NULL) {fatal("Id has not been declared");}
-    std::cout << "found it " << std::endl;
+    SymbolEntry *e = lookupEntry(var,LOOKUP_ALL_SCOPES, false);
+    if (e==NULL) { fatal("Id has not been declared"); }
     entry = e->entryType;
     if (entry == ENTRY_VARIABLE ) {
       type = e->u.eVariable.type;
@@ -728,7 +717,7 @@ public:
     if (entry != ENTRY_FUNCTION) {
       fatal("Object %s is not callable", id->getIdName());
     }
-    SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_CURRENT_SCOPE, false);
+    SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_ALL_SCOPES, false);
     if (p->u.eFunction.isForward) fatal("Function needs to be defined before calling it.");
     type = p->u.eFunction.resultType;
     if (equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression should not be of type Void.");
@@ -792,7 +781,7 @@ class CallStmt: public Stmt{
       if (entry != ENTRY_FUNCTION) {
         fatal("Object %s is not callable", id->getIdName());
       }
-      SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_CURRENT_SCOPE, false);
+      SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_ALL_SCOPES, false);
       if (p->u.eFunction.isForward) fatal("Function needs to be defined before calling it.");
       if (!equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression must of type Void.");
 

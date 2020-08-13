@@ -106,7 +106,7 @@ bool first = true;
 
 program:
   { initSymbolTable(2048); openScope(); printSymbolTable(); StandardLibraryInit(); }
-    func-def { $2->setMain();  $2->sem();  closeScope(); }
+    func-def { $2->setMain();  $2->sem(); }
 ;
 
 func-def:
