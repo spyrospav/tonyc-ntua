@@ -5,7 +5,6 @@
 #include "ast.hpp"
 #include "symbol.h"
 
-bool first = true;
 %}
 
 
@@ -158,7 +157,7 @@ id-list:
 ;
 
 stmt-list-plus:
-    stmt { $$ = new StmtList(); $$->push_back($1); }
+    stmt { $$ = new StmtList(); $$->insert($$->begin(), $1); }
   | stmt stmt-list-plus { $2->insert($2->begin(), $1); $$ = $2; }
 ;
 
@@ -236,9 +235,9 @@ expr:
   | expr '*' expr { $$ = new BinOp($1, $2, $3); }
   | expr '/' expr { $$ = new BinOp($1, $2, $3); }
   | expr T_mod expr { $$ = new BinOp($1, $2, $3); }
-  | "true" { $$ = new BoolConst($1); }
-  | "false" { $$ = new BoolConst($1); }
-  | "not" expr {$$ = new UnOp($1, $2); }
+  | "true" { $$ = new BoolConst("true"); }
+  | "false" { $$ = new BoolConst("false"); }
+  | T_not expr {$$ = new UnOp("not", $2); }
   | expr "and" expr { $$ = new BinOp($1, $2, $3); }
   | expr "or" expr { $$ = new BinOp($1, $2, $3); }
   | expr '=' expr { $$ = new BinOp($1, $2, $3); }

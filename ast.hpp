@@ -56,7 +56,8 @@ inline std::ostream& operator<<(std::ostream &out, Type t) {
 enum StmtType{
   SIMPLE_STMT,
   RETURN,
-  EXIT
+  EXIT,
+  COND_RETURN
 };
 
 enum StringExpr{
@@ -241,6 +242,8 @@ public:
     sequence.insert(sequence.begin(), DECLARATION);
   }
 
+  void append_stmtlist(StmtList *stmtl) { stmt_list = stmtl; }
+
   void assignHeader(Header *h) {
     header = h;
   }
@@ -260,7 +263,6 @@ public:
       fatal("Main function should not have arguments");
     }
   }
-  void append_stmtlist(StmtList *stmtl) { stmt_list = stmtl; }
 
   virtual void printOn(std::ostream &out) const override {
     out << "Block(" << std::endl;
@@ -281,10 +283,11 @@ public:
   }
 
   virtual void sem() override {
+
     if (!isMain) {
       header->sem();
     }
-    std::cout << *header;
+
     printSymbolTable();
     int v = 0, f = 0, d = 0;
     bool existsReturn = false;
@@ -308,16 +311,18 @@ public:
         stmt->sem();
         if(stmt->getStmtType() == EXIT && header->getHeaderType() != typeVoid)
           fatal("Exit can only be used inside void function blocks");
-        if(stmt->getStmtType() == RETURN){
+        if(stmt->getStmtType() == RETURN || stmt->getStmtType() == COND_RETURN){
           existsReturn = true;
           if(!equalType(header->getHeaderType(), stmt->getReturnType()))
             fatal("Return type does not match function type");
         }
       }
     }
+
     if(header->getHeaderDef() == DEF && !existsReturn && !equalType(header->getHeaderType(), typeVoid)) {
       fatal("Non void function must have a return statement.");
     }
+
     printSymbolTable();
     closeScope();
   }
@@ -338,7 +343,7 @@ private:
 class Expr : public AST {
   public:
     //virtual void compile() const = 0; UNCOMMENT WHEN COMPILE IS IMPLEMENTED ON other classes
-    void type_check(Type t) { //
+    void type_check(Type t) {
       sem();
       if (!equalType(type, t))
         fatal("Type mismatch");
@@ -543,21 +548,21 @@ public:
 
   virtual void sem() override {
     lval = false;
-    if (!strcmp(op, "+") || !strcmp(op, "-")) {
+    if ((strcmp(op, "+") == 0) || (strcmp(op, "-") == 0)) {
       expr->type_check(typeInteger);
       type = typeInteger;
     }
-    else if (!strcmp(op, "not")) {
+    else if ((strcmp(op, "not") == 0)) {
       expr->type_check(typeBoolean);
-      type=typeBoolean;
+      type = typeBoolean;
     }
+    else std::cout << "Aliens." << std::endl;
     stringExpr = OTHER;
   }
 
 private:
   const char *op; //operators can be multi-character
   Expr *expr;
-  Type type;
 };
 
 class ListUnOp: public Expr {
@@ -565,7 +570,7 @@ public:
   ListUnOp(const char *o, Expr *e) : expr(e), op(o) {}
   ~ListUnOp() {}
   virtual void printOn(std::ostream &out) const override {
-    out << "Unary list operator( " << op << "( " << *expr << " ) " << std::endl;
+    out << "Unary list operator(" << op << "(" << *expr << "))" << std::endl;
   }
   virtual void sem() override {
     lval = false;
@@ -573,8 +578,6 @@ public:
     if(expr->getType()->kind != TYPE_LIST) fatal("Operand is not a list");
     if(strcmp(op, "nil?") == 0) type = typeBoolean;
     else if(strcmp(op, "head") == 0) {
-      //std::cout << expr->getType() << std::endl;
-      //std::cout << typeList(typeAny) << std::endl;
       if (isTypeAny(expr->getType()->refType)) fatal("Cannot apply head operator on empty list.");
       type = expr->getType()->refType;
      }
@@ -786,6 +789,7 @@ class CallStmt: public Stmt{
       if (entry != ENTRY_FUNCTION) {
         fatal("Object %s is not callable", id->getIdName());
       }
+
       SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_ALL_SCOPES, false);
       if (p->u.eFunction.isForward) fatal("Function needs to be defined before calling it.");
       if (!equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression must of type Void.");
@@ -804,6 +808,7 @@ class CallStmt: public Stmt{
       if (argsize != exprsize) {
         fatal("Expected %d arguments, but %d were given.", argsize, exprsize);
       }
+
       if (exprsize) {
         int i = 0;
         ExprList reversed = *exprlist;
@@ -865,12 +870,10 @@ public:
   virtual void sem() override {
       setStmtType(SIMPLE_STMT);
       for (Stmt *s: *init_list) s->sem();
-      terminate_expr->sem();
+      terminate_expr->type_check(typeBoolean);
       for (Stmt *s: *next_list) s->sem();
-      for (Stmt *s: *stmt_list) s->sem();
-
-      if (!equalType(terminate_expr->getType(),typeBoolean)) {
-        fatal("Terminate expression in for loop should be of type Bool");
+      for (Stmt *s: *stmt_list) {
+        s->sem();
       }
   }
 

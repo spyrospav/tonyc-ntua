@@ -30,19 +30,19 @@ def main ():
           for more := false; not nil?(l); l := tail(l), more := true:
             if more: puts(", ") end
             puti(head(l))
-            end
-            puts("\n")
+          end
+          puts("\n")
       end
 
       int seed, i
       list[int] l
 
-       seed := 65
-       for i := 0, l := nil; i < 16; i := i+1:
-         seed := (seed * 137 + 220 + i) mod 101
-         l := seed # l
-    end
-    writeList("Initial list: ", l)
-    l := qsort(l)
-    writeList("Sorted list: ", l)
+      seed := 65
+      for i := 0, l := nil; i < 16; i := i+1:
+        seed := (seed * 137 + 220 + i) mod 101
+        l := seed # l
+      end
+      writeList("Initial list: ", l)
+      l := qsort(l)
+      writeList("Sorted list: ", l)
  end
