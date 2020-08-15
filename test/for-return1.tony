@@ -1,0 +1,24 @@
+<*
+ * Test case: for-return1.tony
+ * Result: Pass
+ *>
+
+def program():
+  int a
+  bool b
+  def bool fun1(int a):
+    int i
+    i := 0
+    for skip; true; skip:
+      if i > 1:
+        return true
+      elsif i < -10:
+        return false
+      else:
+        return true
+      end
+    end
+  end
+  a := 5
+  b := fun1(a)
+end

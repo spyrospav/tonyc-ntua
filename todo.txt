@@ -1,20 +1,36 @@
-Block:{
-Func-def{
+Func block checks for returns/exits:
 
-}
-Var-def{
+  -- void function
+    -> no returns allowed
+      -> check if stmt has return (may be nested)
+    -> may or may not have exit
 
-}
-Func-def{
+  -- non-void function
+    -> no exits allowed
+      -> check if stmt has exits (may be nested)
+    -> must have return of same type
+      -> check if stmt has return (may be nested)
 
-}
-Var-def{
+setReturnType:
 
-}
-Stmt-list{
+    -> stmtReturnType == type if we have return
+    -> by default == typeVoid
 
-}
-private:
-  std::vector <Block *> funclist;
-  std::vector <Varlist *> varlist;
-}
+
+check if stmt has exit/return:
+
+    -- bool checkforreturns : true if stmt has return(s), false otherwise
+      -> check if stmt == RETURN -> true, setReturnType == returnType of return
+      -> if stmt is not return, then we must have some behavior for every class (If, For,)
+          If: stmt->checkForReturns(), returnType of If = stmt->getReturnType
+
+
+
+if kati:
+  if kati:
+    skip
+    skip
+    return int -> returntype = typeInteger, setReturnType(getReturnType(stmt))
+    return char ->
+  else katiallo:
+    return bool

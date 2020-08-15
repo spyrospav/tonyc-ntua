@@ -1,0 +1,22 @@
+<*
+ * Test case: if-exit1.tony
+ * Result: Pass
+ *>
+
+ def program ():
+   def opposite_sign? (int a, b):
+     if a < 0:
+       if b > 0:
+         puts("True\n")
+         exit
+       end
+     elsif a > 0:
+       if b < 0:
+         puts("True\n")
+         exit
+       end
+     end
+     puts("False\n")
+   end
+   opposite_sign?(1,-1)
+ end

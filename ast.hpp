@@ -192,16 +192,20 @@ private:
 
 class Stmt: public AST {
   public:
-    virtual Type getReturnType() { return typeVoid; }
+    virtual Type getReturnType() { return returntype; }
+    virtual Type setReturnType(Type t) { returntype = t; }
+    virtual bool checkForExits() { return (this->getStmtType() == EXIT); }
     void setStmtType(StmtType s) { stmttype = s; }
     StmtType getStmtType() { return stmttype; }
-    virtual bool checkForReturns() {return (this->getStmtType() == RETURN);}
+    virtual bool checkForReturns() { return (this->getStmtType() == RETURN); }
     virtual void checkReturnType(Header *header) {
       if(!equalType(header->getHeaderType(), this->getReturnType()))
         fatal("Return type does not match function type");
     }
+
   private:
     StmtType stmttype;
+    Type returntype;
 };
 
 typedef std::vector<Stmt *> StmtList;
@@ -318,11 +322,11 @@ public:
     if (stmt_list != NULL) {
       for (Stmt *stmt : *stmt_list) {
         stmt->sem();
-        std::cout << "after sem" << std::endl;
-        std::cout << *stmt;
-        if(stmt->getStmtType() == EXIT && header->getHeaderType() != typeVoid)
-          fatal("Exit can only be used inside void function blocks");
+
         if(stmt->checkForReturns()){
+
+          if(stmt->checkForExits() && header->getHeaderType() != typeVoid)
+            fatal("Exit can only be used inside void function blocks");
           std::cout << "statement " << *stmt << " has checkReturn() " << std::endl;
           existsReturn = true;
           std::cout << "header type = " << header->getHeaderType() << " return type = " << stmt->getReturnType() <<std::endl;
@@ -330,6 +334,8 @@ public:
         }
       }
     }
+
+
 
     if(header->getHeaderDef() == DEF && !existsReturn && !equalType(header->getHeaderType(), typeVoid)) {
       fatal("Non void function must have a return statement.");
@@ -879,6 +885,35 @@ public:
     out << ")";
   }
 
+  bool checkForExits() override {
+
+    bool exitExists = false;
+    for (Stmt *s: *stmt_list) {
+      if(s->checkForExits()) {
+        exitExists = true;
+       }
+    }
+
+    return exitExists;
+  }
+
+  bool checkForReturns() override  {
+
+     bool oneList = false;
+     Type temp = typeVoid;
+
+     for (Stmt *s: *stmt_list) {
+       if(s->checkForReturns()) {
+          setReturnType(s->getReturnType());
+          if (!oneList) temp = s->getReturnType();
+          else { if( !equalType(temp, s->getReturnType()) ) fatal("For statements cannot have returns of different types."); }
+          oneList = true;
+        }
+     }
+
+     return oneList;
+  }
+
   virtual void sem() override {
       setStmtType(SIMPLE_STMT);
       for (Stmt *s: *init_list) s->sem();
@@ -912,47 +947,65 @@ public:
     full_list->clear();
   }
 
-  void checkReturnType(Header *header) {
-    Type t, header_t = header->getHeaderType();
+  bool checkForExits() override {
 
+    bool exitExists = false;
     for (IfPair cond_st: *full_list) {
       for (Stmt *s: *cond_st.second) {
-        if(s->checkForReturns()) {
-          t = s->getReturnType();
-          break;
-        }
+        if(s->checkForExits()) {
+           exitExists = true;
+         }
       }
-      if(!equalType(t, header_t))
-        fatal("Return type does not match function type");
     }
     for (Stmt *s: *s_last) {
-      if(!equalType(t, header_t))
-        fatal("Return type does not match function type");
+      if(s->checkForExits()) {
+        exitExists = true;
+       }
     }
+
+    return exitExists;
   }
+
   bool checkForReturns() override  {
-    //
-   bool atLeastOneInList = false, everyOne = true, oneList = false; ;
-   for (IfPair cond_st: *full_list) {
-     atLeastOneInList = false;
-     for (Stmt *s: *cond_st.second) {
-       std::cout << "hello " << std::endl;
-       if(s->checkForReturns()) {atLeastOneInList = true; oneList = true;}
+
+     bool atLeastOneInList = false, everyOne = true, oneList = false;
+     Type temp = typeVoid;
+     for (IfPair cond_st: *full_list) {
+       atLeastOneInList = false;
+       for (Stmt *s: *cond_st.second) {
+         std::cout << "hello " << std::endl;
+         if(s->checkForReturns()) {
+            setReturnType(s->getReturnType());
+            if (!oneList) temp = s->getReturnType();
+            else { if(!equalType(temp, s->getReturnType())) fatal("If statements cannot have returns of different types."); }
+            oneList = true;
+            atLeastOneInList = true;
+          }
+       }
+       if(!atLeastOneInList) everyOne = false;
+     }
+     for (Stmt *s: *s_last) {
+       atLeastOneInList = false;
+       if(s->checkForReturns()) {
+          atLeastOneInList = true;
+          setReturnType(s->getReturnType());
+          if (!oneList) temp = s->getReturnType();
+          else { if( !equalType(temp, s->getReturnType()) ) fatal("If statements cannot have returns of different types."); }
+          oneList = true;
+        }
      }
      if(!atLeastOneInList) everyOne = false;
-   }
-   for (Stmt *s: *s_last) {
-     if(s->checkForReturns()) atLeastOneInList = true;
-   }
 
-
-   if(everyOne) return true;
-   else if(atLeastOneInList) {
-    warning("There are condition-statements pairs that do not have a return");
-    return true;
-   }
-   else
-    return false;
+     if(everyOne) return true;
+     else{
+       if(oneList) {
+         warning("There are condition-statements pairs that do not have a return");
+         return true;
+       }
+       else{
+         return false;
+       }
+     }
  }
 
   virtual void printOn(std::ostream &out) const override {
@@ -1031,18 +1084,16 @@ class Return: public Stmt {
 public:
   Return(Expr *expr) : returnExpr(expr) {}
   ~Return() {}
-  Type getReturnType() override { return returnType; }
   virtual void printOn(std::ostream &out) const override {
     out << "Return expression " << *returnExpr << std::endl;
   }
   virtual void sem() override {
     setStmtType(RETURN);
     returnExpr->sem();
-    returnType = returnExpr->getType();
+    setReturnType(returnExpr->getType());
   }
 private:
   Expr *returnExpr;
-  Type returnType;
 };
 
 class Exit: public Stmt {

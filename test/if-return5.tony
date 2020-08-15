@@ -1,7 +1,9 @@
 <*
- * Test case: if-return2.tony
+ * Test case: if-return5.tony
  * Result: Pass
  *>
+<* warning in stderr
+*>
 
 def program ():
   def bool opposite_sign? (int a, b):
@@ -14,7 +16,7 @@ def program ():
         return true
       end
     end
-    return false
+    %return false
   end
   putb(opposite_sign?(1,-1))
 end

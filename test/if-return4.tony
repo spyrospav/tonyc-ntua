@@ -1,17 +1,17 @@
 <*
- * Test case: if-return2.tony
- * Result: Pass
+ * Test case: if-return4.tony
+ * Result: Fail
  *>
 
 def program ():
   def bool opposite_sign? (int a, b):
     if a < 0:
       if b > 0:
-        return true
+        return 2
       end
     elsif a > 0:
       if b < 0:
-        return true
+        return false
       end
     end
     return false

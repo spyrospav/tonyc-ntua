@@ -1,20 +1,21 @@
 <*
- * Test case: if-return2.tony
- * Result: Pass
+ * Test case: if-return6.tony
+ * Result: Fail
  *>
 
 def program ():
-  def bool opposite_sign? (int a, b):
+  def opposite_sign? (int a, b):
     if a < 0:
       if b > 0:
+        puts("True\n")
         return true
       end
     elsif a > 0:
       if b < 0:
+        puts("True\n")
         return true
       end
     end
-    return false
   end
-  putb(opposite_sign?(1,-1))
+  opposite_sign?(1,-1)
 end

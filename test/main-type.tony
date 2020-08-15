@@ -1,0 +1,9 @@
+<*
+ * Test case: main-type.tony
+ * Result: Fail
+ *>
+
+def int program():
+  int a
+  skip
+end
