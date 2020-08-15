@@ -318,6 +318,8 @@ public:
     if (stmt_list != NULL) {
       for (Stmt *stmt : *stmt_list) {
         stmt->sem();
+        std::cout << "after sem" << std::endl;
+        std::cout << *stmt;
         if(stmt->getStmtType() == EXIT && header->getHeaderType() != typeVoid)
           fatal("Exit can only be used inside void function blocks");
         if(stmt->checkForReturns()){
@@ -1012,10 +1014,13 @@ public:
   }
   virtual void sem() override {
     setStmtType(SIMPLE_STMT);
+    std::cout << "before var sem" << std::endl;
     var->sem();
     if (!var->isLValue()) fatal("Can't assign value to non lvalue");
     if (var->getStringExpr() == STRING_ITEM) fatal("Can't assign value to item of a constant string type object");
+    std::cout << "before expr type check" << std::endl;
     expr->type_check(var->getType());
+    std::cout << "after exp" << std::endl;
   }
 private:
   Expr *var;

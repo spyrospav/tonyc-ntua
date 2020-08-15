@@ -13,14 +13,14 @@ do
   outputerr=$(./tony < $testfile 2>&1 > /dev/null)
   #echo "$outputerr"
 
-  if [ "$res" = "Pass" ]; then
+  if [ $res = "Pass" ]; then
     if [[ -z $outputerr ]]; then
       let correct+=1
       echo "Test case ${count}: ${name} - Success"
     else
       echo "Test case ${count}: ${name} - Error"
     fi
-  elif [ "$res" = "Fail" ]; then
+  elif [ $res = "Fail" ]; then
     if [[ -z $outputerr ]]; then
       echo "Test case ${count}: ${name} - Error"
     else
@@ -28,7 +28,7 @@ do
       let correct+=1
     fi
   else
-    echo "Test case ${count}: ${name} - Unknown"
+    echo "Test case ${count}: ${name} - Unknown | *Please follow the file format"
   fi
   let count+=1
 done

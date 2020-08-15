@@ -3,7 +3,7 @@
  * Result: Pass
  *>
 
-def t():
+def program():
     def bool winner(ref char[] board):
         if board[0] = board[1] and board[1] = board[2] and board[0] <> ' ':
             return true
@@ -39,7 +39,7 @@ def t():
         puts("Player \'")
         putc(current)
         puts("\' choose square (1-9): ")
-        i:= geti() - 1
+        i := geti() - 1
         for skip;true;skip:
             if i < 9 and board[i] = ' ':
                 puts("You chose the cell: (")

@@ -1,0 +1,10 @@
+<*
+ * Test case: hex.tony
+ * Result: Pass
+ *>
+
+def hex ():
+  char c
+  c := '\x1d'
+  putc(c)
+end

@@ -1,0 +1,14 @@
+<*
+ * Test case: return-call.tony
+ * Result: Pass
+ *>
+
+def main ():
+
+  decl int fun(int a)
+  int b
+  def int fun(int a):
+    return a + 1
+  end
+  b := fun(2)
+end

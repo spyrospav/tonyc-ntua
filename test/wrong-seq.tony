@@ -1,0 +1,11 @@
+<*
+ * Test case: wrong-seq.tony
+ * Result: Fail
+ *>
+
+def hello ():
+  int a
+  a := 1
+  int b
+  puti(b)
+end

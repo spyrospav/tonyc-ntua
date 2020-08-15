@@ -1,0 +1,20 @@
+<*
+ * Test case: if-return2.tony
+ * Result: Pass
+ *>
+
+def program ():
+  def bool opposite_sign? (int a, b):
+    if a < 0:
+      if b > 0:
+        return true
+      end
+    elsif a > 0:
+      if b < 0:
+        return true
+      end
+    end
+    return false
+  end
+  putb(opposite_sign(1,-1))
+end
