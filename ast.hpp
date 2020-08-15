@@ -143,21 +143,11 @@ class Arg: public AST {
 
 typedef std::vector<Arg *> ArgList;
 
-class Stmt: public AST {
-  public:
-    virtual Type getReturnType() { return typeVoid; }
-    void setStmtType(StmtType s) { stmttype = s; }
-    StmtType getStmtType() { return stmttype; }
-  private:
-    StmtType stmttype;
-};
-
-typedef std::vector<Stmt *> StmtList;
-
 enum HeaderDef {
   DECL,
   DEF
 };
+
 
 class Header: public AST {
 public:
@@ -198,6 +188,25 @@ private:
   ArgList *arg_list;
   HeaderDef hdef;
 };
+
+
+class Stmt: public AST {
+  public:
+    virtual Type getReturnType() { return typeVoid; }
+    void setStmtType(StmtType s) { stmttype = s; }
+    StmtType getStmtType() { return stmttype; }
+    virtual bool checkForReturns() {return (this->getStmtType() == RETURN);}
+    virtual void checkReturnType(Header *header) {
+      if(!equalType(header->getHeaderType(), this->getReturnType()))
+        fatal("Return type does not match function type");
+    }
+  private:
+    StmtType stmttype;
+};
+
+typedef std::vector<Stmt *> StmtList;
+
+
 
 enum DefType {
   FUNCTION,
@@ -311,10 +320,11 @@ public:
         stmt->sem();
         if(stmt->getStmtType() == EXIT && header->getHeaderType() != typeVoid)
           fatal("Exit can only be used inside void function blocks");
-        if(stmt->getStmtType() == RETURN || stmt->getStmtType() == COND_RETURN){
+        if(stmt->checkForReturns()){
+          std::cout << "statement " << *stmt << " has checkReturn() " << std::endl;
           existsReturn = true;
-          if(!equalType(header->getHeaderType(), stmt->getReturnType()))
-            fatal("Return type does not match function type");
+          std::cout << "header type = " << header->getHeaderType() << " return type = " << stmt->getReturnType() <<std::endl;
+          stmt->checkReturnType(header);
         }
       }
     }
@@ -899,6 +909,50 @@ public:
   ~If() {
     full_list->clear();
   }
+
+  void checkReturnType(Header *header) {
+    Type t, header_t = header->getHeaderType();
+
+    for (IfPair cond_st: *full_list) {
+      for (Stmt *s: *cond_st.second) {
+        if(s->checkForReturns()) {
+          t = s->getReturnType();
+          break;
+        }
+      }
+      if(!equalType(t, header_t))
+        fatal("Return type does not match function type");
+    }
+    for (Stmt *s: *s_last) {
+      if(!equalType(t, header_t))
+        fatal("Return type does not match function type");
+    }
+  }
+  bool checkForReturns() override  {
+    //
+   bool atLeastOneInList = false, everyOne = true, oneList = false; ;
+   for (IfPair cond_st: *full_list) {
+     atLeastOneInList = false;
+     for (Stmt *s: *cond_st.second) {
+       std::cout << "hello " << std::endl;
+       if(s->checkForReturns()) {atLeastOneInList = true; oneList = true;}
+     }
+     if(!atLeastOneInList) everyOne = false;
+   }
+   for (Stmt *s: *s_last) {
+     if(s->checkForReturns()) atLeastOneInList = true;
+   }
+
+
+   if(everyOne) return true;
+   else if(atLeastOneInList) {
+    warning("There are condition-statements pairs that do not have a return");
+    return true;
+   }
+   else
+    return false;
+ }
+
   virtual void printOn(std::ostream &out) const override {
     out << "If(" << std::endl;
     bool isFirst = true;
