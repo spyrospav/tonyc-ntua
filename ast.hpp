@@ -327,7 +327,7 @@ public:
 
           if(stmt->checkForExits() && header->getHeaderType() != typeVoid)
             fatal("Exit can only be used inside void function blocks");
-          std::cout << "statement " << *stmt << " has checkReturn() " << std::endl;
+          //std::cout << "statement " << *stmt << " has checkReturn() " << std::endl;
           existsReturn = true;
           std::cout << "header type = " << header->getHeaderType() << " return type = " << stmt->getReturnType() <<std::endl;
           stmt->checkReturnType(header);

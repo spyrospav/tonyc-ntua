@@ -2,8 +2,6 @@
  * Test case: if-return5.tony
  * Result: Pass
  *>
-<* warning in stderr
-*>
 
 def program ():
   def bool opposite_sign? (int a, b):
