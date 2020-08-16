@@ -58,7 +58,20 @@ E \\(n|t|r|0|\'|\"|\\|x{H}{H})
 {L}({L}|{D}|_|\?)* {  yylval.var = strdup(yytext); return T_id; }
 {D}+    { yylval.num = atoi(yytext); return T_int_const; }
 
-\'([^\'\"\\]|{E})\' { yylval.char_const = yytext[1];   return T_char_const; }
+\'([^\'\"\\]|{E})\' {
+                        std::string temp = yytext;
+                        std::cout << temp << std::endl;
+                        temp = temp.substr(1, temp.length()-1);
+                        if(temp[0] == '\\' && temp[1] == 'x') {
+                          char* yytext_end;
+                          yylval.char_const = (char) std::strtol(&(yytext[3]), &yytext_end, 16);
+
+                        }
+                        else {
+                          yylval.char_const = yytext[1];
+                        }
+                       return T_char_const;
+                       }
 \"([^\n\'\"\\]|{E})*\" { yylval.string_const = strdup(yytext);  return T_string_const; }
 
 [\,\;\:] { return yytext[0]; }

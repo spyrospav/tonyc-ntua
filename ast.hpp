@@ -1074,6 +1074,7 @@ public:
     std::cout << "before expr type check" << std::endl;
     expr->type_check(var->getType());
     std::cout << "after exp" << std::endl;
+    std::cout << *expr << std::endl;
   }
 private:
   Expr *var;

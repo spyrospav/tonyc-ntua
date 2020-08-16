@@ -4,7 +4,7 @@
  *>
 
 def hex ():
-  char c
-  c := '\x1d'
+  char c, d
+  c := '\x34'
   putc(c)
 end
