@@ -1,7 +1,7 @@
 .PHONY: clean distclean default
 
 CXX=c++
-CXXFLAGS= -std=c++11
+CXXFLAGS= -std=c++14
 
 default: tony
 

@@ -1,0 +1,71 @@
+<*
+ * Test case: lists3.tony
+ * Result: Pass
+ *>
+
+ def test ():
+
+     def list[int] make_list (int size):
+         list[int] result
+         int i
+         result := nil
+         for i := 1; i <= size; i := i+1:
+             result := i # result
+         end
+         return result
+     end
+
+     def print_list (list[int] l):
+         for skip; head (l) <> 0; l := tail(l):
+             puti(head(l))
+             puts(" ")
+         end
+         puts("end\n")
+     end
+
+     def bool check_lists (int n; list[int] l, r):
+         int i
+
+         for i := 1; i <= n; i := i+1, r := tail(r):
+             if head(r) = 0 or head(r) <> i:
+                 return false
+             end
+         end
+         for i := n; i >= 1; i := i-1, l := tail(l):
+             if head(l) = 0 or head(l) <> i:
+                 return false
+             end
+         end
+         return true
+     end
+
+     def list[int] revert_aux (list [int] l, r):
+         if head(l) = 0:
+             return r
+         else:
+             return revert_aux(tail(l), (head(l) # r))
+         end
+     end
+
+     def list[int] revert_list (list[int] l):
+         return revert_aux(l, nil)
+     end
+
+     list[int] l, r
+     int i
+
+     for i := 1; i < 1000; i := i+1:
+         l := make_list(i)
+         if i < 10:
+             print_list(l)
+         end
+         r := revert_list(l)
+         if i < 10:
+             print_list(r)
+         end
+         if not check_lists(i, l, r):
+            puts("WRONG!\n")
+         end
+     end
+
+ end
