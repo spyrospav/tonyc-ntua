@@ -7,7 +7,10 @@
 #include <cstring>
 #include <stdio.h>
 #include <algorithm>
-//#include <utility>
+
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/LegacyPassManager.h>
+#include <llvm/IR/Module.h>
 
 #include "symbol.h"
 #include "error.h"
@@ -193,7 +196,7 @@ private:
 class Stmt: public AST {
   public:
     virtual Type getReturnType() { return returntype; }
-    virtual Type setReturnType(Type t) { returntype = t; }
+    virtual void setReturnType(Type t) { returntype = t; }
     virtual bool checkForExits() { return (this->getStmtType() == EXIT); }
     void setStmtType(StmtType s) { stmttype = s; }
     StmtType getStmtType() { return stmttype; }
