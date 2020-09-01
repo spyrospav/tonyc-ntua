@@ -3,6 +3,7 @@
 !symbol.cpp
 !error.cpp
 !general.cpp
+!ast.cpp
 *.swp
 *.output
 *.out
