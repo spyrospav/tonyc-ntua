@@ -1,10 +1,10 @@
 .PHONY: clean distclean default
 
-LLVMCONFIG=llvm-config
+LLVMCONFIG=llvm-config-10
 
-CXX=clang++
-CXXFLAGS=-std=c++14 -g `llvm-config --cxxflags`
-LDFLAGS=`llvm-config --ldflags --system-libs --libs all`
+CXX=clang++-10
+CXXFLAGS=-std=c++14 -g `llvm-config-10 --cxxflags`
+LDFLAGS=`llvm-config-10 --ldflags --system-libs --libs all`
 
 default: tony
 

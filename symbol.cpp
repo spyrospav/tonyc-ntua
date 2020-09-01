@@ -30,7 +30,7 @@
 #include "general.h"
 #include "error.h"
 #include "symbol.h"
-
+#include <map>
 
 /* ---------------------------------------------------------------------
    ------------- ��������� ���������� ��� ������ �������� --------------
@@ -42,6 +42,10 @@ unsigned int   tempNumber;             /* �������� ��� tem
 
 static unsigned int   hashTableSize;   /* ������� ������ ��������������� */
 static SymbolEntry ** hashTable;       /* ������� ���������������        */
+
+std::map<SymbolEntry *, int> hashTheVars;  /* The order in which each variable (found by its symbol entry) is placed in the hash table */
+
+unsigned int numInserted = 0;                /* Number of variales inserted to symbol table */
 
 static struct Type_tag typeConst [] = {
     { TYPE_VOID,    NULL, 0, 0 },
@@ -144,6 +148,7 @@ void initSymbolTable (unsigned int size)
     currentScope = NULL;
     quadNext     = 1;
     tempNumber   = 1;
+    numInserted = 0;
 
     /* ������������ ��� ������ ��������������� */
 
@@ -208,6 +213,7 @@ static void insertEntry (SymbolEntry * e)
     hashTable[e->hashValue] = e;
     e->nextInScope          = currentScope->entries;
     currentScope->entries   = e;
+    numInserted++;
 }
 
 static SymbolEntry * newEntry (const char * name)
@@ -231,6 +237,8 @@ static SymbolEntry * newEntry (const char * name)
     e->hashValue    = PJW_hash(name) % hashTableSize;
     e->nestingLevel = currentScope->nestingLevel;
     insertEntry(e);
+    hashTheVars[e] = numInserted;
+    std::cout << "Inserted " << e->id << " with number " << hashTheVars[e] << std::endl;
     return e;
 }
 

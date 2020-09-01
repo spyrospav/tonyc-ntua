@@ -28,7 +28,7 @@
    --------------------------------------------------------------------- */
 
 #include <stdbool.h>
-
+#include <map>
 /*
  *  �� �� �������� include ��� ������������� ��� ��� ���������
  *  ��� C ��� ��������������, �������������� �� �� �� ��������:
@@ -193,6 +193,8 @@ typedef enum {
 extern Scope        * currentScope;       /* �������� ��������         */
 extern unsigned int   quadNext;           /* ������� �������� �������� */
 extern unsigned int   tempNumber;         /* �������� ��� temporaries  */
+
+extern std::map<SymbolEntry *, int> hashTheVars;  /* The order in which each variable (found by its symbol entry) is placed in the hash table */
 
 extern const Type typeVoid;
 extern const Type typeInteger;

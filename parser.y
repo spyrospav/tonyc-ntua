@@ -3,7 +3,9 @@
 #include "lexer.hpp"
 #include <string>
 #include "ast.hpp"
+#include "ast.cpp"
 #include "symbol.h"
+#include "general.h"
 
 %}
 
@@ -256,8 +258,25 @@ expr:
 
 %%
 
-int main(){
+int main(int argc, char *argv[]){
+
+  /* std::cout << "argc is: " << argc << "\n";
+  for(int i=1; i<argc; i++)
+    std::cout << "argv = " << argv[i] << ", ";
+  std::cout << "\n"; */
+  if(argc>1)
+  optimize = (bool) strcmp(argv[1], "true");
+
+
+
   int result = yyparse();
+  std::cout << "map size " << hashTheVars.size() << std::endl;
+
+  for(std::map<SymbolEntry *, int>::iterator it = hashTheVars.begin(); it != hashTheVars.end(); ++it) {
+    std::cout << "Key: " << it->first->id << std::endl;
+    std::cout << "Value: " << it->second << std::endl;
+  }
+
   if (result == 0) printf("Success.\n");
   return result;
 }

@@ -8,12 +8,20 @@
 #include <stdio.h>
 #include <algorithm>
 
+#include "symbol.h"
+#include "error.h"
+
+/*------------------- LLVM ------------------- */
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Value.h>
 
-#include "symbol.h"
-#include "error.h"
+/*------------ LLVM Optimizations -------------*/
+#include <llvm/Transforms/InstCombine/InstCombine.h>
+#include <llvm/Transforms/Scalar.h>
+#include <llvm/Transforms/Scalar/GVN.h>
+#include <llvm/Transforms/Utils.h>
 
 void yyerror(const char *msg);
 
@@ -79,6 +87,43 @@ class AST {
     }
     virtual void printOn(std::ostream &out) const = 0;
     virtual void sem() {}
+    void llvm_compile_and_dump(bool doOptimize=false) {
+    // Initialize
+    TheModule = std::make_unique<llvm::Module>("Tony program", TheContext);
+    TheFPM = std::make_unique<llvm::legacy::FunctionPassManager>(TheModule.get());
+
+
+    if (doOptimize) {
+      TheFPM->add(llvm::createPromoteMemoryToRegisterPass());
+      TheFPM->add(llvm::createInstructionCombiningPass());
+      TheFPM->add(llvm::createReassociatePass());
+      TheFPM->add(llvm::createGVNPass());
+      TheFPM->add(llvm::createCFGSimplificationPass());
+    }
+    TheFPM->doInitialization();
+
+
+    }
+
+  protected:
+    static llvm::LLVMContext TheContext;
+    static llvm::IRBuilder<> Builder;
+    static llvm::GlobalVariable *TheVars;
+    static std::unique_ptr<llvm::Module> TheModule;
+    static std::unique_ptr<llvm::legacy::FunctionPassManager> TheFPM;
+
+    //for integers (32 bits - complies with minimum 16 bit signed integers imposed by our programming language )
+    static llvm::ConstantInt* c32(int n) {
+      return llvm::ConstantInt::get(TheContext, llvm::APInt(32, n, true));
+    }
+    //for character (8 bit type)
+    static llvm::ConstantInt* c8(char n) {
+      return llvm::ConstantInt::get(TheContext, llvm::APInt(8, n, true));
+    }
+    //for boolean (1 bit type) - maybe not be necessary. Will see.
+    static llvm::ConstantInt* c1(int n) {
+      return llvm::ConstantInt::get(TheContext, llvm::APInt(1, n, true));
+    }
 };
 
 inline std::ostream& operator<< (std::ostream &out, const AST &t) {
@@ -446,20 +491,6 @@ public:
   virtual void printOn(std::ostream &out) const override {
     out << "Id(" << var << "@" << ")";
   }
-  /*
-  virtual void compile() const override {
-    if (nestingDiff == 0)
-      // Local variable.
-      std::cout << "  pushl " << 4 * offset << "(%ebp)\n";
-    else {
-      // Non-local variable; follow nestingDiff access links.
-      std::cout << "  movl 0(%ebp), %esi\n";
-      for (int i = 1; i < nestingDiff; ++i)
-        std::cout << "  movl 0(%esi), %esi\n";
-      std::cout << "  pushl " << 4 * offset << "(%esi)\n";
-    }
-  }
-  */
   const char *getIdName() { return var; }
   EntryType getEntryType() {
     return entry;
@@ -479,6 +510,14 @@ public:
       type = e->u.eParameter.type;
     }
     stringExpr = OTHER;
+  }
+  virtual llvm::Value* compile() {
+    std::string name_ptr(var), name(var);
+    name_ptr.append("_ptr\0");
+    name.append("\0");
+    //lookup the entry
+    llvm::Value *v = Builder.CreateGEP(TheVars, {c32(0), c32(hashTheVars[e])} , name_ptr );
+    return Builder.CreateLoad(v, name);
   }
 
 
