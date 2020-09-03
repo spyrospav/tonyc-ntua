@@ -93,6 +93,116 @@ class AST {
     TheFPM = std::make_unique<llvm::legacy::FunctionPassManager>(TheModule.get());
 
 
+    // Initialize types
+    i1 = llvm::IntegerType::get(TheContext, 1);
+    i8 = llvm::IntegerType::get(TheContext, 8);
+    i16 = llvm::IntegerType::get(TheContext, 16);
+    i32 = llvm::IntegerType::get(TheContext, 32);
+    i64 = llvm::IntegerType::get(TheContext, 64);
+
+    // Initialize global variables (e.g newline)
+    llvm::ArrayType *nl_type = llvm::ArrayType::get(i8, 2); //create llvm array type of nl (it should have 2 items with 8 bits each (characters))
+    TheNL = new llvm::GlobalVariable(
+        *TheModule, nl_type, true, llvm::GlobalValue::PrivateLinkage,
+        llvm::ConstantArray::get(nl_type, {c8('\n'), c8('\0')}), "nl"
+    );
+    TheNL->setAlignment(1);
+    // Initialize Abgenetopoulos library functions
+    llvm::FunctionType *writeInteger_type =
+      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i64}, false);
+    TheWriteInteger =
+      llvm::Function::Create(writeInteger_type, llvm::Function::ExternalLinkage,
+                       "writeInteger", TheModule.get());
+
+   llvm::FunctionType *writeCharacter_type =
+     llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i8}, false);
+   TheWriteCharacter =
+     llvm::Function::Create(writeCharacter_type, llvm::Function::ExternalLinkage,
+                      "writeCharacter", TheModule.get());
+
+    llvm::FunctionType *writeBoolean_type =
+      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i1}, false);
+    TheWriteBoolean =
+      llvm::Function::Create(writeBoolean_type, llvm::Function::ExternalLinkage,
+                       "writeBoolean", TheModule.get());
+
+    llvm::FunctionType *writeString_type =
+      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext),
+                        {llvm::PointerType::get(i8, 0)}, false);
+    TheWriteString =
+      llvm::Function::Create(writeString_type, llvm::Function::ExternalLinkage,
+                       "writeString", TheModule.get());
+
+      //---------------------READ functions---------------------
+     llvm::FunctionType *readInteger_type =
+       llvm::FunctionType::get(i64, {llvm::Type::getVoidTy(TheContext)}, false);
+     TheReadInteger =
+       llvm::Function::Create(readInteger_type, llvm::Function::ExternalLinkage,
+                        "readInteger", TheModule.get());
+
+     llvm::FunctionType *readCharacter_type =
+      llvm::FunctionType::get(i8, {llvm::Type::getVoidTy(TheContext)}, false);
+     TheReadCharacter =
+      llvm::Function::Create(readCharacter_type, llvm::Function::ExternalLinkage,
+                       "readCharacter", TheModule.get());
+
+     llvm::FunctionType *readBoolean_type =
+       llvm::FunctionType::get(i1, {llvm::Type::getVoidTy(TheContext)}, false);
+     TheReadBoolean =
+       llvm::Function::Create(readBoolean_type, llvm::Function::ExternalLinkage,
+                        "readBoolean", TheModule.get());
+
+     llvm::FunctionType *readString_type =
+       llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext),
+                         {i64, llvm::PointerType::get(i8, 0)}, false);
+     TheReadString =
+       llvm::Function::Create(readString_type, llvm::Function::ExternalLinkage,
+                        "readString", TheModule.get());
+
+      //---------------------Conversion functions---------------------
+      llvm::FunctionType *abs_type =
+        llvm::FunctionType::get(i64, {i64}, false);
+      TheAbs =
+        llvm::Function::Create(abs_type, llvm::Function::ExternalLinkage,
+                        "abs", TheModule.get());
+
+      llvm::FunctionType *ord_type =
+        llvm::FunctionType::get(i64, {i8}, false);
+      TheOrd =
+        llvm::Function::Create(ord_type, llvm::Function::ExternalLinkage,
+                        "ord", TheModule.get());
+
+      llvm::FunctionType *chr_type =
+        llvm::FunctionType::get(i8, {i64}, false);
+      TheChr =
+        llvm::Function::Create(chr_type, llvm::Function::ExternalLinkage,
+                        "chr", TheModule.get());
+
+
+      llvm::FunctionType *strlen_type =
+        llvm::FunctionType::get(i64, {llvm::PointerType::get(i8, 0)}, false);
+      TheStrLen =
+        llvm::Function::Create(strlen_type, llvm::Function::ExternalLinkage,
+                        "strlen", TheModule.get());
+
+      llvm::FunctionType *strcmp_type =
+        llvm::FunctionType::get(i64,
+          {llvm::PointerType::get(i8, 0), llvm::PointerType::get(i8, 0)}, false);
+      TheStrCmp =
+        llvm::Function::Create(strcmp_type, llvm::Function::ExternalLinkage,
+                        "strcmp", TheModule.get());
+
+      llvm::FunctionType *strcpy_type =
+        llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext),
+          {llvm::PointerType::get(i8, 0), llvm::PointerType::get(i8, 0)}, false);
+      TheStrCpy =
+        llvm::Function::Create(strcpy_type, llvm::Function::ExternalLinkage,
+                        "strcpy", TheModule.get());
+      TheStrCat =
+        llvm::Function::Create(strcpy_type, llvm::Function::ExternalLinkage,
+                        "strcat", TheModule.get());
+
+    // Initialize optimization Function Pass Manager
     if (doOptimize) {
       TheFPM->add(llvm::createPromoteMemoryToRegisterPass());
       TheFPM->add(llvm::createInstructionCombiningPass());
@@ -112,6 +222,19 @@ class AST {
     static std::unique_ptr<llvm::Module> TheModule;
     static std::unique_ptr<llvm::legacy::FunctionPassManager> TheFPM;
 
+
+    // Types
+    static llvm::Type *i1;
+    static llvm::Type *i8;
+    static llvm::Type *i16;
+    static llvm::Type *i32;
+    static llvm::Type *i64;
+
+
+    // Global Variables
+    static llvm::GlobalVariable *TheNL;
+
+
     //for integers (32 bits - complies with minimum 16 bit signed integers imposed by our programming language )
     static llvm::ConstantInt* c32(int n) {
       return llvm::ConstantInt::get(TheContext, llvm::APInt(32, n, true));
@@ -124,6 +247,26 @@ class AST {
     static llvm::ConstantInt* c1(int n) {
       return llvm::ConstantInt::get(TheContext, llvm::APInt(1, n, true));
     }
+
+    //Functions
+    static llvm::Function *TheWriteInteger;
+    static llvm::Function *TheWriteString;
+    static llvm::Function *TheWriteCharacter;
+    static llvm::Function *TheWriteBoolean;
+
+    static llvm::Function *TheReadInteger;
+    static llvm::Function *TheReadString;
+    static llvm::Function *TheReadCharacter;
+    static llvm::Function *TheReadBoolean;
+
+    static llvm::Function *TheAbs;
+    static llvm::Function *TheOrd;
+    static llvm::Function *TheChr;
+    static llvm::Function *TheStrLen;
+    static llvm::Function *TheStrCmp;
+    static llvm::Function *TheStrCpy;
+    static llvm::Function *TheStrCat;
+
 };
 
 inline std::ostream& operator<< (std::ostream &out, const AST &t) {
@@ -516,8 +659,10 @@ public:
     name_ptr.append("_ptr\0");
     name.append("\0");
     //lookup the entry
-    llvm::Value *v = Builder.CreateGEP(TheVars, {c32(0), c32(hashTheVars[e])} , name_ptr );
-    return Builder.CreateLoad(v, name);
+
+    // llvm::Value *v = Builder.CreateGEP(TheVars, {c32(0), c32(hashTheVars[e])} , name_ptr );
+    // return Builder.CreateLoad(v, name);
+
   }
 
 
