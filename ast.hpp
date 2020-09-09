@@ -86,6 +86,7 @@ class AST {
       destroySymbolTable();
     }
     virtual void printOn(std::ostream &out) const = 0;
+    virtual llvm::Value* compile() const {return nullptr;}//const = 0;
     virtual void sem() {}
     void llvm_compile_and_dump(bool doOptimize=false) {
     // Initialize
@@ -234,7 +235,9 @@ class AST {
     // Global Variables
     static llvm::GlobalVariable *TheNL;
 
-
+    static llvm::ConstantInt* c64(int n) {
+      return llvm::ConstantInt::get(TheContext, llvm::APInt(64, n, true));
+    }
     //for integers (32 bits - complies with minimum 16 bit signed integers imposed by our programming language )
     static llvm::ConstantInt* c32(int n) {
       return llvm::ConstantInt::get(TheContext, llvm::APInt(32, n, true));
@@ -590,6 +593,7 @@ class IntConst : public Expr {
     }
     */
     virtual void sem() override { lval = false; stringExpr = OTHER; type = typeInteger; }
+    virtual llvm::Value* compile() const override { return c64(num); }
   private:
     int num;
 };
@@ -607,6 +611,8 @@ class CharConst : public Expr {
     }
     */
     virtual void sem() override { lval = false; stringExpr = OTHER; type = typeChar; }
+    virtual llvm::Value* compile() const override { return c8(character); }
+
   private:
     char character;
 };
@@ -624,6 +630,8 @@ class BoolConst : public Expr {
     }
     */
     virtual void sem() override { lval = false; stringExpr = OTHER; type = typeBoolean; }
+    virtual llvm::Value* compile() const override { return c1(int(logic)); }
+
   private:
     bool logic;
 };
@@ -658,6 +666,7 @@ public:
     std::string name_ptr(var), name(var);
     name_ptr.append("_ptr\0");
     name.append("\0");
+    return nullptr;
     //lookup the entry
 
     // llvm::Value *v = Builder.CreateGEP(TheVars, {c32(0), c32(hashTheVars[e])} , name_ptr );
@@ -681,38 +690,27 @@ public:
   virtual void printOn(std::ostream &out) const override {
     out << "a" <<  op << "(" << *left << ", " << *right << ")";
   }
-  /*
-  virtual void compile() const override {
-    left->compile();
-    right->compile();
-    std::cout << "  popl %ebx\n"  // right
-              << "  popl %eax\n"; // left
-    switch (op) {
-    case '+':
-      std::cout << "  addl %ebx, %eax\n"
-                << "  pushl %eax\n";
-      break;
-    case '-':
-      std::cout << "  subl %ebx, %eax\n"
-                << "  pushl %eax\n";
-      break;
-    case '*':
-      std::cout << "  mull %ebx\n"
-                << "  pushl %eax\n";
-      break;
-    case '/':
-      std::cout << "  cdq\n"
-                << "  divl %ebx\n"
-                << "  pushl %eax\n";
-      break;
-    case '%':
-      std::cout << "  cdq\n"
-                << "  divl %ebx\n"
-                << "  pushl %edx\n";
-      break;
-    }
+
+  virtual llvm::Value* compile() const override {
+    llvm::Value* l = left->compile();
+    llvm::Value* r = right->compile();
+    if(!strcmp(op, "+")) return Builder.CreateAdd(l, r, "addtmp");
+    else if(!strcmp(op, "-")) return Builder.CreateSub(l, r, "subtmp");
+    else if(!strcmp(op, "*")) return Builder.CreateMul(l, r, "multmp");
+    else if(!strcmp(op, "/")) return Builder.CreateSDiv(l, r, "divtmp");
+    else if(!strcmp(op, "mod")) return Builder.CreateSRem(l, r, "modtmp");
+    else if(!strcmp(op, "and")) return Builder.CreateAnd(l, r, "andtmp");
+    else if(!strcmp(op, "or")) return Builder.CreateOr(l, r, "ortmp");
+    else if(!strcmp(op, "=")) return Builder.CreateICmpEQ(l, r, "eqtmp");
+    else if(!strcmp(op, "<=")) return Builder.CreateICmpSLE(l, r, "addtmp");
+    else if(!strcmp(op, "<")) return Builder.CreateICmpSLT(l, r, "addtmp");
+    else if(!strcmp(op, ">=")) return Builder.CreateICmpSGE(l, r, "addtmp");
+    else if(!strcmp(op, ">")) return Builder.CreateICmpSGT(l, r, "addtmp");
+    else if(!strcmp(op, "<>")) return Builder.CreateICmpNE(l, r, "neqtmp");
+    else return nullptr;
+
   }
-  */
+
   virtual void sem() override {
     lval = false;
     if (!strcmp(op, "+") || !strcmp(op, "-") || !strcmp(op, "*") || !strcmp(op, "/") || !strcmp(op, "mod")){
@@ -763,6 +761,14 @@ public:
     }
     else std::cout << "Aliens." << std::endl;
     stringExpr = OTHER;
+  }
+
+  virtual llvm::Value* compile() const override {
+    llvm::Value* operand = expr->compile();
+    if(!strcmp(op, "+")) return operand;
+    else if(!strcmp(op, "-")) return Builder.CreateMul(operand, c64(-1), "minus_sign_tmp");
+    else return nullptr;
+
   }
 
 private:
@@ -1111,6 +1117,36 @@ public:
       }
   }
 
+  virtual llvm::Value* compile() const override {
+    //emit initialization code
+    for (Stmt *s: *init_list) s->compile();
+    llvm::BasicBlock *PrevBB = Builder.GetInsertBlock();
+    llvm::Function *TheFunction = PrevBB->getParent();
+    llvm::BasicBlock *LoopBB =
+      llvm::BasicBlock::Create(TheContext, "loop", TheFunction);
+    llvm::BasicBlock *BodyBB =
+      llvm::BasicBlock::Create(TheContext, "body", TheFunction);
+    llvm::BasicBlock *AfterBB =
+      llvm::BasicBlock::Create(TheContext, "endfor", TheFunction);
+    Builder.CreateBr(LoopBB);
+    Builder.SetInsertPoint(LoopBB);
+    // PHINode *phi_iter = Builder.CreatePHI(i64, 2, "iter");
+    // phi_iter->addIncoming(n, PrevBB);
+    llvm::Value *cond_value = terminate_expr->compile();
+    llvm::Value *loop_cond =
+      Builder.CreateICmpNE(cond_value, c1(1), "loop_cond");
+    Builder.CreateCondBr(loop_cond, BodyBB, AfterBB);
+    Builder.SetInsertPoint(BodyBB);
+    // Value *remaining =
+    //   Builder.CreateSub(phi_iter, c64(1), "remaining");
+    for (Stmt *s: *stmt_list) s->compile();
+    for (Stmt *s: *next_list) s->compile();
+    // phi_iter->addIncoming(remaining, Builder.GetInsertBlock());
+    Builder.CreateBr(LoopBB);
+    Builder.SetInsertPoint(AfterBB);
+    return nullptr;
+  }
+
 private:
   StmtList *init_list, *next_list, *stmt_list;
   Expr *terminate_expr;
@@ -1192,7 +1228,7 @@ public:
          return false;
        }
      }
- }
+   }
 
   virtual void printOn(std::ostream &out) const override {
     out << "If(" << std::endl;
@@ -1229,6 +1265,45 @@ public:
     for (Stmt *s: *s_last) {
       s->sem();
     }
+  }
+
+  virtual llvm::Value* compile() const override {
+
+    // int counter=0;
+    // for(IfPair a: *full_list) {
+    //   Expr *e = a.first;
+    //   StmtList *s_list = a.second;
+    //   llvm::Value *v = e->compile();
+    //   llvm::Value *cond = Builder.CreateICmpNE(v, c64(0), "if_cond");
+    //
+    //
+    //   if(counter==0) {
+    //
+    //   }
+    //
+    //   counter++;
+    // }
+    //
+    // llvm::Value *v = cond->compile();
+    // llvm::Value *cond = Builder.CreateICmpNE(v, c64(0), "if_cond");
+    // llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
+    // llvm::BasicBlock *ThenBB =
+    //   llvm::BasicBlock::Create(TheContext, "then", TheFunction);
+    // llvm::BasicBlock *ElseBB =
+    //   llvm::BasicBlock::Create(TheContext, "else", TheFunction);
+    // llvm::BasicBlock *AfterBB =
+    //   llvm::BasicBlock::Create(TheContext, "endif", TheFunction);
+    // Builder.CreateCondBr(cond, ThenBB, ElseBB);
+    // Builder.SetInsertPoint(ThenBB);
+    // stmt1->compile();
+    // Builder.CreateBr(AfterBB);
+    // Builder.SetInsertPoint(ElseBB);
+    // if (stmt2 != nullptr)
+    //   stmt2->compile();
+    // Builder.CreateBr(AfterBB);
+    // Builder.SetInsertPoint(AfterBB);
+    return nullptr;
+
   }
 
 private:
