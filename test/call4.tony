@@ -4,8 +4,8 @@
  *>
 
 def program () :
-  def call ():
-    skip
+  def int call ():
+    return 5
   end
   call()
 end

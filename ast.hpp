@@ -1049,6 +1049,7 @@ class Skip : public Stmt {
       out << "Empty instruction" << std::endl;
     }
     virtual void sem() override { setStmtType(SIMPLE_STMT); }
+    virtual llvm::Value* compile() const override { return nullptr; }
 };
 
 class For : public Stmt {
@@ -1119,7 +1120,13 @@ public:
 
   virtual llvm::Value* compile() const override {
     //emit initialization code
-    for (Stmt *s: *init_list) s->compile();
+    /*unordered_map<Value *> init;
+    Value *Init [init_list.size()]
+    for (Stmt *s: *init_list) {
+      Value *i = s->compile();
+      if (i != nullptr)
+        init.insert(pair<,>);
+    }*/
     llvm::BasicBlock *PrevBB = Builder.GetInsertBlock();
     llvm::Function *TheFunction = PrevBB->getParent();
     llvm::BasicBlock *LoopBB =
@@ -1130,6 +1137,11 @@ public:
       llvm::BasicBlock::Create(TheContext, "endfor", TheFunction);
     Builder.CreateBr(LoopBB);
     Builder.SetInsertPoint(LoopBB);
+    /*for (auto const& pair: init) {
+      llvm::Type * a = getType(init.first);
+      init.second;
+      PHINode *phi_iter = Builder.CreatePHI();
+    }*/
     // PHINode *phi_iter = Builder.CreatePHI(i64, 2, "iter");
     // phi_iter->addIncoming(n, PrevBB);
     llvm::Value *cond_value = terminate_expr->compile();
@@ -1350,6 +1362,13 @@ public:
     returnExpr->sem();
     setReturnType(returnExpr->getType());
   }
+  virtual llvm::Value* compile() const override {
+    llvm::Value *RetValue = returnExpr->compile();
+    Builder.CreateRet(RetValue);
+    return RetValue;
+   }
+
+
 private:
   Expr *returnExpr;
 };
@@ -1363,6 +1382,10 @@ class Exit: public Stmt {
     }
     virtual void sem() override {
       setStmtType(EXIT);
+    }
+    virtual llvm::Value* compile() const override {
+      Builder.CreateRetVoid();
+      return nullptr;
     }
 };
 

@@ -232,7 +232,7 @@ static SymbolEntry * newEntry (const char * name)
 
     e = (SymbolEntry *) my_new(sizeof(SymbolEntry));
     e->id = (const char *) my_new(strlen(name) + 1);
-
+    e->llvmVal = nullptr;
     strcpy((char *) (e->id), name);
     e->hashValue    = PJW_hash(name) % hashTableSize;
     e->nestingLevel = currentScope->nestingLevel;
@@ -562,6 +562,59 @@ SymbolEntry * lookupEntry (const char * name, LookupType type, bool err)
     if (err)
         error("Unknown identifier: %s", name);
     return NULL;
+}
+
+llvm::Value * lookupVal (const char * name, LookupType type, bool err)
+{
+    unsigned int  hashValue = PJW_hash(name) % hashTableSize;
+    SymbolEntry * e         = hashTable[hashValue];
+
+    switch (type) {
+        case LOOKUP_CURRENT_SCOPE:
+            while (e != NULL && e->nestingLevel == currentScope->nestingLevel)
+                if (strcmp(e->id, name) == 0)
+                    return e->llvmVal;
+                else
+                    e = e->nextHash;
+            break;
+        case LOOKUP_ALL_SCOPES:
+            while (e != NULL)
+                if (strcmp(e->id, name) == 0)
+                    return e->llvmVal;
+                else
+                    e = e->nextHash;
+            break;
+    }
+
+    if (err)
+        error("Unknown identifier: %s", name);
+    return NULL;
+}
+
+void setVal (const char * name, llvm::Value * val, LookupType type, bool err)
+{
+    unsigned int  hashValue = PJW_hash(name) % hashTableSize;
+    SymbolEntry * e         = hashTable[hashValue];
+
+    switch (type) {
+        case LOOKUP_CURRENT_SCOPE:
+            while (e != NULL && e->nestingLevel == currentScope->nestingLevel)
+                if (strcmp(e->id, name) == 0)
+                    e->llvmVal = val;
+                else
+                    e = e->nextHash;
+            break;
+        case LOOKUP_ALL_SCOPES:
+            while (e != NULL)
+                if (strcmp(e->id, name) == 0)
+                    e->llvmVal = val;
+                else
+                    e = e->nextHash;
+            break;
+    }
+
+    if (err)
+        error("Unknown identifier: %s", name);
 }
 
 Type typeArray (RepInteger size, Type refType)
