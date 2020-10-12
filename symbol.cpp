@@ -564,33 +564,6 @@ SymbolEntry * lookupEntry (const char * name, LookupType type, bool err)
     return NULL;
 }
 
-llvm::Value * lookupVal (const char * name, LookupType type, bool err)
-{
-    unsigned int  hashValue = PJW_hash(name) % hashTableSize;
-    SymbolEntry * e         = hashTable[hashValue];
-
-    switch (type) {
-        case LOOKUP_CURRENT_SCOPE:
-            while (e != NULL && e->nestingLevel == currentScope->nestingLevel)
-                if (strcmp(e->id, name) == 0)
-                    return e->llvmVal;
-                else
-                    e = e->nextHash;
-            break;
-        case LOOKUP_ALL_SCOPES:
-            while (e != NULL)
-                if (strcmp(e->id, name) == 0)
-                    return e->llvmVal;
-                else
-                    e = e->nextHash;
-            break;
-    }
-
-    if (err)
-        error("Unknown identifier: %s", name);
-    return NULL;
-}
-
 void setVal (const char * name, llvm::Value * val, LookupType type, bool err)
 {
     unsigned int  hashValue = PJW_hash(name) % hashTableSize;

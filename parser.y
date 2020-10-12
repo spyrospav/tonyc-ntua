@@ -103,7 +103,15 @@
 
 program:
   { initSymbolTable(2048); openScope(); printSymbolTable(); StandardLibraryInit(); }
-    func-def { $2->setMain();  $2->sem(); }
+    func-def {
+      $2->setMain();  $2->sem();
+      /* code gen  */
+      destroySymbolTable();
+      initSymbolTable(2048);
+      openScope();
+      StandardLibraryInit();
+      //$2->compile();
+        }
 ;
 
 func-def:

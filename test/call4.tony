@@ -1,6 +1,6 @@
 <*
  * Test case: call4.tony
- * Result: Pass
+ * Result: Fail
  *>
 
 def program () :

@@ -77,6 +77,39 @@ enum StringExpr{
   OTHER
 };
 
+llvm::Type * getLLVMType(Type type){
+  llvm::Type * retType;
+
+  switch (type->kind) {
+      case TYPE_VOID:
+          retType = llvm::Type::getVoidTy(TheContext);
+          break;
+      case TYPE_INTEGER:
+          retType = i64;
+          break;
+      case TYPE_BOOLEAN:
+          retType = i1;
+          break;
+      case TYPE_CHAR:
+          retType = i8;
+          break;
+      case TYPE_ARRAY:
+          retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
+          break;
+      case TYPE_IARRAY:
+          retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
+          break;
+      case TYPE_LIST:
+          retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
+          break;
+      case TYPE_ANY:
+          refType = nullptr; //pithanon COnstantNullPointer.. ..
+          break;
+  }
+
+  return retType;
+}
+
 class AST {
   public:
     AST() {
@@ -213,7 +246,6 @@ class AST {
     }
     TheFPM->doInitialization();
 
-
     }
 
   protected:
@@ -326,9 +358,14 @@ class Arg: public AST {
       out << var_list[var_list.size()-1];
       out << ")" << " with Type " << type << " and pass by " << passmode;
     }
+    int getArgSize() { return var_list.size(); }
     void sem(SymbolEntry *p) {
       for (const char *name: var_list) newParameter(name, type, passmode, p);
     }
+    virtual llvm::Value void compile() override {
+      return nullptr;
+    }
+    std::vector<const char *> getArgListNames(){ return var_list; }
   private:
     PassMode passmode;
     std::vector<const char * > var_list;
@@ -372,10 +409,49 @@ public:
       forwardFunction(p);
     }
     openScope();
-    //printSymbolTable();
     for (Arg *a: *arg_list) { a->sem(p); }
     endFunctionHeader(p, type);
   }
+
+  virtual llvm::Value void compile() override {
+
+      SymbolEntry * p;
+      p = newFunction(name);
+      if (hdef == DECL) {
+        forwardFunction(p);
+      }
+
+      openScope();
+
+      endFunctionHeader(p, type);
+
+      std::vector<Type *> argTypes;
+      for (Arg *a: *arg_list) {
+        a->sem(p);
+        for (int i = 0; i < a.getArgSize(); i++){
+          llvm::Type *tempType = getLLVMType(getType(a));
+          argTypes.push_back(tempType);
+        }
+      }
+
+      llvm::FunctionType *FT = llvm::FunctionType::get(getLLVMType(type), argTypes, false );
+      llvm::Function *Function = Function::Create(FT, llvm::Function::ExternalLinkage,
+                                                      name, TheModule.get());
+
+      std::vector<const char *> names;
+
+      for (Arg *a: *arg_list) {
+        std::vector<const char *> tmp = a->getArgListNames();
+        names.insert(names.end(), tmp.begin(), tmp.end());
+      }
+
+      int i = 0;
+      for (auto &Arg : Function->args())
+          Arg.setName(names[i++]);
+
+      return Function;
+    }
+
 private:
   Type type;
   const char * name;
