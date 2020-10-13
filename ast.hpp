@@ -16,6 +16,7 @@
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Value.h>
+#include <llvm/IR/Verifier.h>
 
 /*------------ LLVM Optimizations -------------*/
 #include <llvm/Transforms/InstCombine/InstCombine.h>
@@ -77,39 +78,6 @@ enum StringExpr{
   OTHER
 };
 
-llvm::Type * getLLVMType(Type type){
-  llvm::Type * retType;
-
-  switch (type->kind) {
-      case TYPE_VOID:
-          retType = llvm::Type::getVoidTy(TheContext);
-          break;
-      case TYPE_INTEGER:
-          retType = i64;
-          break;
-      case TYPE_BOOLEAN:
-          retType = i1;
-          break;
-      case TYPE_CHAR:
-          retType = i8;
-          break;
-      case TYPE_ARRAY:
-          retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
-          break;
-      case TYPE_IARRAY:
-          retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
-          break;
-      case TYPE_LIST:
-          retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
-          break;
-      case TYPE_ANY:
-          refType = nullptr; //pithanon COnstantNullPointer.. ..
-          break;
-  }
-
-  return retType;
-}
-
 class AST {
   public:
     AST() {
@@ -125,7 +93,6 @@ class AST {
     // Initialize
     TheModule = std::make_unique<llvm::Module>("Tony program", TheContext);
     TheFPM = std::make_unique<llvm::legacy::FunctionPassManager>(TheModule.get());
-
 
     // Initialize types
     i1 = llvm::IntegerType::get(TheContext, 1);
@@ -247,6 +214,38 @@ class AST {
     TheFPM->doInitialization();
 
     }
+    llvm::Type * getLLVMType(Type type) const{
+      llvm::Type * retType;
+
+      switch (type->kind) {
+          case TYPE_VOID:
+              retType = llvm::Type::getVoidTy(TheContext);
+              break;
+          case TYPE_INTEGER:
+              retType = i64;
+              break;
+          case TYPE_BOOLEAN:
+              retType = i1;
+              break;
+          case TYPE_CHAR:
+              retType = i8;
+              break;
+          case TYPE_ARRAY:
+              retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
+              break;
+          case TYPE_IARRAY:
+              retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
+              break;
+          case TYPE_LIST:
+              retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
+              break;
+          case TYPE_ANY:
+              retType = nullptr; //pithanon COnstantNullPointer.. ..
+              break;
+      }
+
+      return retType;
+    }
 
   protected:
     static llvm::LLVMContext TheContext;
@@ -330,9 +329,19 @@ class VarList: public AST {
     Type getType() {return type;}
     virtual void sem() override {
       for (int i = 0; i < var_list.size(); i++) {
-        //std::cout << "trying to insert to symbol table! variable " << var_list[i] << std::endl;
         newVariable(var_list[i], type);
       }
+    }
+    virtual llvm::Value* compile() const override {
+      this->sem();
+      llvm::Type t = getLLVMType(type);
+      for (const char * s: var_list) {
+        llvm::AllocaInst *alloca_temp = new llvm::AllocaInst(t, s, insert_point);
+        SymbolEntry * e = lookupEntry(s, LOOKUP_ALL_SCOPES, false);
+        setVal(s, alloca_temp, LOOKUP_ALL_SCOPES, false);
+      }
+
+      return nullptr;
     }
   private:
     std::vector<const char *> var_list;
@@ -359,10 +368,11 @@ class Arg: public AST {
       out << ")" << " with Type " << type << " and pass by " << passmode;
     }
     int getArgSize() { return var_list.size(); }
+    Type getType() { return type; }
     void sem(SymbolEntry *p) {
       for (const char *name: var_list) newParameter(name, type, passmode, p);
     }
-    virtual llvm::Value void compile() override {
+    virtual llvm::Value* compile() const override {
       return nullptr;
     }
     std::vector<const char *> getArgListNames(){ return var_list; }
@@ -413,7 +423,7 @@ public:
     endFunctionHeader(p, type);
   }
 
-  virtual llvm::Value void compile() override {
+  llvm::Value* compile() {
 
       SymbolEntry * p;
       p = newFunction(name);
@@ -425,17 +435,17 @@ public:
 
       endFunctionHeader(p, type);
 
-      std::vector<Type *> argTypes;
+      std::vector<llvm::Type *> argTypes;
       for (Arg *a: *arg_list) {
         a->sem(p);
-        for (int i = 0; i < a.getArgSize(); i++){
-          llvm::Type *tempType = getLLVMType(getType(a));
+        llvm::Type * tempType = this->getLLVMType(a->getType());
+        for (int i = 0; i < a->getArgSize(); i++){
           argTypes.push_back(tempType);
         }
       }
 
-      llvm::FunctionType *FT = llvm::FunctionType::get(getLLVMType(type), argTypes, false );
-      llvm::Function *Function = Function::Create(FT, llvm::Function::ExternalLinkage,
+      llvm::FunctionType * FT = llvm::FunctionType::get(getLLVMType(type), argTypes, false );
+      llvm::Function * Function = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                                                       name, TheModule.get());
 
       std::vector<const char *> names;
@@ -449,6 +459,7 @@ public:
       for (auto &Arg : Function->args())
           Arg.setName(names[i++]);
 
+      llvm::verifyFunction(*Function);
       return Function;
     }
 
@@ -605,15 +616,34 @@ public:
       }
     }
 
-
-
     if(header->getHeaderDef() == DEF && !existsReturn && !equalType(header->getHeaderType(), typeVoid)) {
       fatal("Non void function must have a return statement.");
     }
 
-    printSymbolTable();
+    //printSymbolTable();
     closeScope();
   }
+
+  virtual llvm::Value* compile() const override {
+
+    if (!isMain) {
+      thisFunction = header->compile();
+    }
+    else{
+      llvm::FunctionType * FT = llvm::FunctionType::get{i32, {}, false );
+      thisFunction = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                                      "main", TheModule.get());
+    }
+
+    BasicBlock *BB = BasicBlock::Create(TheContext, "entry", thisFunction);
+    Builder.SetInsertPoint(BB);
+    Builder.CreateCall(TheInit, {});
+    // Emit the program code.
+    compile();
+    if Builder.CreateRet(c32(0));
+
+  }
+
 
 private:
   Header *header;
@@ -622,6 +652,7 @@ private:
   std::vector<Decl *> decl_list;
   StmtList *stmt_list;
   std::vector<DefType> sequence;
+  llvm::Function * thisFunction
   int size;
   bool isMain;
 };

@@ -106,10 +106,13 @@ program:
     func-def {
       $2->setMain();  $2->sem();
       /* code gen  */
+
       destroySymbolTable();
       initSymbolTable(2048);
       openScope();
       StandardLibraryInit();
+      AST* ast = new AST($2);
+      ast->llvm_compile_and_dump();
       //$2->compile();
         }
 ;
