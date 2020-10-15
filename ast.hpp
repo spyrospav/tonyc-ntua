@@ -333,12 +333,14 @@ class VarList: public AST {
       }
     }
     virtual llvm::Value* compile() const override {
-      this->sem();
-      llvm::Type t = getLLVMType(type);
+      for (int i = 0; i < var_list.size(); i++) {
+        newVariable(var_list[i], type);
+      }
+      llvm::Type * t = getLLVMType(type);
       for (const char * s: var_list) {
-        llvm::AllocaInst *alloca_temp = new llvm::AllocaInst(t, s, insert_point);
+        //llvm::AllocaInst *alloca_temp = new llvm::AllocaInst(t, s, insert_point);
         SymbolEntry * e = lookupEntry(s, LOOKUP_ALL_SCOPES, false);
-        setVal(s, alloca_temp, LOOKUP_ALL_SCOPES, false);
+        //setVal(s, alloca_temp, LOOKUP_ALL_SCOPES, false);
       }
 
       return nullptr;

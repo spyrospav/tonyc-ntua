@@ -4,13 +4,14 @@
 #include "ast.hpp"
 #include <stdio.h>
 #include "parser.hpp"
-#include "lexer.hpp"
+//#include "lexer.hpp"
 #include "general.h"
 
 //int linecount = 1;
 int comment_level = 0;
 
 #define T_eof 0
+
 
 %}
 

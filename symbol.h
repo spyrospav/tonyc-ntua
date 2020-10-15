@@ -29,7 +29,7 @@
 
 #include <stdbool.h>
 #include <map>
-#include <llvm/IR/Value.h>
+//#include <llvm/IR/Value.h>
 /*
  *  �� �� �������� include ��� ������������� ��� ��� ���������
  *  ��� C ��� ��������������, �������������� �� �� �� ��������:
@@ -122,7 +122,7 @@ struct SymbolEntry_tag {
    unsigned int   hashValue;          /* ���� ���������������          */
    SymbolEntry  * nextHash;           /* ������� ������� ���� �.�.     */
    SymbolEntry  * nextInScope;        /* ������� ������� ���� �������� */
-   llvm::Value  * llvmVal;
+  // llvm::Value  * llvmVal;
 
    union {                            /* ������� �� ��� ���� ��������: */
 
@@ -228,8 +228,8 @@ void          endFunctionHeader  (SymbolEntry * f, Type type);
 void          destroyEntry       (SymbolEntry * e);
 SymbolEntry * lookupEntry        (const char * name, LookupType type,
                                   bool err);
-void          setVal             (const char * name, llvm::Value * val,
-                                  LookupType type, bool err);
+//void          setVal             (const char * name, llvm::Value * val,
+                                  //LookupType type, bool err);
 
 Type          typeArray          (RepInteger size, Type refType);
 Type          typeIArray         (Type refType);

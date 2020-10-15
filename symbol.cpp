@@ -563,7 +563,7 @@ SymbolEntry * lookupEntry (const char * name, LookupType type, bool err)
         error("Unknown identifier: %s", name);
     return NULL;
 }
-
+/*
 void setVal (const char * name, llvm::Value * val, LookupType type, bool err)
 {
     unsigned int  hashValue = PJW_hash(name) % hashTableSize;
@@ -589,7 +589,7 @@ void setVal (const char * name, llvm::Value * val, LookupType type, bool err)
     if (err)
         error("Unknown identifier: %s", name);
 }
-
+*/
 Type typeArray (RepInteger size, Type refType)
 {
     Type n = (Type) my_new(sizeof(struct Type_tag));
