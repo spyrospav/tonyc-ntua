@@ -16,6 +16,7 @@
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Value.h>
+#include <llvm/IR/Instructions.h>
 
 /*------------ LLVM Optimizations -------------*/
 #include <llvm/Transforms/InstCombine/InstCombine.h>
@@ -454,6 +455,8 @@ public:
       for (auto &Arg : Function->args())
           Arg.setName(names[i++]);
 
+      p->u.eFunction.llvmfun = Function;
+
       return Function;
     }
 
@@ -627,39 +630,41 @@ public:
   virtual llvm::Value* compile() override {
 
     if (!isMain) {
-        return nullptr;//thisFunction = header->compile();
+        thisFunction = header->compile();
     }
     else{
       llvm::FunctionType *FT = llvm::FunctionType::get(i32, {}, false );
       thisFunction = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                                                         "main", TheModule.get());
     }
-    //
-    // llvm::BasicBlock *BB = llvm::BasicBlock::Create(TheContext, "entry", thisFunction);
-    // Builder.SetInsertPoint(BB);
-    // Builder.CreateCall(TheInit, {});
-    //
-    // int v = 0, f = 0, d = 0;
-    // for (std::vector<DefType>::iterator it = sequence.begin(); it < sequence.end(); it++){
-    //   if (*it == FUNCTION) {
-    //     func_list[f]->sem();
-    //     f++;
-    //   }
-    //   else if (*it == VARIABLE) {
-    //     var_list[v]->sem();
-    //     llvm::Type * t = var_list[v]->getLLVMType(type);
-    //     for (const char * s: var_list) {
-    //       llvm::AllocaInst *alloca_temp = new llvm::AllocaInst(t, s, BB.start());
-    //       SymbolEntry * e = lookupEntry(s, LOOKUP_ALL_SCOPES, false);
-    //       setVal(s, alloca_temp, LOOKUP_ALL_SCOPES, false);
-    //     }
-    //     v++;
-    //   }
-    //   else if (*it == DECLARATION) {
-    //     decl_list[d]->sem();
-    //     d++;
-    //   }
-    // }
+
+    llvm::BasicBlock *BB = llvm::BasicBlock::Create(TheContext, "entry", thisFunction);
+    Builder.SetInsertPoint(BB);
+    //Builder.CreateCall(TheInit, {});
+
+    int v = 0, f = 0, d = 0;
+    for (std::vector<DefType>::iterator it = sequence.begin(); it < sequence.end(); it++){
+      if (*it == FUNCTION) {
+        func_list[f]->compile();
+        f++;
+      }
+      else if (*it == VARIABLE) {
+        var_list[v]->sem();
+        llvm::Type * t = getLLVMType(var_list[v]->getType());
+        for (VarList * varl : var_list) {
+          for (const char * s: varl->getVarList()) {
+            llvm::AllocaInst *alloca_temp = new llvm::AllocaInst(t, s, BB);
+            SymbolEntry * e = lookupEntry(s, LOOKUP_ALL_SCOPES, false);
+            e->u.eVariable.allocainst = alloca_temp;
+          }
+          v++;
+        }
+      }
+      else if (*it == DECLARATION) {
+        decl_list[d]->sem();
+        d++;
+      }
+    }
 
     // Emit the program code.
 
