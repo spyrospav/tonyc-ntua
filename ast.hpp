@@ -77,38 +77,6 @@ enum StringExpr{
   OTHER
 };
 
-llvm::Type * getLLVMType(Type type){
-  llvm::Type * retType;
-
-  switch (type->kind) {
-      case TYPE_VOID:
-          retType = llvm::Type::getVoidTy(TheContext);
-          break;
-      case TYPE_INTEGER:
-          retType = i64;
-          break;
-      case TYPE_BOOLEAN:
-          retType = i1;
-          break;
-      case TYPE_CHAR:
-          retType = i8;
-          break;
-      case TYPE_ARRAY:
-          retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
-          break;
-      case TYPE_IARRAY:
-          retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
-          break;
-      case TYPE_LIST:
-          retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
-          break;
-      case TYPE_ANY:
-          refType = nullptr; //pithanon COnstantNullPointer.. ..
-          break;
-  }
-
-  return retType;
-}
 
 class AST {
   public:
@@ -247,6 +215,40 @@ class AST {
     TheFPM->doInitialization();
 
     }
+    llvm::Type * getLLVMType(Type type) const{
+      llvm::Type * retType;
+
+      switch (type->kind) {
+          case TYPE_VOID:
+              retType = llvm::Type::getVoidTy(TheContext);
+              break;
+          case TYPE_INTEGER:
+              retType = i64;
+              break;
+          case TYPE_BOOLEAN:
+              retType = i1;
+              break;
+          case TYPE_CHAR:
+              retType = i8;
+              break;
+          case TYPE_ARRAY:
+              retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
+              break;
+          case TYPE_IARRAY:
+              retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
+              break;
+          case TYPE_LIST:
+              retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
+              break;
+          case TYPE_ANY:
+              retType = nullptr; //pithanon COnstantNullPointer.. ..
+              break;
+          default:
+              retType = i64;
+      }
+
+      return retType;
+    }
 
   protected:
     static llvm::LLVMContext TheContext;
@@ -359,10 +361,11 @@ class Arg: public AST {
       out << ")" << " with Type " << type << " and pass by " << passmode;
     }
     int getArgSize() { return var_list.size(); }
+    Type getType() { return type; }
     void sem(SymbolEntry *p) {
       for (const char *name: var_list) newParameter(name, type, passmode, p);
     }
-    virtual llvm::Value void compile() override {
+    virtual llvm::Value * compile() const override {
       return nullptr;
     }
     std::vector<const char *> getArgListNames(){ return var_list; }
@@ -413,7 +416,7 @@ public:
     endFunctionHeader(p, type);
   }
 
-  virtual llvm::Value void compile() override {
+  virtual llvm::Value *  compile() const override {
 
       SymbolEntry * p;
       p = newFunction(name);
@@ -425,17 +428,17 @@ public:
 
       endFunctionHeader(p, type);
 
-      std::vector<Type *> argTypes;
+      std::vector<llvm::Type *> argTypes;
       for (Arg *a: *arg_list) {
         a->sem(p);
-        for (int i = 0; i < a.getArgSize(); i++){
-          llvm::Type *tempType = getLLVMType(getType(a));
+        for (int i = 0; i < a->getArgSize(); i++){
+          llvm::Type *tempType = this->getLLVMType(a->getType());
           argTypes.push_back(tempType);
         }
       }
 
-      llvm::FunctionType *FT = llvm::FunctionType::get(getLLVMType(type), argTypes, false );
-      llvm::Function *Function = Function::Create(FT, llvm::Function::ExternalLinkage,
+      llvm::FunctionType * FT = llvm::FunctionType::get(getLLVMType(type), argTypes, false );
+      llvm::Function * Function = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                                                       name, TheModule.get());
 
       std::vector<const char *> names;
