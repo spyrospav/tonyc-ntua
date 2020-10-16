@@ -87,7 +87,7 @@ class AST {
       destroySymbolTable();
     }
     virtual void printOn(std::ostream &out) const = 0;
-    virtual llvm::Value* compile() const {return nullptr;}//const = 0;
+    virtual llvm::Value* compile() { return nullptr; } //const = 0;
     virtual void sem() {}
     void llvm_compile_and_dump(bool doOptimize=false) {
     // Initialize
@@ -329,12 +329,14 @@ class VarList: public AST {
     void var_append(const char* d) { var_list.insert(var_list.begin(), d); }
     void var_type(Type t) { type = t; }
     std::vector<const char * > getVarList() { return var_list; }
-    Type getType() {return type;}
+    Type getType() { return type; }
     virtual void sem() override {
       for (int i = 0; i < var_list.size(); i++) {
-        //std::cout << "trying to insert to symbol table! variable " << var_list[i] << std::endl;
         newVariable(var_list[i], type);
       }
+    }
+    virtual llvm::Value* compile() override {
+      return nullptr;
     }
   private:
     std::vector<const char *> var_list;
@@ -365,7 +367,7 @@ class Arg: public AST {
     void sem(SymbolEntry *p) {
       for (const char *name: var_list) newParameter(name, type, passmode, p);
     }
-    virtual llvm::Value * compile() const override {
+    virtual llvm::Value* compile() override {
       return nullptr;
     }
     std::vector<const char *> getArgListNames(){ return var_list; }
@@ -416,7 +418,7 @@ public:
     endFunctionHeader(p, type);
   }
 
-  virtual llvm::Value *  compile() const override {
+  virtual llvm::Value * compile() override {
 
       SymbolEntry * p;
       p = newFunction(name);
@@ -475,14 +477,15 @@ class Stmt: public AST {
       if(!equalType(header->getHeaderType(), this->getReturnType()))
         fatal("Return type does not match function type");
     }
-
+    virtual llvm::Value* compile() override {
+      return nullptr;
+    }
   private:
     StmtType stmttype;
     Type returntype;
 };
 
 typedef std::vector<Stmt *> StmtList;
-
 
 
 enum DefType {
@@ -502,6 +505,11 @@ class Decl: public AST{
     virtual void sem() override {
       header->sem();
       closeScope();
+    }
+    virtual llvm::Value * compile() override {
+      header->sem();
+      closeScope();
+      return nullptr;
     }
   private:
     Header *header;
@@ -608,14 +616,54 @@ public:
       }
     }
 
-
-
     if(header->getHeaderDef() == DEF && !existsReturn && !equalType(header->getHeaderType(), typeVoid)) {
       fatal("Non void function must have a return statement.");
     }
 
     printSymbolTable();
     closeScope();
+  }
+
+  virtual llvm::Value* compile() override {
+
+    if (!isMain) {
+        return nullptr;//thisFunction = header->compile();
+    }
+    else{
+      llvm::FunctionType *FT = llvm::FunctionType::get(i32, {}, false );
+      thisFunction = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                                        "main", TheModule.get());
+    }
+    //
+    // llvm::BasicBlock *BB = llvm::BasicBlock::Create(TheContext, "entry", thisFunction);
+    // Builder.SetInsertPoint(BB);
+    // Builder.CreateCall(TheInit, {});
+    //
+    // int v = 0, f = 0, d = 0;
+    // for (std::vector<DefType>::iterator it = sequence.begin(); it < sequence.end(); it++){
+    //   if (*it == FUNCTION) {
+    //     func_list[f]->sem();
+    //     f++;
+    //   }
+    //   else if (*it == VARIABLE) {
+    //     var_list[v]->sem();
+    //     llvm::Type * t = var_list[v]->getLLVMType(type);
+    //     for (const char * s: var_list) {
+    //       llvm::AllocaInst *alloca_temp = new llvm::AllocaInst(t, s, BB.start());
+    //       SymbolEntry * e = lookupEntry(s, LOOKUP_ALL_SCOPES, false);
+    //       setVal(s, alloca_temp, LOOKUP_ALL_SCOPES, false);
+    //     }
+    //     v++;
+    //   }
+    //   else if (*it == DECLARATION) {
+    //     decl_list[d]->sem();
+    //     d++;
+    //   }
+    // }
+
+    // Emit the program code.
+
+    //if Builder.CreateRet(c32(0));
   }
 
 private:
@@ -626,6 +674,7 @@ private:
   StmtList *stmt_list;
   std::vector<DefType> sequence;
   int size;
+  llvm::Function * thisFunction;
   bool isMain;
 };
 
@@ -645,6 +694,9 @@ class Expr : public AST {
     Type getType() { return type; }
     bool isLValue() { return lval; }
     StringExpr getStringExpr() { return stringExpr; }
+    virtual llvm::Value* compile() override {
+      return nullptr;
+    }
   protected:
     Type type;
     bool lval;
@@ -654,10 +706,6 @@ class Expr : public AST {
 };
 
 typedef std::vector<Expr *> ExprList;
-
-class Atom : public Expr {
-  public:
-};
 
 class IntConst : public Expr {
   public:
@@ -672,7 +720,7 @@ class IntConst : public Expr {
     }
     */
     virtual void sem() override { lval = false; stringExpr = OTHER; type = typeInteger; }
-    virtual llvm::Value* compile() const override { return c64(num); }
+    virtual llvm::Value* compile()override { return c64(num); }
   private:
     int num;
 };
@@ -690,7 +738,7 @@ class CharConst : public Expr {
     }
     */
     virtual void sem() override { lval = false; stringExpr = OTHER; type = typeChar; }
-    virtual llvm::Value* compile() const override { return c8(character); }
+    virtual llvm::Value* compile() override { return c8(character); }
 
   private:
     char character;
@@ -709,7 +757,7 @@ class BoolConst : public Expr {
     }
     */
     virtual void sem() override { lval = false; stringExpr = OTHER; type = typeBoolean; }
-    virtual llvm::Value* compile() const override { return c1(int(logic)); }
+    virtual llvm::Value* compile() override { return c1(int(logic)); }
 
   private:
     bool logic;
@@ -770,7 +818,7 @@ public:
     out << "a" <<  op << "(" << *left << ", " << *right << ")";
   }
 
-  virtual llvm::Value* compile() const override {
+  virtual llvm::Value* compile() override {
     llvm::Value* l = left->compile();
     llvm::Value* r = right->compile();
     if(!strcmp(op, "+")) return Builder.CreateAdd(l, r, "addtmp");
@@ -842,7 +890,7 @@ public:
     stringExpr = OTHER;
   }
 
-  virtual llvm::Value* compile() const override {
+  virtual llvm::Value* compile() override {
     llvm::Value* operand = expr->compile();
     if(!strcmp(op, "+")) return operand;
     else if(!strcmp(op, "-")) return Builder.CreateMul(operand, c64(-1), "minus_sign_tmp");
@@ -878,6 +926,9 @@ public:
     else std::cout << " Aliens." << std::endl;
     stringExpr = OTHER;
   }
+  virtual llvm::Value* compile() override {
+    return nullptr;
+  }
 private:
   const char *op;
   Expr *expr;
@@ -902,6 +953,9 @@ public:
     else std::cout << "Aliens." << std::endl;
     stringExpr = OTHER;
   }
+  virtual llvm::Value* compile() override {
+    return nullptr;
+  }
 private:
   const char *op;
   Expr *expr1, *expr2;
@@ -918,6 +972,9 @@ class Nil: public Expr {
       lval = false;
       type = typeList(typeAny);
       stringExpr = OTHER;
+    }
+    virtual llvm::Value* compile() override {
+      return nullptr;
     }
   private:
 };
@@ -936,6 +993,9 @@ class StringConst: public Expr {
       type = typeIArray(typeChar); //Warning: may come back
       stringExpr = STRING;
     }
+    virtual llvm::Value* compile() override {
+      return nullptr;
+    }
   private:
     const char * stringconst;
 };
@@ -953,6 +1013,9 @@ class Array: public Expr {
       lval = false;
       sizeExpr->type_check(typeInteger);
       type = typeIArray(arrayType);
+    }
+    virtual llvm::Value* compile() override {
+      return nullptr;
     }
   private:
     Type arrayType;
@@ -980,6 +1043,9 @@ class ArrayItem: public Expr{
       type = atom->getType()->refType;
       //std :: cout << type << std::endl;
       lval = true;
+    }
+    virtual llvm::Value* compile() override {
+      return nullptr;
     }
   private:
     Expr *atom, *expr;
@@ -1046,6 +1112,9 @@ public:
         i++;
       }
     }
+  }
+  virtual llvm::Value* compile() override {
+    return nullptr;
   }
 private:
   Id *id;
@@ -1115,6 +1184,9 @@ class CallStmt: public Stmt{
         }
       }
     }
+    virtual llvm::Value* compile() override {
+      return nullptr;
+    }
   private:
     Id *id;
     ExprList *exprlist;
@@ -1128,7 +1200,7 @@ class Skip : public Stmt {
       out << "Empty instruction" << std::endl;
     }
     virtual void sem() override { setStmtType(SIMPLE_STMT); }
-    virtual llvm::Value* compile() const override { return nullptr; }
+    virtual llvm::Value* compile() override { return nullptr; }
 };
 
 class For : public Stmt {
@@ -1197,7 +1269,7 @@ public:
       }
   }
 
-  virtual llvm::Value* compile() const override {
+  virtual llvm::Value* compile() override {
     //emit initialization code
     /*unordered_map<Value *> init;
     Value *Init [init_list.size()]
@@ -1358,7 +1430,7 @@ public:
     }
   }
 
-  virtual llvm::Value* compile() const override {
+  virtual llvm::Value* compile()  override {
 
     // int counter=0;
     // for(IfPair a: *full_list) {
@@ -1424,6 +1496,9 @@ public:
     if (var->getStringExpr() == STRING_ITEM) fatal("Can't assign value to item of a constant string type object");
     expr->type_check(var->getType());
   }
+  virtual llvm::Value* compile() override {
+    return nullptr;
+  }
 private:
   Expr *var;
   Expr *expr;
@@ -1441,7 +1516,7 @@ public:
     returnExpr->sem();
     setReturnType(returnExpr->getType());
   }
-  virtual llvm::Value* compile() const override {
+  virtual llvm::Value* compile() override {
     llvm::Value *RetValue = returnExpr->compile();
     Builder.CreateRet(RetValue);
     return RetValue;
@@ -1462,7 +1537,7 @@ class Exit: public Stmt {
     virtual void sem() override {
       setStmtType(EXIT);
     }
-    virtual llvm::Value* compile() const override {
+    virtual llvm::Value* compile() override {
       Builder.CreateRetVoid();
       return nullptr;
     }

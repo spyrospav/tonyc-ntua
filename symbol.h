@@ -30,6 +30,8 @@
 #include <stdbool.h>
 #include <map>
 #include <llvm/IR/Value.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Instructions.h>
 /*
  *  ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ include ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
  *  ï¿½ï¿½ï¿½ C ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½:
@@ -122,13 +124,13 @@ struct SymbolEntry_tag {
    unsigned int   hashValue;          /* ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½          */
    SymbolEntry  * nextHash;           /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½.ï¿½.     */
    SymbolEntry  * nextInScope;        /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
-   llvm::Value  * llvmVal;
 
    union {                            /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½: */
 
       struct {                                /******* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ *******/
          Type          type;                  /* ï¿½ï¿½ï¿½ï¿½ï¿½                 */
          int           offset;                /* Offset ï¿½ï¿½ï¿½ ï¿½.ï¿½.       */
+         llvm::AllocaInst * allocainst;
       } eVariable;
 
       struct {                                /******** ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ********/
@@ -149,6 +151,7 @@ struct SymbolEntry_tag {
          Type          resultType;            /* ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½   */
          Pardef pardef;
          int           firstQuad;             /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½        */
+         llvm::Function * llvmfun;
       } eFunction;
 
       struct {                                /****** ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ *******/
@@ -196,8 +199,6 @@ extern Scope        * currentScope;       /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï
 extern unsigned int   quadNext;           /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
 extern unsigned int   tempNumber;         /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ temporaries  */
 
-extern std::map<SymbolEntry *, int> hashTheVars;  /* The order in which each variable (found by its symbol entry) is placed in the hash table */
-
 extern const Type typeVoid;
 extern const Type typeInteger;
 extern const Type typeBoolean;
@@ -216,9 +217,9 @@ void          destroySymbolTable (void);
 void          openScope          (void);
 void          closeScope         (void);
 
-SymbolEntry * newVariable        (const char * name, Type type);
+SymbolEntry * newVariable        (const char * name, Type type, llvm::AllocaInst *a = nullptr);
 SymbolEntry * newConstant        (const char * name, Type type, ...);
-SymbolEntry * newFunction        (const char * name);
+SymbolEntry * newFunction        (const char * name, llvm::Function * f = nullptr);
 SymbolEntry * newParameter       (const char * name, Type type,
                                   PassMode mode, SymbolEntry * f);
 SymbolEntry * newTemporary       (Type type);
@@ -228,9 +229,7 @@ void          endFunctionHeader  (SymbolEntry * f, Type type);
 void          destroyEntry       (SymbolEntry * e);
 SymbolEntry * lookupEntry        (const char * name, LookupType type,
                                   bool err);
-void          setVal             (const char * name, llvm::Value * val,
-                                  LookupType type, bool err);
-
+                                  
 Type          typeArray          (RepInteger size, Type refType);
 Type          typeIArray         (Type refType);
 Type          typePointer        (Type refType);
