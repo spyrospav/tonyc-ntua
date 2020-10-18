@@ -1,0 +1,12 @@
+<*
+ * Test case: notelse.tony
+ * Result: Pass
+ *>
+
+def program():
+  int a
+  a := 2
+  if a > 3:
+    puts("hello")
+  end
+end

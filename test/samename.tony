@@ -1,0 +1,12 @@
+<*
+ * Test case: samename.tony
+ * Result: Fail
+ *>
+
+def program():
+  int a
+  def int a (int b):
+    return b + 1
+  end
+  a := a(10)
+end

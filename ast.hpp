@@ -17,6 +17,7 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/Verifier.h>
 
 /*------------ LLVM Optimizations -------------*/
 #include <llvm/Transforms/InstCombine/InstCombine.h>
@@ -25,6 +26,17 @@
 #include <llvm/Transforms/Utils.h>
 
 void yyerror(const char *msg);
+
+/// CreateEntryBlockAlloca - Create an alloca instruction in the entry block of
+/// the function.  This is used for mutable variables etc.
+static llvm::AllocaInst *CreateEntryBlockAlloca(llvm::Function *TheFunction,
+                                          const std::string &VarName,
+                                          llvm::Type *type) {
+  llvm::IRBuilder<> TmpB(&TheFunction->getEntryBlock(),
+                   TheFunction->getEntryBlock().begin());
+  return TmpB.CreateAlloca(type, nullptr, VarName);
+}
+
 
 inline std::ostream& operator<<(std::ostream &out, Type t) {
 
@@ -60,6 +72,9 @@ inline std::ostream& operator<<(std::ostream &out, Type t) {
           break;
       case TYPE_ANY:
           out << "any type";
+          break;
+      default:
+          out << "not recognised type";
           break;
   }
   return out;
@@ -419,7 +434,7 @@ public:
     endFunctionHeader(p, type);
   }
 
-  virtual llvm::Value * compile() override {
+  llvm::Function * compilef() {
 
       SymbolEntry * p;
       p = newFunction(name);
@@ -510,7 +525,7 @@ class Decl: public AST{
       closeScope();
     }
     virtual llvm::Value * compile() override {
-      header->sem();
+      llvm::Function * f_ = header->compilef();
       closeScope();
       return nullptr;
     }
@@ -630,7 +645,11 @@ public:
   virtual llvm::Value* compile() override {
 
     if (!isMain) {
-        thisFunction = header->compile();
+        SymbolEntry * e = lookupEntry(header->getHeaderName(), LOOKUP_ALL_SCOPES, false);
+        if (!e)
+          thisFunction = header->compilef();
+        else
+          thisFunction = e->u.eFunction.llvmfun;
     }
     else{
       llvm::FunctionType *FT = llvm::FunctionType::get(i32, {}, false );
@@ -645,7 +664,7 @@ public:
     int v = 0, f = 0, d = 0;
     for (std::vector<DefType>::iterator it = sequence.begin(); it < sequence.end(); it++){
       if (*it == FUNCTION) {
-        func_list[f]->compile();
+        llvm::Value * _t = func_list[f]->compile();
         f++;
       }
       else if (*it == VARIABLE) {
@@ -653,7 +672,7 @@ public:
         llvm::Type * t = getLLVMType(var_list[v]->getType());
         for (VarList * varl : var_list) {
           for (const char * s: varl->getVarList()) {
-            llvm::AllocaInst *alloca_temp = new llvm::AllocaInst(t, s, BB);
+            llvm::AllocaInst *alloca_temp = CreateEntryBlockAlloca(thisFunction, s, t);
             SymbolEntry * e = lookupEntry(s, LOOKUP_ALL_SCOPES, false);
             e->u.eVariable.allocainst = alloca_temp;
           }
@@ -661,14 +680,30 @@ public:
         }
       }
       else if (*it == DECLARATION) {
-        decl_list[d]->sem();
+        decl_list[d]->compile();
         d++;
       }
     }
 
-    // Emit the program code.
+    if (stmt_list != NULL) {
+      for (Stmt *stmt : *stmt_list) {
+        stmt->compile();
 
-    //if Builder.CreateRet(c32(0));
+        if(stmt->checkForReturns()){
+          bool existsReturn = true;
+        }
+      }
+    }
+
+    llvm::verifyFunction(*thisFunction);
+    printSymbolTable();
+    closeScope();
+    // Emit the program code.
+    //compile();
+    if (isMain) {
+      Builder.CreateRet(c32(0));
+    }
+    return nullptr;
   }
 
 private:
@@ -794,7 +829,7 @@ public:
     }
     stringExpr = OTHER;
   }
-  virtual llvm::Value* compile() {
+  virtual llvm::Value* compile() override {
     std::string name_ptr(var), name(var);
     name_ptr.append("_ptr\0");
     name.append("\0");
@@ -831,7 +866,7 @@ public:
     else if(!strcmp(op, "*")) return Builder.CreateMul(l, r, "multmp");
     else if(!strcmp(op, "/")) return Builder.CreateSDiv(l, r, "divtmp");
     else if(!strcmp(op, "mod")) return Builder.CreateSRem(l, r, "modtmp");
-    else if(!strcmp(op, "and")) return Builder.CreateAnd(l, r, "andtmp");
+    else if(!strcmp(op, "and")) return Builder.CreateAnd(l, r, "andtmp"); // not sure yet if CreateAnd short circuits the logical expression
     else if(!strcmp(op, "or")) return Builder.CreateOr(l, r, "ortmp");
     else if(!strcmp(op, "=")) return Builder.CreateICmpEQ(l, r, "eqtmp");
     else if(!strcmp(op, "<=")) return Builder.CreateICmpSLE(l, r, "addtmp");
@@ -1437,7 +1472,28 @@ public:
 
   virtual llvm::Value* compile()  override {
 
-    // int counter=0;
+    std::string label = "elif00";
+    int count = 0;
+
+    for(IfPair a: *full_list) {
+      //(cond1_lst-> stmt1_lst, cond2_lst->stmt_list)
+      Expr *e = a.first;
+      StmtList *s_list = a.second;
+      llvm::Value *v = e->compile();
+      if (count == 0)
+        llvm::Value *cond = Builder.CreateICmpNE(v, c64(0), "if_cond");
+      else {
+        /*
+        std::string tmp = atoi(count);
+        label[5] = tmp[0];
+        label[6] = tmp[1];
+        */
+        llvm::Value *cond = Builder.CreateICmpNE(v, c64(0), label);
+      }
+      count++;
+    return nullptr;
+    }
+
     // for(IfPair a: *full_list) {
     //   Expr *e = a.first;
     //   StmtList *s_list = a.second;
@@ -1482,14 +1538,6 @@ private:
 class Let: public Stmt {
 public:
   Let(Expr *v, Expr *e): var(v),  expr(e) {}
-  /*
-  Let(Call *call, Expr *e) {
-    fatal("Cannot assign to non l-value");
-  }
-  Let(StringConst *s, Expr *e) {
-    fatal("Cannot assign to non l-value");
-  }
-  */
   ~Let() { delete expr; }
   virtual void printOn(std::ostream &out) const override {
     out << "Let(" << *var << " = " << *expr << ")" << std::endl;
@@ -1502,6 +1550,9 @@ public:
     expr->type_check(var->getType());
   }
   virtual llvm::Value* compile() override {
+    llvm::Value * alloc_tmp = var->compile();
+    llvm::Value * val_tmp = expr->compile();
+    Builder.CreateStore(val_tmp, alloc_tmp);
     return nullptr;
   }
 private:
@@ -1524,7 +1575,7 @@ public:
   virtual llvm::Value* compile() override {
     llvm::Value *RetValue = returnExpr->compile();
     Builder.CreateRet(RetValue);
-    return RetValue;
+    return nullptr;
    }
 
 
