@@ -220,6 +220,13 @@ class AST {
         llvm::Function::Create(strcpy_type, llvm::Function::ExternalLinkage,
                         "strcat", TheModule.get());
 
+    compile();
+    bool bad = llvm::verifyModule(*TheModule, &llvm::errs());
+    if (bad) {
+      std::cerr << "The IR is bad!" << std::endl;
+      TheModule->print(llvm::errs(), nullptr);
+      std::exit(1);
+    }
     // Initialize optimization Function Pass Manager
     if (doOptimize) {
       TheFPM->add(llvm::createPromoteMemoryToRegisterPass());
@@ -230,6 +237,8 @@ class AST {
     }
     TheFPM->doInitialization();
 
+
+    TheModule->print(llvm::outs(), nullptr);
     }
     llvm::Type * getLLVMType(Type type) const{
       llvm::Type * retType;
@@ -600,7 +609,7 @@ public:
       header->sem();
     }
 
-    printSymbolTable();
+    if (false) printSymbolTable();;
     int v = 0, f = 0, d = 0;
     bool existsReturn = false;
     for (std::vector<DefType>::iterator it = sequence.begin(); it < sequence.end(); it++){
@@ -638,7 +647,7 @@ public:
       fatal("Non void function must have a return statement.");
     }
 
-    printSymbolTable();
+    if (false) printSymbolTable();;
     closeScope();
   }
 
@@ -655,10 +664,11 @@ public:
       llvm::FunctionType *FT = llvm::FunctionType::get(i32, {}, false );
       thisFunction = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                                                         "main", TheModule.get());
-    }
 
+    }
     llvm::BasicBlock *BB = llvm::BasicBlock::Create(TheContext, "entry", thisFunction);
     Builder.SetInsertPoint(BB);
+
     //Builder.CreateCall(TheInit, {});
 
     int v = 0, f = 0, d = 0;
@@ -694,14 +704,20 @@ public:
         }
       }
     }
-
-    llvm::verifyFunction(*thisFunction);
-    printSymbolTable();
+  
+    if (false) printSymbolTable();;
     closeScope();
     // Emit the program code.
     //compile();
     if (isMain) {
       Builder.CreateRet(c32(0));
+    }
+    llvm::verifyFunction(*thisFunction);
+    bool bad = llvm::verifyFunction(*thisFunction, &llvm::errs());
+    if (bad) {
+      std::cerr << "The function " << header->getHeaderName() << " is bad!" << std::endl;
+      thisFunction->print(llvm::errs(), nullptr);
+      std::exit(1);
     }
     return nullptr;
   }
@@ -830,9 +846,18 @@ public:
     stringExpr = OTHER;
   }
   virtual llvm::Value* compile() override {
-    std::string name_ptr(var), name(var);
-    name_ptr.append("_ptr\0");
-    name.append("\0");
+    SymbolEntry *e = lookupEntry(var,LOOKUP_ALL_SCOPES, false);
+    if (e==NULL) { fatal("Id has not been declared"); }
+    entry = e->entryType;
+    if (entry == ENTRY_VARIABLE ) {
+      return Builder.CreateLoad(e->u.eVariable.allocainst, var);
+    }
+    else if (entry == ENTRY_FUNCTION ) {
+      return e->u.eFunction.llvmfun;
+    }
+    else if (entry == ENTRY_PARAMETER ) {
+      type = e->u.eParameter.type;
+    }
     return nullptr;
     //lookup the entry
 
@@ -1472,6 +1497,7 @@ public:
 
   virtual llvm::Value* compile()  override {
 
+    /*
     std::string label = "elif00";
     int count = 0;
 
@@ -1483,49 +1509,80 @@ public:
       if (count == 0)
         llvm::Value *cond = Builder.CreateICmpNE(v, c64(0), "if_cond");
       else {
-        /*
+
         std::string tmp = atoi(count);
         label[5] = tmp[0];
         label[6] = tmp[1];
-        */
+
         llvm::Value *cond = Builder.CreateICmpNE(v, c64(0), label);
       }
       count++;
     return nullptr;
     }
+    */
+    /*
+    Since llvm doesnt directly support elsif statements we implement them
+    in the following way:
 
-    // for(IfPair a: *full_list) {
-    //   Expr *e = a.first;
-    //   StmtList *s_list = a.second;
-    //   llvm::Value *v = e->compile();
-    //   llvm::Value *cond = Builder.CreateICmpNE(v, c64(0), "if_cond");
-    //
-    //
-    //   if(counter==0) {
-    //
-    //   }
-    //
-    //   counter++;
-    // }
-    //
-    // llvm::Value *v = cond->compile();
-    // llvm::Value *cond = Builder.CreateICmpNE(v, c64(0), "if_cond");
-    // llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
-    // llvm::BasicBlock *ThenBB =
-    //   llvm::BasicBlock::Create(TheContext, "then", TheFunction);
-    // llvm::BasicBlock *ElseBB =
-    //   llvm::BasicBlock::Create(TheContext, "else", TheFunction);
-    // llvm::BasicBlock *AfterBB =
-    //   llvm::BasicBlock::Create(TheContext, "endif", TheFunction);
-    // Builder.CreateCondBr(cond, ThenBB, ElseBB);
-    // Builder.SetInsertPoint(ThenBB);
-    // stmt1->compile();
-    // Builder.CreateBr(AfterBB);
-    // Builder.SetInsertPoint(ElseBB);
-    // if (stmt2 != nullptr)
-    //   stmt2->compile();
-    // Builder.CreateBr(AfterBB);
-    // Builder.SetInsertPoint(AfterBB);
+    if(cond1) then stmt1; stmt2;
+    elsif(cond2) then stmt3;
+    elsif(cond3) then stmt4; stmt5
+    else stmt6;
+
+    becomes
+
+    if(cond1) them stmt1; stmt2;
+    else[
+      if(cond2) then stmt3;
+      else[
+        if(cond3) then stmt4; stmt5;
+        else[
+          stmt6;
+        ]
+      ]
+    ]
+
+    */
+
+    //potential problems: may need to differentiate block variables between
+    //each if_else pair. Also TheFunction may need to be unique and calculated
+   //at start.
+
+
+    // number of if then pairs
+    int n = full_list->size(), counter=0;
+    // create after block. Should be inserted at the end of If_then_else block
+    llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
+    llvm::BasicBlock *AfterBB =
+      llvm::BasicBlock::Create(TheContext, "endif", TheFunction);
+    for(IfPair a: *full_list) {
+      Expr *e = a.first;
+      StmtList *s_list = a.second;
+      llvm::Value *v = e->compile();
+      llvm::Value *cond = Builder.CreateICmpNE(v, c64(0), "if_cond");
+      llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
+      llvm::BasicBlock *ThenBB =
+        llvm::BasicBlock::Create(TheContext, "then", TheFunction);
+      llvm::BasicBlock *ElseBB =
+        llvm::BasicBlock::Create(TheContext, "else", TheFunction);
+      Builder.CreateCondBr(cond, ThenBB, ElseBB);
+      //Then statements:
+      Builder.SetInsertPoint(ThenBB);
+      // codegen for all statements under then
+      for(Stmt *s: *s_list) {
+        if(s!= nullptr) s->compile();
+      }
+      // branch to after (i.e the end of if_then_elsif_then_else)
+      Builder.CreateBr(AfterBB);
+      if(counter<n-1) {
+        //if not on else
+        //set insert point for then bb
+        Builder.SetInsertPoint(ThenBB);
+      }
+
+      counter++;
+    }
+    Builder.SetInsertPoint(AfterBB);
     return nullptr;
 
   }

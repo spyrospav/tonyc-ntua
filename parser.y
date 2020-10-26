@@ -102,7 +102,7 @@
 
 
 program:
-  { initSymbolTable(2048); openScope(); printSymbolTable(); StandardLibraryInit(); }
+  { initSymbolTable(2048); openScope(); StandardLibraryInit(); }
     func-def {
       $2->setMain();  $2->sem();
       /* code gen  */
@@ -110,7 +110,7 @@ program:
       initSymbolTable(2048);
       openScope();
       StandardLibraryInit();
-      //$2->compile();
+      $2->llvm_compile_and_dump();
         }
 ;
 
