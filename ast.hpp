@@ -110,7 +110,6 @@ class AST {
     TheModule = std::make_unique<llvm::Module>("Tony program", TheContext);
     TheFPM = std::make_unique<llvm::legacy::FunctionPassManager>(TheModule.get());
 
-
     // Initialize types
     i1 = llvm::IntegerType::get(TheContext, 1);
     i8 = llvm::IntegerType::get(TheContext, 8);
@@ -130,52 +129,53 @@ class AST {
       llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i64}, false);
     TheWriteInteger =
       llvm::Function::Create(writeInteger_type, llvm::Function::ExternalLinkage,
-                       "writeInteger", TheModule.get());
+                       "puti", TheModule.get());
 
    llvm::FunctionType *writeCharacter_type =
      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i8}, false);
    TheWriteCharacter =
      llvm::Function::Create(writeCharacter_type, llvm::Function::ExternalLinkage,
-                      "writeCharacter", TheModule.get());
+                      "putc", TheModule.get());
 
     llvm::FunctionType *writeBoolean_type =
       llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i1}, false);
     TheWriteBoolean =
       llvm::Function::Create(writeBoolean_type, llvm::Function::ExternalLinkage,
-                       "writeBoolean", TheModule.get());
+                       "putb", TheModule.get());
 
     llvm::FunctionType *writeString_type =
       llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext),
                         {llvm::PointerType::get(i8, 0)}, false);
     TheWriteString =
       llvm::Function::Create(writeString_type, llvm::Function::ExternalLinkage,
-                       "writeString", TheModule.get());
+                       "puts", TheModule.get());
 
       //---------------------READ functions---------------------
+     std::vector<llvm::Type *> t;
      llvm::FunctionType *readInteger_type =
-       llvm::FunctionType::get(i64, {llvm::Type::getVoidTy(TheContext)}, false);
+       llvm::FunctionType::get(i64, std::vector<llvm::Type *> {}, false);
      TheReadInteger =
        llvm::Function::Create(readInteger_type, llvm::Function::ExternalLinkage,
-                        "readInteger", TheModule.get());
+                        "geti", TheModule.get());
 
      llvm::FunctionType *readCharacter_type =
-      llvm::FunctionType::get(i8, {llvm::Type::getVoidTy(TheContext)}, false);
+      llvm::FunctionType::get(i8, std::vector<llvm::Type *> {}, false);
      TheReadCharacter =
       llvm::Function::Create(readCharacter_type, llvm::Function::ExternalLinkage,
-                       "readCharacter", TheModule.get());
+                       "getc", TheModule.get());
 
      llvm::FunctionType *readBoolean_type =
-       llvm::FunctionType::get(i1, {llvm::Type::getVoidTy(TheContext)}, false);
+       llvm::FunctionType::get(i1, std::vector<llvm::Type *>{}, false);
      TheReadBoolean =
        llvm::Function::Create(readBoolean_type, llvm::Function::ExternalLinkage,
-                        "readBoolean", TheModule.get());
+                        "getb", TheModule.get());
 
      llvm::FunctionType *readString_type =
        llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext),
                          {i64, llvm::PointerType::get(i8, 0)}, false);
      TheReadString =
        llvm::Function::Create(readString_type, llvm::Function::ExternalLinkage,
-                        "readString", TheModule.get());
+                        "gets", TheModule.get());
 
       //---------------------Conversion functions---------------------
       llvm::FunctionType *abs_type =
@@ -453,8 +453,6 @@ public:
 
       openScope();
 
-      endFunctionHeader(p, type);
-
       std::vector<llvm::Type *> argTypes;
       for (Arg *a: *arg_list) {
         a->sem(p);
@@ -480,6 +478,8 @@ public:
           Arg.setName(names[i++]);
 
       p->u.eFunction.llvmfun = Function;
+
+      endFunctionHeader(p, type);
 
       return Function;
     }
@@ -637,7 +637,7 @@ public:
             fatal("Exit can only be used inside void function blocks");
           //std::cout << "statement " << *stmt << " has checkReturn() " << std::endl;
           existsReturn = true;
-          std::cout << "header type = " << header->getHeaderType() << " return type = " << stmt->getReturnType() <<std::endl;
+          //std::cout << "header type = " << header->getHeaderType() << " return type = " << stmt->getReturnType() <<std::endl;
           stmt->checkReturnType(header);
         }
       }
@@ -655,10 +655,12 @@ public:
 
     if (!isMain) {
         SymbolEntry * e = lookupEntry(header->getHeaderName(), LOOKUP_ALL_SCOPES, false);
-        if (!e)
+        if (!e){
           thisFunction = header->compilef();
-        else
+        }
+        else {
           thisFunction = e->u.eFunction.llvmfun;
+        }
     }
     else{
       llvm::FunctionType *FT = llvm::FunctionType::get(i32, {}, false );
@@ -666,32 +668,35 @@ public:
                                                         "main", TheModule.get());
 
     }
+
     llvm::BasicBlock *BB = llvm::BasicBlock::Create(TheContext, "entry", thisFunction);
     Builder.SetInsertPoint(BB);
+
 
     //Builder.CreateCall(TheInit, {});
 
     int v = 0, f = 0, d = 0;
+    int count = 1;
     for (std::vector<DefType>::iterator it = sequence.begin(); it < sequence.end(); it++){
       if (*it == FUNCTION) {
         llvm::Value * _t = func_list[f]->compile();
         f++;
+        Builder.SetInsertPoint(BB);
       }
       else if (*it == VARIABLE) {
         var_list[v]->sem();
         llvm::Type * t = getLLVMType(var_list[v]->getType());
-        for (VarList * varl : var_list) {
-          for (const char * s: varl->getVarList()) {
+        for (const char * s : var_list[v]->getVarList()) {
             llvm::AllocaInst *alloca_temp = CreateEntryBlockAlloca(thisFunction, s, t);
             SymbolEntry * e = lookupEntry(s, LOOKUP_ALL_SCOPES, false);
             e->u.eVariable.allocainst = alloca_temp;
-          }
-          v++;
         }
+        v++;
       }
       else if (*it == DECLARATION) {
         decl_list[d]->compile();
         d++;
+        Builder.SetInsertPoint(BB);
       }
     }
 
@@ -704,7 +709,7 @@ public:
         }
       }
     }
-  
+
     if (false) printSymbolTable();;
     closeScope();
     // Emit the program code.
@@ -712,12 +717,18 @@ public:
     if (isMain) {
       Builder.CreateRet(c32(0));
     }
+    else {
+      if(equalType(header->getHeaderType(), typeVoid)) Builder.CreateRetVoid();
+    }
     llvm::verifyFunction(*thisFunction);
     bool bad = llvm::verifyFunction(*thisFunction, &llvm::errs());
     if (bad) {
       std::cerr << "The function " << header->getHeaderName() << " is bad!" << std::endl;
       thisFunction->print(llvm::errs(), nullptr);
       std::exit(1);
+    }
+    if (isMain) {
+    TheFPM->run(*thisFunction);
     }
     return nullptr;
   }
@@ -747,6 +758,7 @@ class Expr : public AST {
     bool isBasicType(Type t) {
       return (equalType(t, typeChar) || equalType(t, typeBoolean) || equalType(t, typeInteger));
     }
+    void setLeft() { isLeft = true; }
     Type getType() { return type; }
     bool isLValue() { return lval; }
     StringExpr getStringExpr() { return stringExpr; }
@@ -756,6 +768,7 @@ class Expr : public AST {
   protected:
     Type type;
     bool lval;
+    bool isLeft = false;
      // enumeration of valid types for a expression.
      // used to throw error on cases like "test"[0] := 4
     StringExpr stringExpr;
@@ -850,7 +863,9 @@ public:
     if (e==NULL) { fatal("Id has not been declared"); }
     entry = e->entryType;
     if (entry == ENTRY_VARIABLE ) {
-      return Builder.CreateLoad(e->u.eVariable.allocainst, var);
+      if (!isLeft)
+        return Builder.CreateLoad(e->u.eVariable.allocainst, var);
+      else return e->u.eVariable.allocainst;
     }
     else if (entry == ENTRY_FUNCTION ) {
       return e->u.eFunction.llvmfun;
@@ -1179,7 +1194,17 @@ public:
     }
   }
   virtual llvm::Value* compile() override {
-    return nullptr;
+    SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_ALL_SCOPES, false);
+    llvm::Function *calledFun = p->u.eFunction.llvmfun;
+    std::vector<llvm::Value*> argv;
+    argv.clear();
+    if (exprlist == NULL) return Builder.CreateCall(calledFun, std::vector<llvm::Value*> {});
+    ExprList reversed = *exprlist;
+    std::reverse(reversed.begin(), reversed.end());
+    for (Expr *expr: reversed) {
+      argv.push_back(expr->compile());
+    }
+    return Builder.CreateCall(calledFun, argv);
   }
 private:
   Id *id;
@@ -1249,7 +1274,19 @@ class CallStmt: public Stmt{
         }
       }
     }
+
     virtual llvm::Value* compile() override {
+      SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_ALL_SCOPES, false);
+      llvm::Function *calledFun = p->u.eFunction.llvmfun;
+      std::vector<llvm::Value*> argv;
+      argv.clear();
+      if (exprlist == NULL) return Builder.CreateCall(calledFun, std::vector<llvm::Value*> {});
+      ExprList reversed = *exprlist;
+      std::reverse(reversed.begin(), reversed.end());
+      for (Expr *expr: reversed) {
+        argv.push_back(expr->compile());
+      }
+      Builder.CreateCall(calledFun, argv);
       return nullptr;
     }
   private:
@@ -1497,58 +1534,6 @@ public:
 
   virtual llvm::Value* compile()  override {
 
-    /*
-    std::string label = "elif00";
-    int count = 0;
-
-    for(IfPair a: *full_list) {
-      //(cond1_lst-> stmt1_lst, cond2_lst->stmt_list)
-      Expr *e = a.first;
-      StmtList *s_list = a.second;
-      llvm::Value *v = e->compile();
-      if (count == 0)
-        llvm::Value *cond = Builder.CreateICmpNE(v, c64(0), "if_cond");
-      else {
-
-        std::string tmp = atoi(count);
-        label[5] = tmp[0];
-        label[6] = tmp[1];
-
-        llvm::Value *cond = Builder.CreateICmpNE(v, c64(0), label);
-      }
-      count++;
-    return nullptr;
-    }
-    */
-    /*
-    Since llvm doesnt directly support elsif statements we implement them
-    in the following way:
-
-    if(cond1) then stmt1; stmt2;
-    elsif(cond2) then stmt3;
-    elsif(cond3) then stmt4; stmt5
-    else stmt6;
-
-    becomes
-
-    if(cond1) them stmt1; stmt2;
-    else[
-      if(cond2) then stmt3;
-      else[
-        if(cond3) then stmt4; stmt5;
-        else[
-          stmt6;
-        ]
-      ]
-    ]
-
-    */
-
-    //potential problems: may need to differentiate block variables between
-    //each if_else pair. Also TheFunction may need to be unique and calculated
-   //at start.
-
-
     // number of if then pairs
     int n = full_list->size(), counter=0;
     // create after block. Should be inserted at the end of If_then_else block
@@ -1607,6 +1592,7 @@ public:
     expr->type_check(var->getType());
   }
   virtual llvm::Value* compile() override {
+    var->setLeft();
     llvm::Value * alloc_tmp = var->compile();
     llvm::Value * val_tmp = expr->compile();
     Builder.CreateStore(val_tmp, alloc_tmp);

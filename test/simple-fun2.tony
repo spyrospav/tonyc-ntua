@@ -6,7 +6,7 @@
 def program() :
   int a
   bool b
-  def pipis(ref int c):
+  def pipis( int c):
     int mesa
     def pelopidas (int a):
       char f

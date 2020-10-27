@@ -105,13 +105,14 @@ program:
   { initSymbolTable(2048); openScope(); StandardLibraryInit(); }
     func-def {
       $2->setMain();  $2->sem();
-      /* code gen  */
+      /* codegen  */
+      std::cout << "Started codegen" << std::endl;
       destroySymbolTable();
       initSymbolTable(2048);
       openScope();
       StandardLibraryInit();
       $2->llvm_compile_and_dump();
-        }
+  }
 ;
 
 func-def:

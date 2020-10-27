@@ -4,8 +4,7 @@
  *>
 
 def program():
-  int a
-  a := 0
-  a := a + 5
-  skip
+  int a, b
+  b := 0
+  a := b + 5
 end
