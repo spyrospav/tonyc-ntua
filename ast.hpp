@@ -242,7 +242,7 @@ class AST {
     }
     llvm::Type * getLLVMType(Type type) const{
       llvm::Type * retType;
-
+      bool isReference;
       switch (type->kind) {
           case TYPE_VOID:
               retType = llvm::Type::getVoidTy(TheContext);
@@ -847,13 +847,13 @@ public:
     SymbolEntry *e = lookupEntry(var,LOOKUP_ALL_SCOPES, false);
     if (e==NULL) { fatal("Id has not been declared"); }
     entry = e->entryType;
-    if (entry == ENTRY_VARIABLE ) {
+    if (entry == ENTRY_VARIABLE) {
       type = e->u.eVariable.type;
     }
-    else if (entry == ENTRY_FUNCTION ) {
+    else if (entry == ENTRY_FUNCTION) {
       type = e->u.eFunction.resultType;
     }
-    else if (entry == ENTRY_PARAMETER ) {
+    else if (entry == ENTRY_PARAMETER) {
       type = e->u.eParameter.type;
     }
     stringExpr = OTHER;
@@ -862,16 +862,17 @@ public:
     SymbolEntry *e = lookupEntry(var,LOOKUP_ALL_SCOPES, false);
     if (e==NULL) { fatal("Id has not been declared"); }
     entry = e->entryType;
-    if (entry == ENTRY_VARIABLE ) {
+    if (entry == ENTRY_VARIABLE) {
       if (!isLeft)
         return Builder.CreateLoad(e->u.eVariable.allocainst, var);
       else return e->u.eVariable.allocainst;
     }
-    else if (entry == ENTRY_FUNCTION ) {
+    else if (entry == ENTRY_FUNCTION) {
       return e->u.eFunction.llvmfun;
     }
-    else if (entry == ENTRY_PARAMETER ) {
+    else if (entry == ENTRY_PARAMETER) {
       type = e->u.eParameter.type;
+      if (e->u.eParameter.mode == PASS_BY_REFERENCE)
     }
     return nullptr;
     //lookup the entry
@@ -1536,38 +1537,57 @@ public:
 
     // number of if then pairs
     int n = full_list->size(), counter=0;
+
     // create after block. Should be inserted at the end of If_then_else block
     llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
-    llvm::BasicBlock *AfterBB =
-      llvm::BasicBlock::Create(TheContext, "endif", TheFunction);
+
+    llvm::BasicBlock *AfterBB = llvm::BasicBlock::Create(TheContext, "endif", TheFunction);
+    llvm::BasicBlock *ElseIfBB;
+    if (n > 1) {
+      ElseIfBB = llvm::BasicBlock::Create(TheContext, "elseif", TheFunction);
+    }
+    llvm::BasicBlock *ElseBB = llvm::BasicBlock::Create(TheContext, "else", TheFunction);
+
+    llvm::BasicBlock *CurrentBB;
+
     for(IfPair a: *full_list) {
+      if (counter > 0)
+        Builder.SetInsertPoint(CurrentBB);
+
       Expr *e = a.first;
       StmtList *s_list = a.second;
       llvm::Value *v = e->compile();
-      llvm::Value *cond = Builder.CreateICmpNE(v, c64(0), "if_cond");
+      llvm::Value *cond = Builder.CreateICmpNE(v, c1(0), "if_cond");
       llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
+
       llvm::BasicBlock *ThenBB =
         llvm::BasicBlock::Create(TheContext, "then", TheFunction);
-      llvm::BasicBlock *ElseBB =
-        llvm::BasicBlock::Create(TheContext, "else", TheFunction);
-      Builder.CreateCondBr(cond, ThenBB, ElseBB);
-      //Then statements:
+      if (counter == n-1){
+        Builder.CreateCondBr(cond, ThenBB, ElseBB);
+      }
+      else {
+        Builder.CreateCondBr(cond, ThenBB, ElseIfBB);
+        CurrentBB = ElseIfBB;
+        if(counter < n-2)
+        ElseIfBB = llvm::BasicBlock::Create(TheContext, "elseif", TheFunction);
+      }
+
       Builder.SetInsertPoint(ThenBB);
-      // codegen for all statements under then
+
       for(Stmt *s: *s_list) {
         if(s!= nullptr) s->compile();
       }
-      // branch to after (i.e the end of if_then_elsif_then_else)
       Builder.CreateBr(AfterBB);
-      if(counter<n-1) {
-        //if not on else
-        //set insert point for then bb
-        Builder.SetInsertPoint(ThenBB);
-      }
-
       counter++;
     }
+
+    Builder.SetInsertPoint(ElseBB);
+    for(Stmt *s: *s_last) {
+      if(s!= nullptr) s->compile();
+    }
+    Builder.CreateBr(AfterBB);
     Builder.SetInsertPoint(AfterBB);
+
     return nullptr;
 
   }

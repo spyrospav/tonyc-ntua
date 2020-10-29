@@ -149,7 +149,7 @@ struct SymbolEntry_tag {
          SymbolEntry * firstArgument;         /* ����� ����������      */
          SymbolEntry * lastArgument;          /* ��������� ����������  */
          Type          resultType;            /* ����� �������������   */
-         Pardef pardef;
+         Pardef        pardef;
          int           firstQuad;             /* ������ �������        */
          llvm::Function * llvmfun;
       } eFunction;
@@ -229,7 +229,7 @@ void          endFunctionHeader  (SymbolEntry * f, Type type);
 void          destroyEntry       (SymbolEntry * e);
 SymbolEntry * lookupEntry        (const char * name, LookupType type,
                                   bool err);
-                                  
+
 Type          typeArray          (RepInteger size, Type refType);
 Type          typeIArray         (Type refType);
 Type          typePointer        (Type refType);
