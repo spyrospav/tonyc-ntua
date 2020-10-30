@@ -6,7 +6,8 @@
 def program():
   int a, b, c
   b := 1
-  for a := 5; a = 10; a := a + 1:
+  a := 3
+  for skip; a = 10; a := a + 1:
     b := b + 1
   end
 end

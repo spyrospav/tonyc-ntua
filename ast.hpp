@@ -872,7 +872,7 @@ public:
     }
     else if (entry == ENTRY_PARAMETER) {
       type = e->u.eParameter.type;
-      if (e->u.eParameter.mode == PASS_BY_REFERENCE)
+      if (e->u.eParameter.mode == PASS_BY_REFERENCE) ;
     }
     return nullptr;
     //lookup the entry
@@ -900,23 +900,46 @@ public:
   }
 
   virtual llvm::Value* compile() override {
+    bool canBeShortCircuited = !strcmp(op, "and") || !strcmp(op, "or");
     llvm::Value* l = left->compile();
-    llvm::Value* r = right->compile();
-    if(!strcmp(op, "+")) return Builder.CreateAdd(l, r, "addtmp");
-    else if(!strcmp(op, "-")) return Builder.CreateSub(l, r, "subtmp");
-    else if(!strcmp(op, "*")) return Builder.CreateMul(l, r, "multmp");
-    else if(!strcmp(op, "/")) return Builder.CreateSDiv(l, r, "divtmp");
-    else if(!strcmp(op, "mod")) return Builder.CreateSRem(l, r, "modtmp");
-    else if(!strcmp(op, "and")) return Builder.CreateAnd(l, r, "andtmp"); // not sure yet if CreateAnd short circuits the logical expression
-    else if(!strcmp(op, "or")) return Builder.CreateOr(l, r, "ortmp");
-    else if(!strcmp(op, "=")) return Builder.CreateICmpEQ(l, r, "eqtmp");
-    else if(!strcmp(op, "<=")) return Builder.CreateICmpSLE(l, r, "addtmp");
-    else if(!strcmp(op, "<")) return Builder.CreateICmpSLT(l, r, "addtmp");
-    else if(!strcmp(op, ">=")) return Builder.CreateICmpSGE(l, r, "addtmp");
-    else if(!strcmp(op, ">")) return Builder.CreateICmpSGT(l, r, "addtmp");
-    else if(!strcmp(op, "<>")) return Builder.CreateICmpNE(l, r, "neqtmp");
-    else return nullptr;
+    if(!canBeShortCircuited){
+      llvm::Value* r = right->compile();
+      if(!strcmp(op, "+")) return Builder.CreateAdd(l, r, "addtmp");
+      else if(!strcmp(op, "-")) return Builder.CreateSub(l, r, "subtmp");
+      else if(!strcmp(op, "*")) return Builder.CreateMul(l, r, "multmp");
+      else if(!strcmp(op, "/")) return Builder.CreateSDiv(l, r, "divtmp");
+      else if(!strcmp(op, "mod")) return Builder.CreateSRem(l, r, "modtmp");
+      else if(!strcmp(op, "=")) return Builder.CreateICmpEQ(l, r, "eqtmp");
+      else if(!strcmp(op, "<=")) return Builder.CreateICmpSLE(l, r, "addtmp");
+      else if(!strcmp(op, "<")) return Builder.CreateICmpSLT(l, r, "addtmp");
+      else if(!strcmp(op, ">=")) return Builder.CreateICmpSGE(l, r, "addtmp");
+      else if(!strcmp(op, ">")) return Builder.CreateICmpSGT(l, r, "addtmp");
+      else if(!strcmp(op, "<>")) return Builder.CreateICmpNE(l, r, "neqtmp");
+    }
 
+    else {
+      PN->llvm::PHINode::addIncoming(Builder.CreateAnd(l,r,"andtmp"),
+            Builder.GetInsertBlock());
+      llvm::PHINode *PN = Builder.CreatePHI(llvm::Type::getInt1Ty(TheContext), 2, "and_phi");
+      llvm::BasicBlock *PrevBB = Builder.GetInsertBlock();
+      llvm::Function *TheFunction = PrevBB->getParent();
+      llvm::BasicBlock *LogicBothBB =
+        llvm::BasicBlock::Create(TheContext, "loop", TheFunction);
+      llvm::BasicBlock *LogicOneBB =
+        llvm::BasicBlock::Create(TheContext, "loop", TheFunction);
+      if(!strcmp(op, "and")) {
+        llvm::Value *shortCircuitCond =
+          Builder.CreateICmpNE(l, c1(0), "shortcirc_and");
+        Builder.CreateCondBr(shortCircuitCond, LogicBothBB, LogicOneBB);
+        Builder.SetInsertPoint(LogicBothBB);
+
+        return Builder.CreateAnd(l, r, "andtmp"); // not sure yet if CreateAnd short circuits the logical expression
+        }
+      else if(!strcmp(op, "or")){
+        return Builder.CreateOr(l, r, "ortmp");
+        }
+    }
+    return nullptr;
   }
 
   virtual void sem() override {
