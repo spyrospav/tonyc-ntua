@@ -1,2 +1,20 @@
 '\x1d'
 'a'
+
+left or right
+while () {
+
+}
+right = left2 or right2
+
+x
+right = getRightExpression
+
+x or (b or (d and a))
+
+class Expr{
+  a or b or c
+}
+
+a or
+ (b<c) or x<=

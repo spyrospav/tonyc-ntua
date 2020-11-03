@@ -55,5 +55,5 @@ void my_delete (void * p)
 
 const char * filename;
 int linecount;
-bool optimize, intermidiate, final;
+bool doOptimize, intermidiate, final;
 //bool print_st;

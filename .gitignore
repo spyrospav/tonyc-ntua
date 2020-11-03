@@ -1,6 +1,7 @@
 *.o
 *.cpp
 *.ll
+*.imm
 !symbol.cpp
 !error.cpp
 !general.cpp

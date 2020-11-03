@@ -1,0 +1,28 @@
+<*
+ * Test case: simple-short1.tony
+ * Result: Pass
+ *>
+
+
+def program ():
+  bool a, b, c
+  char chara, charb
+  int res
+  a := true
+  b := false
+  c := false
+  if chara = 'a':
+    if b or c:
+      res := 5
+    elsif a = false:
+      res := 42
+    end
+  elsif chara = 'b':
+    if b:
+      res := 12
+    end
+  else:
+    res := 16
+  end
+
+end

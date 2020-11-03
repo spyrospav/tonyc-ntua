@@ -111,7 +111,7 @@ program:
       initSymbolTable(2048);
       openScope();
       StandardLibraryInit();
-      $2->llvm_compile_and_dump();
+      $2->llvm_compile_and_dump(doOptimize);
   }
 ;
 
@@ -269,12 +269,16 @@ expr:
 
 int main(int argc, char *argv[]){
 
-  /* std::cout << "argc is: " << argc << "\n";
-  for(int i=1; i<argc; i++)
-    std::cout << "argv = " << argv[i] << ", ";
-  std::cout << "\n"; */
-  if(argc>1)
-  optimize = (bool) strcmp(argv[1], "true");
+  if(argc>1) {
+    if (!(strcmp(argv[1], "-O")))
+      doOptimize = true;
+    else {
+      std::cout << "Wrong arguments given" << std::endl;
+      exit(1);
+    }
+  }
+  else
+    doOptimize = false;
 
   int result = yyparse();
 

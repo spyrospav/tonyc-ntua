@@ -109,6 +109,16 @@ class AST {
     // Initialize
     TheModule = std::make_unique<llvm::Module>("Tony program", TheContext);
     TheFPM = std::make_unique<llvm::legacy::FunctionPassManager>(TheModule.get());
+    // Initialize optimization Function Pass Manager
+    if (doOptimize) {
+      std::cout << "Intermediate optimization" << std::endl;
+      //TheFPM->add(llvm::createPromoteMemoryToRegisterPass());
+      TheFPM->add(llvm::createInstructionCombiningPass());
+      //TheFPM->add(llvm::createReassociatePass());
+      //TheFPM->add(llvm::createGVNPass());
+      //TheFPM->add(llvm::createCFGSimplificationPass());
+    }
+    TheFPM->doInitialization();
 
     // Initialize types
     i1 = llvm::IntegerType::get(TheContext, 1);
@@ -227,15 +237,6 @@ class AST {
       TheModule->print(llvm::errs(), nullptr);
       std::exit(1);
     }
-    // Initialize optimization Function Pass Manager
-    if (doOptimize) {
-      TheFPM->add(llvm::createPromoteMemoryToRegisterPass());
-      TheFPM->add(llvm::createInstructionCombiningPass());
-      TheFPM->add(llvm::createReassociatePass());
-      TheFPM->add(llvm::createGVNPass());
-      TheFPM->add(llvm::createCFGSimplificationPass());
-    }
-    TheFPM->doInitialization();
 
 
     TheModule->print(llvm::outs(), nullptr);
@@ -890,56 +891,15 @@ private:
 
 class BinOp : public Expr {
 public:
-  BinOp(Expr *l, const char *o, Expr *r) : left(l), op(o), right(r) {}
+  BinOp(Expr *l, const char *o, Expr *r) : left(l), op(o), right(r) {
+    canBeShortCircuited = !strcmp(op, "and") || !strcmp(op, "or");
+  }
   ~BinOp() {
     delete left;
     delete right;
   }
   virtual void printOn(std::ostream &out) const override {
     out << "a" <<  op << "(" << *left << ", " << *right << ")";
-  }
-
-  virtual llvm::Value* compile() override {
-    bool canBeShortCircuited = !strcmp(op, "and") || !strcmp(op, "or");
-    llvm::Value* l = left->compile();
-    if(!canBeShortCircuited){
-      llvm::Value* r = right->compile();
-      if(!strcmp(op, "+")) return Builder.CreateAdd(l, r, "addtmp");
-      else if(!strcmp(op, "-")) return Builder.CreateSub(l, r, "subtmp");
-      else if(!strcmp(op, "*")) return Builder.CreateMul(l, r, "multmp");
-      else if(!strcmp(op, "/")) return Builder.CreateSDiv(l, r, "divtmp");
-      else if(!strcmp(op, "mod")) return Builder.CreateSRem(l, r, "modtmp");
-      else if(!strcmp(op, "=")) return Builder.CreateICmpEQ(l, r, "eqtmp");
-      else if(!strcmp(op, "<=")) return Builder.CreateICmpSLE(l, r, "addtmp");
-      else if(!strcmp(op, "<")) return Builder.CreateICmpSLT(l, r, "addtmp");
-      else if(!strcmp(op, ">=")) return Builder.CreateICmpSGE(l, r, "addtmp");
-      else if(!strcmp(op, ">")) return Builder.CreateICmpSGT(l, r, "addtmp");
-      else if(!strcmp(op, "<>")) return Builder.CreateICmpNE(l, r, "neqtmp");
-    }
-
-    else {
-      PN->llvm::PHINode::addIncoming(Builder.CreateAnd(l,r,"andtmp"),
-            Builder.GetInsertBlock());
-      llvm::PHINode *PN = Builder.CreatePHI(llvm::Type::getInt1Ty(TheContext), 2, "and_phi");
-      llvm::BasicBlock *PrevBB = Builder.GetInsertBlock();
-      llvm::Function *TheFunction = PrevBB->getParent();
-      llvm::BasicBlock *LogicBothBB =
-        llvm::BasicBlock::Create(TheContext, "loop", TheFunction);
-      llvm::BasicBlock *LogicOneBB =
-        llvm::BasicBlock::Create(TheContext, "loop", TheFunction);
-      if(!strcmp(op, "and")) {
-        llvm::Value *shortCircuitCond =
-          Builder.CreateICmpNE(l, c1(0), "shortcirc_and");
-        Builder.CreateCondBr(shortCircuitCond, LogicBothBB, LogicOneBB);
-        Builder.SetInsertPoint(LogicBothBB);
-
-        return Builder.CreateAnd(l, r, "andtmp"); // not sure yet if CreateAnd short circuits the logical expression
-        }
-      else if(!strcmp(op, "or")){
-        return Builder.CreateOr(l, r, "ortmp");
-        }
-    }
-    return nullptr;
   }
 
   virtual void sem() override {
@@ -963,10 +923,62 @@ public:
     }
   }
 
+  virtual llvm::Value* compile() override {
+    llvm::Value* l = left->compile();
+    if(!canBeShortCircuited){
+      llvm::Value* r = right->compile();
+      if(!strcmp(op, "+")) return Builder.CreateAdd(l, r, "addtmp");
+      else if(!strcmp(op, "-")) return Builder.CreateSub(l, r, "subtmp");
+      else if(!strcmp(op, "*")) return Builder.CreateMul(l, r, "multmp");
+      else if(!strcmp(op, "/")) return Builder.CreateSDiv(l, r, "divtmp");
+      else if(!strcmp(op, "mod")) return Builder.CreateSRem(l, r, "modtmp");
+      else if(!strcmp(op, "=")) return Builder.CreateICmpEQ(l, r, "eqtmp");
+      else if(!strcmp(op, "<=")) return Builder.CreateICmpSLE(l, r, "addtmp");
+      else if(!strcmp(op, "<")) return Builder.CreateICmpSLT(l, r, "addtmp");
+      else if(!strcmp(op, ">=")) return Builder.CreateICmpSGE(l, r, "addtmp");
+      else if(!strcmp(op, ">")) return Builder.CreateICmpSGT(l, r, "addtmp");
+      else if(!strcmp(op, "<>")) return Builder.CreateICmpNE(l, r, "neqtmp");
+    }
+
+    else {
+      llvm::Value* r = right->compile(); // should be deleted afte shot chircuiting is implemented
+      if(!strcmp(op, "or"))
+        return Builder.CreateOr(l, r, "ortmp");
+      else if(!strcmp(op, "and"))
+        return Builder.CreateAnd(l, r, "andtmp");
+      /*
+      PN->llvm::PHINode::addIncoming(Builder.CreateAnd(l,r,"andtmp"),
+            Builder.GetInsertBlock());
+      llvm::PHINode *PN = Builder.CreatePHI(llvm::Type::getInt1Ty(TheContext), 2, "and_phi");
+      llvm::BasicBlock *PrevBB = Builder.GetInsertBlock();
+      llvm::Function *TheFunction = PrevBB->getParent();
+      llvm::BasicBlock *LogicBothBB =
+        llvm::BasicBlock::Create(TheContext, "loop", TheFunction);
+      llvm::BasicBlock *LogicOneBB =
+        llvm::BasicBlock::Create(TheContext, "loop", TheFunction);
+      if(!strcmp(op, "and")) {
+        llvm::Value *shortCircuitCond =
+          Builder.CreateICmpNE(l, c1(0), "shortcirc_and");
+        Builder.CreateCondBr(shortCircuitCond, LogicBothBB, LogicOneBB);
+        Builder.SetInsertPoint(LogicBothBB);
+
+        return Builder.CreateAnd(l, r, "andtmp"); // not sure yet if CreateAnd short circuits the logical expression
+        }
+      else if(!strcmp(op, "or")){
+        return Builder.CreateOr(l, r, "ortmp");
+        }
+      */
+    }
+
+    return nullptr;
+
+  }
+
 private:
   Expr *left;
   const char *op;
   Expr *right;
+  bool canBeShortCircuited;
 };
 
 class UnOp : public Expr {
@@ -1209,6 +1221,9 @@ public:
       args = p->u.eFunction.firstArgument;
       for (Expr *expr: reversed) {
         expr->sem();
+        if (args->u.eParameter.mode == PASS_BY_REFERENCE && !expr->isLValue()) {
+          fatal("Cannot pass by reference a non lvalue");
+        }
         if (!equalType(expr->getType(), args->u.eParameter.type)){
           fatal("Wrong parameter type at position %d", i);
         }
@@ -1290,6 +1305,9 @@ class CallStmt: public Stmt{
         args = p->u.eFunction.firstArgument;
         for (Expr *expr: reversed) {
           expr->sem();
+          if (args->u.eParameter.mode == PASS_BY_REFERENCE && !expr->isLValue()) {
+            fatal("Cannot pass by reference a non lvalue");
+          }
           if (!equalType(expr->getType(), args->u.eParameter.type)){
             fatal("Wrong parameter type at position %d.", i);
           }
