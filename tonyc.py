@@ -38,23 +38,22 @@ parser.add_argument(
 # Parse and print the results
 args = parser.parse_args()
 
+args_ = ["./tony"]
 if args.O:
-    optimize = "-O"
-else:
-    optimize = ""
-
+    args_.append("-O")
 name = os.path.splitext(args.filename)[0]
 
 # Run Tony compiler
 #./tony {} < {} > {}.imm".format(optimize, args.filename, name) :the os way
 try:
-    subprocess.run(["./tony", optimize], stdin=open(args.filename, 'r'), \
+    subprocess.run(
+                args_,
+                stdin=open(args.filename, 'r'),
                 stdout=open(name + '.imm', 'w'),
-                check=True)
+                check=True
+                )
 except subprocess.CalledProcessError as e:
     subprocess.run(["rm", name + '.imm'])
-    print(e)
-    print("hahah")
 
 if args.i:
     with open(name + '.imm', 'r') as interim:

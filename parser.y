@@ -269,6 +269,7 @@ expr:
 
 int main(int argc, char *argv[]){
 
+  std::cout << argc << std::endl;
   if(argc>1) {
     if (!(strcmp(argv[1], "-O")))
       doOptimize = true;
