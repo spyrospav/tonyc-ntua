@@ -111,7 +111,7 @@ class AST {
     TheFPM = std::make_unique<llvm::legacy::FunctionPassManager>(TheModule.get());
     // Initialize optimization Function Pass Manager
     if (doOptimize) {
-      std::cout << "Intermediate optimization" << std::endl;
+      //std::cout << "Intermediate optimization" << std::endl;
       //TheFPM->add(llvm::createPromoteMemoryToRegisterPass());
       TheFPM->add(llvm::createInstructionCombiningPass());
       //TheFPM->add(llvm::createReassociatePass());
@@ -134,12 +134,15 @@ class AST {
         llvm::ConstantArray::get(nl_type, {c8('\n'), c8('\0')}), "nl"
     );
     TheNL->setAlignment(1);
-    // Initialize Abgenetopoulos library functions
+    // Initialize Abenetopoulos library functions
     llvm::FunctionType *writeInteger_type =
       llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i64}, false);
     TheWriteInteger =
       llvm::Function::Create(writeInteger_type, llvm::Function::ExternalLinkage,
                        "puti", TheModule.get());
+
+    SymbolEntry *p = lookupEntry("puti", LOOKUP_ALL_SCOPES, false);
+    p->u.eFunction.llvmfun = TheWriteInteger;
 
    llvm::FunctionType *writeCharacter_type =
      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i8}, false);
@@ -147,11 +150,17 @@ class AST {
      llvm::Function::Create(writeCharacter_type, llvm::Function::ExternalLinkage,
                       "putc", TheModule.get());
 
+   p = lookupEntry("putc", LOOKUP_ALL_SCOPES, false);
+   p->u.eFunction.llvmfun = TheWriteCharacter;
+
     llvm::FunctionType *writeBoolean_type =
       llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i1}, false);
     TheWriteBoolean =
       llvm::Function::Create(writeBoolean_type, llvm::Function::ExternalLinkage,
                        "putb", TheModule.get());
+
+    p = lookupEntry("putb", LOOKUP_ALL_SCOPES, false);
+    p->u.eFunction.llvmfun = TheWriteBoolean;
 
     llvm::FunctionType *writeString_type =
       llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext),
@@ -159,6 +168,8 @@ class AST {
     TheWriteString =
       llvm::Function::Create(writeString_type, llvm::Function::ExternalLinkage,
                        "puts", TheModule.get());
+    p = lookupEntry("puts", LOOKUP_ALL_SCOPES, false);
+    p->u.eFunction.llvmfun = TheWriteString;
 
       //---------------------READ functions---------------------
      std::vector<llvm::Type *> t;
@@ -167,18 +178,24 @@ class AST {
      TheReadInteger =
        llvm::Function::Create(readInteger_type, llvm::Function::ExternalLinkage,
                         "geti", TheModule.get());
+      p = lookupEntry("geti", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheReadInteger;
 
      llvm::FunctionType *readCharacter_type =
       llvm::FunctionType::get(i8, std::vector<llvm::Type *> {}, false);
      TheReadCharacter =
       llvm::Function::Create(readCharacter_type, llvm::Function::ExternalLinkage,
                        "getc", TheModule.get());
+     p = lookupEntry("getc", LOOKUP_ALL_SCOPES, false);
+     p->u.eFunction.llvmfun = TheReadCharacter;
 
      llvm::FunctionType *readBoolean_type =
        llvm::FunctionType::get(i1, std::vector<llvm::Type *>{}, false);
      TheReadBoolean =
        llvm::Function::Create(readBoolean_type, llvm::Function::ExternalLinkage,
                         "getb", TheModule.get());
+      p = lookupEntry("getb", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheReadBoolean;
 
      llvm::FunctionType *readString_type =
        llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext),
@@ -186,6 +203,8 @@ class AST {
      TheReadString =
        llvm::Function::Create(readString_type, llvm::Function::ExternalLinkage,
                         "gets", TheModule.get());
+      p = lookupEntry("gets", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheReadString;
 
       //---------------------Conversion functions---------------------
       llvm::FunctionType *abs_type =
@@ -194,11 +213,17 @@ class AST {
         llvm::Function::Create(abs_type, llvm::Function::ExternalLinkage,
                         "abs", TheModule.get());
 
+      p = lookupEntry("abs", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheAbs;
+
       llvm::FunctionType *ord_type =
         llvm::FunctionType::get(i64, {i8}, false);
       TheOrd =
         llvm::Function::Create(ord_type, llvm::Function::ExternalLinkage,
                         "ord", TheModule.get());
+
+      p = lookupEntry("ord", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheOrd;
 
       llvm::FunctionType *chr_type =
         llvm::FunctionType::get(i8, {i64}, false);
@@ -206,12 +231,17 @@ class AST {
         llvm::Function::Create(chr_type, llvm::Function::ExternalLinkage,
                         "chr", TheModule.get());
 
+      p = lookupEntry("chr", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheChr;
 
       llvm::FunctionType *strlen_type =
         llvm::FunctionType::get(i64, {llvm::PointerType::get(i8, 0)}, false);
       TheStrLen =
         llvm::Function::Create(strlen_type, llvm::Function::ExternalLinkage,
                         "strlen", TheModule.get());
+
+      p = lookupEntry("strlen", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheStrLen;
 
       llvm::FunctionType *strcmp_type =
         llvm::FunctionType::get(i64,
@@ -220,15 +250,25 @@ class AST {
         llvm::Function::Create(strcmp_type, llvm::Function::ExternalLinkage,
                         "strcmp", TheModule.get());
 
+      p = lookupEntry("strcmp", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheStrCmp;
+
       llvm::FunctionType *strcpy_type =
         llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext),
           {llvm::PointerType::get(i8, 0), llvm::PointerType::get(i8, 0)}, false);
       TheStrCpy =
         llvm::Function::Create(strcpy_type, llvm::Function::ExternalLinkage,
                         "strcpy", TheModule.get());
+
+      p = lookupEntry("strcpy", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheStrCpy;
+
       TheStrCat =
         llvm::Function::Create(strcpy_type, llvm::Function::ExternalLinkage,
                         "strcat", TheModule.get());
+
+      p = lookupEntry("strcat", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheStrCat;
 
     compile();
     bool bad = llvm::verifyModule(*TheModule, &llvm::errs());
@@ -1423,6 +1463,8 @@ public:
         init.insert(pair<,>);
     }*/
     llvm::BasicBlock *PrevBB = Builder.GetInsertBlock();
+    Builder.SetInsertPoint(PrevBB);
+    for (Stmt *s: *init_list) s->compile();
     llvm::Function *TheFunction = PrevBB->getParent();
     llvm::BasicBlock *LoopBB =
       llvm::BasicBlock::Create(TheContext, "loop", TheFunction);
@@ -1432,17 +1474,11 @@ public:
       llvm::BasicBlock::Create(TheContext, "endfor", TheFunction);
     Builder.CreateBr(LoopBB);
     Builder.SetInsertPoint(LoopBB);
-    /*for (auto const& pair: init) {
-      llvm::Type * a = getType(init.first);
-      init.second;
-      PHINode *phi_iter = Builder.CreatePHI();
-    }*/
-    // PHINode *phi_iter = Builder.CreatePHI(i64, 2, "iter");
-    // phi_iter->addIncoming(n, PrevBB);
+
     llvm::Value *cond_value = terminate_expr->compile();
-    llvm::Value *loop_cond =
-      Builder.CreateICmpNE(cond_value, c1(1), "loop_cond");
-    Builder.CreateCondBr(loop_cond, BodyBB, AfterBB);
+    //llvm::Value *loop_cond =
+    //  Builder.CreateICmpNE(cond_value, c1(1), "loop_cond");
+    Builder.CreateCondBr(cond_value, BodyBB, AfterBB);
     Builder.SetInsertPoint(BodyBB);
     // Value *remaining =
     //   Builder.CreateSub(phi_iter, c64(1), "remaining");

@@ -1,0 +1,11 @@
+<*
+ * Test case: count.tony
+ * Result: Pass
+ *>
+
+def program():
+  int i
+  for i := 1; i < 42; i := i+1:
+    puti(i)
+  end
+end

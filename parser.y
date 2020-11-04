@@ -106,7 +106,7 @@ program:
     func-def {
       $2->setMain();  $2->sem();
       /* codegen  */
-      std::cout << "Started codegen" << std::endl;
+      //std::cout << "Started codegen" << std::endl;
       destroySymbolTable();
       initSymbolTable(2048);
       openScope();
@@ -269,7 +269,7 @@ expr:
 
 int main(int argc, char *argv[]){
 
-  std::cout << argc << std::endl;
+  //std::cout << argc << std::endl;
   if(argc>1) {
     if (!(strcmp(argv[1], "-O")))
       doOptimize = true;
@@ -283,6 +283,6 @@ int main(int argc, char *argv[]){
 
   int result = yyparse();
 
-  if (result == 0) printf("Success.\n");
+  //if (result == 0) printf("Success.\n");
   return result;
 }

@@ -5,13 +5,14 @@
 
 def program():
   int a, b, c
-  a := 1
+  a := 2
   b := 2
-  c := a + b
-  b := a + b
-  a := b
-  c := a
+  c := a + b    % =3
+  b := a + b    % =3
+  a := b        % =3
+  c := a        % = 3
   for skip; c < 11; c := c+1:
     b := b - 1
   end
+  puti(c)
 end
