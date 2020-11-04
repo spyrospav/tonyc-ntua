@@ -28,7 +28,10 @@
    --------------------------------------------------------------------- */
 
 #include <stdbool.h>
-
+#include <map>
+#include <llvm/IR/Value.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Instructions.h>
 /*
  *  �� �� �������� include ��� ������������� ��� ��� ���������
  *  ��� C ��� ��������������, �������������� �� �� �� ��������:
@@ -127,6 +130,7 @@ struct SymbolEntry_tag {
       struct {                                /******* ��������� *******/
          Type          type;                  /* �����                 */
          int           offset;                /* Offset ��� �.�.       */
+         llvm::AllocaInst * allocainst;
       } eVariable;
 
       struct {                                /******** ������� ********/
@@ -145,8 +149,9 @@ struct SymbolEntry_tag {
          SymbolEntry * firstArgument;         /* ����� ����������      */
          SymbolEntry * lastArgument;          /* ��������� ����������  */
          Type          resultType;            /* ����� �������������   */
-         Pardef pardef;
+         Pardef        pardef;
          int           firstQuad;             /* ������ �������        */
+         llvm::Function * llvmfun;
       } eFunction;
 
       struct {                                /****** ���������� *******/
@@ -212,9 +217,9 @@ void          destroySymbolTable (void);
 void          openScope          (void);
 void          closeScope         (void);
 
-SymbolEntry * newVariable        (const char * name, Type type);
+SymbolEntry * newVariable        (const char * name, Type type, llvm::AllocaInst *a = nullptr);
 SymbolEntry * newConstant        (const char * name, Type type, ...);
-SymbolEntry * newFunction        (const char * name);
+SymbolEntry * newFunction        (const char * name, llvm::Function * f = nullptr);
 SymbolEntry * newParameter       (const char * name, Type type,
                                   PassMode mode, SymbolEntry * f);
 SymbolEntry * newTemporary       (Type type);

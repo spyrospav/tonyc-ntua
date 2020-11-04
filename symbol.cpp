@@ -30,7 +30,7 @@
 #include "general.h"
 #include "error.h"
 #include "symbol.h"
-
+#include <map>
 
 /* ---------------------------------------------------------------------
    ------------- ��������� ���������� ��� ������ �������� --------------
@@ -42,6 +42,10 @@ unsigned int   tempNumber;             /* �������� ��� tem
 
 static unsigned int   hashTableSize;   /* ������� ������ ��������������� */
 static SymbolEntry ** hashTable;       /* ������� ���������������        */
+
+std::map<SymbolEntry *, int> hashTheVars;  /* The order in which each variable (found by its symbol entry) is placed in the hash table */
+
+unsigned int numInserted = 0;                /* Number of variales inserted to symbol table */
 
 static struct Type_tag typeConst [] = {
     { TYPE_VOID,    NULL, 0, 0 },
@@ -144,6 +148,7 @@ void initSymbolTable (unsigned int size)
     currentScope = NULL;
     quadNext     = 1;
     tempNumber   = 1;
+    numInserted = 0;
 
     /* ������������ ��� ������ ��������������� */
 
@@ -208,6 +213,7 @@ static void insertEntry (SymbolEntry * e)
     hashTable[e->hashValue] = e;
     e->nextInScope          = currentScope->entries;
     currentScope->entries   = e;
+    numInserted++;
 }
 
 static SymbolEntry * newEntry (const char * name)
@@ -226,7 +232,6 @@ static SymbolEntry * newEntry (const char * name)
 
     e = (SymbolEntry *) my_new(sizeof(SymbolEntry));
     e->id = (const char *) my_new(strlen(name) + 1);
-
     strcpy((char *) (e->id), name);
     e->hashValue    = PJW_hash(name) % hashTableSize;
     e->nestingLevel = currentScope->nestingLevel;
@@ -234,13 +239,14 @@ static SymbolEntry * newEntry (const char * name)
     return e;
 }
 
-SymbolEntry * newVariable (const char * name, Type type)
+SymbolEntry * newVariable (const char * name, Type type, llvm::AllocaInst * a)
 {
     SymbolEntry * e = newEntry(name);
 
     if (e != NULL) {
         e->entryType = ENTRY_VARIABLE;
         e->u.eVariable.type = type;
+        e->u.eVariable.allocainst = a;
         type->refCount++;
         currentScope->negOffset -= sizeOfType(type);
         e->u.eVariable.offset = currentScope->negOffset;
@@ -343,12 +349,11 @@ SymbolEntry * newConstant (const char * name, Type type, ...)
     return e;
 }
 
-SymbolEntry * newFunction (const char * name)
+SymbolEntry * newFunction (const char * name, llvm::Function * f)
 {
     SymbolEntry * e = lookupEntry(name, LOOKUP_CURRENT_SCOPE, false);
 
     if (e == NULL) {
-      //std::cout << " making entry " << name << std::endl;
         e = newEntry(name);
         if (e != NULL) {
 
@@ -357,6 +362,7 @@ SymbolEntry * newFunction (const char * name)
             e->u.eFunction.pardef = PARDEF_DEFINE;
             e->u.eFunction.firstArgument = e->u.eFunction.lastArgument = NULL;
             e->u.eFunction.resultType = NULL;
+            e->u.eFunction.llvmfun = f;
         }
         return e;
     }

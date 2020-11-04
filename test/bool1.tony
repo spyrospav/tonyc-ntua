@@ -1,0 +1,11 @@
+<*
+ * Test case: bool1.tony
+ * Result: Pass
+ *>
+
+def program():
+  bool a
+  int c
+  c := 1
+  a := c > 1
+end

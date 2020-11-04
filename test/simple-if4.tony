@@ -1,0 +1,16 @@
+<*
+ * Test case: simple-if4.tony
+ * Result: Pass
+ *>
+
+
+def program ():
+  int a, c
+  if a > 1:
+    c := 2
+  elsif a = 0:
+    c := 3
+  elsif a = -1:
+    c := 0
+  end
+end

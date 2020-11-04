@@ -37,6 +37,7 @@ void   my_delete (void *);
 
 extern int linecount;
 extern const char * filename;
-
+extern bool doOptimize, intermidiate, final;
+//extern bool print_st;
 
 #endif

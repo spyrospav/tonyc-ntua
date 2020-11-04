@@ -1,0 +1,12 @@
+<*
+ * Test case: simple-for3.tony
+ * Result: Pass
+ *>
+
+def program():
+  int a, b, c
+  b := 1
+  for a := 5, b := 42; a = 10 or b > 50; a := a + 1, b := b + 2:
+    b := b + 1
+  end
+end

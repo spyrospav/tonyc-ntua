@@ -1,0 +1,84 @@
+#!/usr/bin/python3.7
+
+import argparse
+import os
+import subprocess
+
+DESC_MSG =      'Tony Compiler by Dimitris and Spyros :)'
+USAGE_MSG =     "Usage: python3 tonyc.py [options] file... \n" + \
+                "Options: \n" + \
+                "-o enable optimizations\n"+ \
+                '-f Show final code at stdout\n'+ \
+                '-i Show intermediate code at stdout\n'
+
+# Initialize the Parser
+#parser = argparse.ArgumentParser(usage=ABOUT_MSG, description=DESC_MSG)
+
+# Create the parser and add arguments
+parser = argparse.ArgumentParser(description=DESC_MSG)
+parser.add_argument(
+    'filename',
+    help="Filename of Tony program")
+group = parser.add_mutually_exclusive_group()
+group.add_argument('-f',
+    action='store_true',
+    default=False,
+    help='Input from standard input, assembly code to standard output')
+group.add_argument('-i',
+    action='store_true',
+    default=False,
+    help='Input from standard input, intermediate code to standard output')
+parser.add_argument(
+    '-O',
+    action='store_true',
+    default=False,
+    help='Enable code optimization')
+
+
+# Parse and print the results
+args = parser.parse_args()
+
+args_ = ["./tony"]
+if args.O:
+    args_.append("-O")
+name = os.path.splitext(args.filename)[0]
+
+# Run Tony compiler
+#./tony {} < {} > {}.imm".format(optimize, args.filename, name) :the os way
+try:
+    subprocess.run(
+                args_,
+                stdin=open(args.filename, 'r'),
+                stdout=open(name + '.imm', 'w'),
+                check=True
+                )
+    print("Compiled succesfully.")
+except subprocess.CalledProcessError as e:
+    print(e)
+    subprocess.run(["rm", name + '.imm'])
+
+if args.i:
+    with open(name + '.imm', 'r') as interim:
+        print(interim.read())
+
+try:
+    subprocess.run(
+                ["llc-10", name + ".imm", "-o", name + ".asm"],
+                check=True
+                )
+    print("Assembly generated succesfully.")
+except subprocess.CalledProcessError as e:
+    print("Something wrong with Assembly code generation.")
+
+if args.f:
+    with open(name + '.asm', 'r') as assembly:
+        print(assembly.read())
+
+try:
+    print("clang-10", "-o", name + ".out", name + ".asm", "./edsger_lib-master/lib.a")
+    subprocess.run(
+            ["clang-10", "-o", name + ".out", name + ".asm", "./edsger_lib-master/lib.a"],
+            check=True
+            )
+except subprocess.CalledProcessError as e:
+    print("Something wrong with executable generation.")

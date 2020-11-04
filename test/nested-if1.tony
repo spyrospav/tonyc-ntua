@@ -1,0 +1,21 @@
+<*
+ * Test case: nested-if1.tony
+ * Result: Pass
+ *>
+
+def pipis():
+  int a, b, c
+  a := 2
+  b := 3
+  if a > 2:
+    if b > 3:
+      c := 12
+    elsif b > 2:
+      c := 24
+    else:
+      c := 42
+    end
+  else:
+    c := 4
+  end
+end

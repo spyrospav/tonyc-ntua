@@ -1,0 +1,11 @@
+<*
+ * Test case: ref.tony
+ * Result: Fail
+ *>
+
+def program():
+  def test (ref int b):
+    b:=b+1
+  end
+  test(5)
+end

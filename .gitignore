@@ -1,12 +1,15 @@
 *.o
 *.cpp
+*.ll
+*.imm
 !symbol.cpp
 !error.cpp
 !general.cpp
+!ast.cpp
 *.swp
 *.output
 *.out
 parser.hpp
 tony
-tonyc
 temp/*
+llvm-project/

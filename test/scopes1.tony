@@ -9,7 +9,9 @@ def fun1(int b, c):
   skip
 end
 def fun2(int d):
-  fun1(2,3)
+  %fun1(2,3)
+  skip
 end
-fun2(10)
+<*fun2(10)*>
+skip
 end

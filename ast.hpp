@@ -7,12 +7,36 @@
 #include <cstring>
 #include <stdio.h>
 #include <algorithm>
-//#include <utility>
 
 #include "symbol.h"
 #include "error.h"
 
+/*------------------- LLVM ------------------- */
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/LegacyPassManager.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Value.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Verifier.h>
+
+/*------------ LLVM Optimizations -------------*/
+#include <llvm/Transforms/InstCombine/InstCombine.h>
+#include <llvm/Transforms/Scalar.h>
+#include <llvm/Transforms/Scalar/GVN.h>
+#include <llvm/Transforms/Utils.h>
+
 void yyerror(const char *msg);
+
+/// CreateEntryBlockAlloca - Create an alloca instruction in the entry block of
+/// the function.  This is used for mutable variables etc.
+static llvm::AllocaInst *CreateEntryBlockAlloca(llvm::Function *TheFunction,
+                                          const std::string &VarName,
+                                          llvm::Type *type) {
+  llvm::IRBuilder<> TmpB(&TheFunction->getEntryBlock(),
+                   TheFunction->getEntryBlock().begin());
+  return TmpB.CreateAlloca(type, nullptr, VarName);
+}
+
 
 inline std::ostream& operator<<(std::ostream &out, Type t) {
 
@@ -49,6 +73,9 @@ inline std::ostream& operator<<(std::ostream &out, Type t) {
       case TYPE_ANY:
           out << "any type";
           break;
+      default:
+          out << "not recognised type";
+          break;
   }
   return out;
 }
@@ -66,6 +93,7 @@ enum StringExpr{
   OTHER
 };
 
+
 class AST {
   public:
     AST() {
@@ -75,7 +103,273 @@ class AST {
       destroySymbolTable();
     }
     virtual void printOn(std::ostream &out) const = 0;
+    virtual llvm::Value* compile() { return nullptr; } //const = 0;
     virtual void sem() {}
+    void llvm_compile_and_dump(bool doOptimize=false) {
+    // Initialize
+    TheModule = std::make_unique<llvm::Module>("Tony program", TheContext);
+    TheFPM = std::make_unique<llvm::legacy::FunctionPassManager>(TheModule.get());
+    // Initialize optimization Function Pass Manager
+    if (doOptimize) {
+      //std::cout << "Intermediate optimization" << std::endl;
+      //TheFPM->add(llvm::createPromoteMemoryToRegisterPass());
+      TheFPM->add(llvm::createInstructionCombiningPass());
+      //TheFPM->add(llvm::createReassociatePass());
+      //TheFPM->add(llvm::createGVNPass());
+      //TheFPM->add(llvm::createCFGSimplificationPass());
+    }
+    TheFPM->doInitialization();
+
+    // Initialize types
+    i1 = llvm::IntegerType::get(TheContext, 1);
+    i8 = llvm::IntegerType::get(TheContext, 8);
+    i16 = llvm::IntegerType::get(TheContext, 16);
+    i32 = llvm::IntegerType::get(TheContext, 32);
+    i64 = llvm::IntegerType::get(TheContext, 64);
+
+    // Initialize global variables (e.g newline)
+    llvm::ArrayType *nl_type = llvm::ArrayType::get(i8, 2); //create llvm array type of nl (it should have 2 items with 8 bits each (characters))
+    TheNL = new llvm::GlobalVariable(
+        *TheModule, nl_type, true, llvm::GlobalValue::PrivateLinkage,
+        llvm::ConstantArray::get(nl_type, {c8('\n'), c8('\0')}), "nl"
+    );
+    TheNL->setAlignment(1);
+    // Initialize Abenetopoulos library functions
+    llvm::FunctionType *writeInteger_type =
+      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i64}, false);
+    TheWriteInteger =
+      llvm::Function::Create(writeInteger_type, llvm::Function::ExternalLinkage,
+                       "puti", TheModule.get());
+
+    SymbolEntry *p = lookupEntry("puti", LOOKUP_ALL_SCOPES, false);
+    p->u.eFunction.llvmfun = TheWriteInteger;
+
+   llvm::FunctionType *writeCharacter_type =
+     llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i8}, false);
+   TheWriteCharacter =
+     llvm::Function::Create(writeCharacter_type, llvm::Function::ExternalLinkage,
+                      "putc", TheModule.get());
+
+   p = lookupEntry("putc", LOOKUP_ALL_SCOPES, false);
+   p->u.eFunction.llvmfun = TheWriteCharacter;
+
+    llvm::FunctionType *writeBoolean_type =
+      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i1}, false);
+    TheWriteBoolean =
+      llvm::Function::Create(writeBoolean_type, llvm::Function::ExternalLinkage,
+                       "putb", TheModule.get());
+
+    p = lookupEntry("putb", LOOKUP_ALL_SCOPES, false);
+    p->u.eFunction.llvmfun = TheWriteBoolean;
+
+    llvm::FunctionType *writeString_type =
+      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext),
+                        {llvm::PointerType::get(i8, 0)}, false);
+    TheWriteString =
+      llvm::Function::Create(writeString_type, llvm::Function::ExternalLinkage,
+                       "puts", TheModule.get());
+    p = lookupEntry("puts", LOOKUP_ALL_SCOPES, false);
+    p->u.eFunction.llvmfun = TheWriteString;
+
+      //---------------------READ functions---------------------
+     std::vector<llvm::Type *> t;
+     llvm::FunctionType *readInteger_type =
+       llvm::FunctionType::get(i64, std::vector<llvm::Type *> {}, false);
+     TheReadInteger =
+       llvm::Function::Create(readInteger_type, llvm::Function::ExternalLinkage,
+                        "geti", TheModule.get());
+      p = lookupEntry("geti", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheReadInteger;
+
+     llvm::FunctionType *readCharacter_type =
+      llvm::FunctionType::get(i8, std::vector<llvm::Type *> {}, false);
+     TheReadCharacter =
+      llvm::Function::Create(readCharacter_type, llvm::Function::ExternalLinkage,
+                       "getc", TheModule.get());
+     p = lookupEntry("getc", LOOKUP_ALL_SCOPES, false);
+     p->u.eFunction.llvmfun = TheReadCharacter;
+
+     llvm::FunctionType *readBoolean_type =
+       llvm::FunctionType::get(i1, std::vector<llvm::Type *>{}, false);
+     TheReadBoolean =
+       llvm::Function::Create(readBoolean_type, llvm::Function::ExternalLinkage,
+                        "getb", TheModule.get());
+      p = lookupEntry("getb", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheReadBoolean;
+
+     llvm::FunctionType *readString_type =
+       llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext),
+                         {i64, llvm::PointerType::get(i8, 0)}, false);
+     TheReadString =
+       llvm::Function::Create(readString_type, llvm::Function::ExternalLinkage,
+                        "gets", TheModule.get());
+      p = lookupEntry("gets", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheReadString;
+
+      //---------------------Conversion functions---------------------
+      llvm::FunctionType *abs_type =
+        llvm::FunctionType::get(i64, {i64}, false);
+      TheAbs =
+        llvm::Function::Create(abs_type, llvm::Function::ExternalLinkage,
+                        "abs", TheModule.get());
+
+      p = lookupEntry("abs", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheAbs;
+
+      llvm::FunctionType *ord_type =
+        llvm::FunctionType::get(i64, {i8}, false);
+      TheOrd =
+        llvm::Function::Create(ord_type, llvm::Function::ExternalLinkage,
+                        "ord", TheModule.get());
+
+      p = lookupEntry("ord", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheOrd;
+
+      llvm::FunctionType *chr_type =
+        llvm::FunctionType::get(i8, {i64}, false);
+      TheChr =
+        llvm::Function::Create(chr_type, llvm::Function::ExternalLinkage,
+                        "chr", TheModule.get());
+
+      p = lookupEntry("chr", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheChr;
+
+      llvm::FunctionType *strlen_type =
+        llvm::FunctionType::get(i64, {llvm::PointerType::get(i8, 0)}, false);
+      TheStrLen =
+        llvm::Function::Create(strlen_type, llvm::Function::ExternalLinkage,
+                        "strlen", TheModule.get());
+
+      p = lookupEntry("strlen", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheStrLen;
+
+      llvm::FunctionType *strcmp_type =
+        llvm::FunctionType::get(i64,
+          {llvm::PointerType::get(i8, 0), llvm::PointerType::get(i8, 0)}, false);
+      TheStrCmp =
+        llvm::Function::Create(strcmp_type, llvm::Function::ExternalLinkage,
+                        "strcmp", TheModule.get());
+
+      p = lookupEntry("strcmp", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheStrCmp;
+
+      llvm::FunctionType *strcpy_type =
+        llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext),
+          {llvm::PointerType::get(i8, 0), llvm::PointerType::get(i8, 0)}, false);
+      TheStrCpy =
+        llvm::Function::Create(strcpy_type, llvm::Function::ExternalLinkage,
+                        "strcpy", TheModule.get());
+
+      p = lookupEntry("strcpy", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheStrCpy;
+
+      TheStrCat =
+        llvm::Function::Create(strcpy_type, llvm::Function::ExternalLinkage,
+                        "strcat", TheModule.get());
+
+      p = lookupEntry("strcat", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheStrCat;
+
+    compile();
+    bool bad = llvm::verifyModule(*TheModule, &llvm::errs());
+    if (bad) {
+      std::cerr << "The IR is bad!" << std::endl;
+      TheModule->print(llvm::errs(), nullptr);
+      std::exit(1);
+    }
+
+
+    TheModule->print(llvm::outs(), nullptr);
+    }
+    llvm::Type * getLLVMType(Type type) const{
+      llvm::Type * retType;
+      bool isReference;
+      switch (type->kind) {
+          case TYPE_VOID:
+              retType = llvm::Type::getVoidTy(TheContext);
+              break;
+          case TYPE_INTEGER:
+              retType = i64;
+              break;
+          case TYPE_BOOLEAN:
+              retType = i1;
+              break;
+          case TYPE_CHAR:
+              retType = i8;
+              break;
+          case TYPE_ARRAY:
+              retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
+              break;
+          case TYPE_IARRAY:
+              retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
+              break;
+          case TYPE_LIST:
+              retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
+              break;
+          case TYPE_ANY:
+              retType = nullptr; //pithanon COnstantNullPointer.. ..
+              break;
+          default:
+              retType = i64;
+      }
+
+      return retType;
+    }
+
+  protected:
+    static llvm::LLVMContext TheContext;
+    static llvm::IRBuilder<> Builder;
+    static llvm::GlobalVariable *TheVars;
+    static std::unique_ptr<llvm::Module> TheModule;
+    static std::unique_ptr<llvm::legacy::FunctionPassManager> TheFPM;
+
+
+    // Types
+    static llvm::Type *i1;
+    static llvm::Type *i8;
+    static llvm::Type *i16;
+    static llvm::Type *i32;
+    static llvm::Type *i64;
+
+
+    // Global Variables
+    static llvm::GlobalVariable *TheNL;
+
+    static llvm::ConstantInt* c64(int n) {
+      return llvm::ConstantInt::get(TheContext, llvm::APInt(64, n, true));
+    }
+    //for integers (32 bits - complies with minimum 16 bit signed integers imposed by our programming language )
+    static llvm::ConstantInt* c32(int n) {
+      return llvm::ConstantInt::get(TheContext, llvm::APInt(32, n, true));
+    }
+    //for character (8 bit type)
+    static llvm::ConstantInt* c8(char n) {
+      return llvm::ConstantInt::get(TheContext, llvm::APInt(8, n, true));
+    }
+    //for boolean (1 bit type) - maybe not be necessary. Will see.
+    static llvm::ConstantInt* c1(int n) {
+      return llvm::ConstantInt::get(TheContext, llvm::APInt(1, n, true));
+    }
+
+    //Functions
+    static llvm::Function *TheWriteInteger;
+    static llvm::Function *TheWriteString;
+    static llvm::Function *TheWriteCharacter;
+    static llvm::Function *TheWriteBoolean;
+
+    static llvm::Function *TheReadInteger;
+    static llvm::Function *TheReadString;
+    static llvm::Function *TheReadCharacter;
+    static llvm::Function *TheReadBoolean;
+
+    static llvm::Function *TheAbs;
+    static llvm::Function *TheOrd;
+    static llvm::Function *TheChr;
+    static llvm::Function *TheStrLen;
+    static llvm::Function *TheStrCmp;
+    static llvm::Function *TheStrCpy;
+    static llvm::Function *TheStrCat;
+
 };
 
 inline std::ostream& operator<< (std::ostream &out, const AST &t) {
@@ -101,12 +395,14 @@ class VarList: public AST {
     void var_append(const char* d) { var_list.insert(var_list.begin(), d); }
     void var_type(Type t) { type = t; }
     std::vector<const char * > getVarList() { return var_list; }
-    Type getType() {return type;}
+    Type getType() { return type; }
     virtual void sem() override {
       for (int i = 0; i < var_list.size(); i++) {
-        //std::cout << "trying to insert to symbol table! variable " << var_list[i] << std::endl;
         newVariable(var_list[i], type);
       }
+    }
+    virtual llvm::Value* compile() override {
+      return nullptr;
     }
   private:
     std::vector<const char *> var_list;
@@ -132,9 +428,15 @@ class Arg: public AST {
       out << var_list[var_list.size()-1];
       out << ")" << " with Type " << type << " and pass by " << passmode;
     }
+    int getArgSize() { return var_list.size(); }
+    Type getType() { return type; }
     void sem(SymbolEntry *p) {
       for (const char *name: var_list) newParameter(name, type, passmode, p);
     }
+    virtual llvm::Value* compile() override {
+      return nullptr;
+    }
+    std::vector<const char *> getArgListNames(){ return var_list; }
   private:
     PassMode passmode;
     std::vector<const char * > var_list;
@@ -178,10 +480,51 @@ public:
       forwardFunction(p);
     }
     openScope();
-    //printSymbolTable();
     for (Arg *a: *arg_list) { a->sem(p); }
     endFunctionHeader(p, type);
   }
+
+  llvm::Function * compilef() {
+
+      SymbolEntry * p;
+      p = newFunction(name);
+      if (hdef == DECL) {
+        forwardFunction(p);
+      }
+
+      openScope();
+
+      std::vector<llvm::Type *> argTypes;
+      for (Arg *a: *arg_list) {
+        a->sem(p);
+        for (int i = 0; i < a->getArgSize(); i++){
+          llvm::Type *tempType = this->getLLVMType(a->getType());
+          argTypes.push_back(tempType);
+        }
+      }
+
+      llvm::FunctionType * FT = llvm::FunctionType::get(getLLVMType(type), argTypes, false );
+      llvm::Function * Function = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                                      name, TheModule.get());
+
+      std::vector<const char *> names;
+
+      for (Arg *a: *arg_list) {
+        std::vector<const char *> tmp = a->getArgListNames();
+        names.insert(names.end(), tmp.begin(), tmp.end());
+      }
+
+      int i = 0;
+      for (auto &Arg : Function->args())
+          Arg.setName(names[i++]);
+
+      p->u.eFunction.llvmfun = Function;
+
+      endFunctionHeader(p, type);
+
+      return Function;
+    }
+
 private:
   Type type;
   const char * name;
@@ -193,7 +536,7 @@ private:
 class Stmt: public AST {
   public:
     virtual Type getReturnType() { return returntype; }
-    virtual Type setReturnType(Type t) { returntype = t; }
+    virtual void setReturnType(Type t) { returntype = t; }
     virtual bool checkForExits() { return (this->getStmtType() == EXIT); }
     void setStmtType(StmtType s) { stmttype = s; }
     StmtType getStmtType() { return stmttype; }
@@ -202,14 +545,15 @@ class Stmt: public AST {
       if(!equalType(header->getHeaderType(), this->getReturnType()))
         fatal("Return type does not match function type");
     }
-
+    virtual llvm::Value* compile() override {
+      return nullptr;
+    }
   private:
     StmtType stmttype;
     Type returntype;
 };
 
 typedef std::vector<Stmt *> StmtList;
-
 
 
 enum DefType {
@@ -229,6 +573,11 @@ class Decl: public AST{
     virtual void sem() override {
       header->sem();
       closeScope();
+    }
+    virtual llvm::Value * compile() override {
+      llvm::Function * f_ = header->compilef();
+      closeScope();
+      return nullptr;
     }
   private:
     Header *header;
@@ -301,7 +650,7 @@ public:
       header->sem();
     }
 
-    printSymbolTable();
+    if (false) printSymbolTable();;
     int v = 0, f = 0, d = 0;
     bool existsReturn = false;
     for (std::vector<DefType>::iterator it = sequence.begin(); it < sequence.end(); it++){
@@ -329,20 +678,100 @@ public:
             fatal("Exit can only be used inside void function blocks");
           //std::cout << "statement " << *stmt << " has checkReturn() " << std::endl;
           existsReturn = true;
-          std::cout << "header type = " << header->getHeaderType() << " return type = " << stmt->getReturnType() <<std::endl;
+          //std::cout << "header type = " << header->getHeaderType() << " return type = " << stmt->getReturnType() <<std::endl;
           stmt->checkReturnType(header);
         }
       }
     }
 
-
-
     if(header->getHeaderDef() == DEF && !existsReturn && !equalType(header->getHeaderType(), typeVoid)) {
       fatal("Non void function must have a return statement.");
     }
 
-    printSymbolTable();
+    if (false) printSymbolTable();;
     closeScope();
+  }
+
+  virtual llvm::Value* compile() override {
+
+    if (!isMain) {
+        SymbolEntry * e = lookupEntry(header->getHeaderName(), LOOKUP_ALL_SCOPES, false);
+        if (!e){
+          thisFunction = header->compilef();
+        }
+        else {
+          thisFunction = e->u.eFunction.llvmfun;
+        }
+    }
+    else{
+      llvm::FunctionType *FT = llvm::FunctionType::get(i32, {}, false );
+      thisFunction = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                                        "main", TheModule.get());
+
+    }
+
+    llvm::BasicBlock *BB = llvm::BasicBlock::Create(TheContext, "entry", thisFunction);
+    Builder.SetInsertPoint(BB);
+
+
+    //Builder.CreateCall(TheInit, {});
+
+    int v = 0, f = 0, d = 0;
+    int count = 1;
+    for (std::vector<DefType>::iterator it = sequence.begin(); it < sequence.end(); it++){
+      if (*it == FUNCTION) {
+        llvm::Value * _t = func_list[f]->compile();
+        f++;
+        Builder.SetInsertPoint(BB);
+      }
+      else if (*it == VARIABLE) {
+        var_list[v]->sem();
+        llvm::Type * t = getLLVMType(var_list[v]->getType());
+        for (const char * s : var_list[v]->getVarList()) {
+            llvm::AllocaInst *alloca_temp = CreateEntryBlockAlloca(thisFunction, s, t);
+            SymbolEntry * e = lookupEntry(s, LOOKUP_ALL_SCOPES, false);
+            e->u.eVariable.allocainst = alloca_temp;
+        }
+        v++;
+      }
+      else if (*it == DECLARATION) {
+        decl_list[d]->compile();
+        d++;
+        Builder.SetInsertPoint(BB);
+      }
+    }
+
+    if (stmt_list != NULL) {
+      for (Stmt *stmt : *stmt_list) {
+        stmt->compile();
+
+        if(stmt->checkForReturns()){
+          bool existsReturn = true;
+        }
+      }
+    }
+
+    if (false) printSymbolTable();;
+    closeScope();
+    // Emit the program code.
+    //compile();
+    if (isMain) {
+      Builder.CreateRet(c32(0));
+    }
+    else {
+      if(equalType(header->getHeaderType(), typeVoid)) Builder.CreateRetVoid();
+    }
+    llvm::verifyFunction(*thisFunction);
+    bool bad = llvm::verifyFunction(*thisFunction, &llvm::errs());
+    if (bad) {
+      std::cerr << "The function " << header->getHeaderName() << " is bad!" << std::endl;
+      thisFunction->print(llvm::errs(), nullptr);
+      std::exit(1);
+    }
+    if (isMain) {
+    TheFPM->run(*thisFunction);
+    }
+    return nullptr;
   }
 
 private:
@@ -353,6 +782,7 @@ private:
   StmtList *stmt_list;
   std::vector<DefType> sequence;
   int size;
+  llvm::Function * thisFunction;
   bool isMain;
 };
 
@@ -369,22 +799,23 @@ class Expr : public AST {
     bool isBasicType(Type t) {
       return (equalType(t, typeChar) || equalType(t, typeBoolean) || equalType(t, typeInteger));
     }
+    void setLeft() { isLeft = true; }
     Type getType() { return type; }
     bool isLValue() { return lval; }
     StringExpr getStringExpr() { return stringExpr; }
+    virtual llvm::Value* compile() override {
+      return nullptr;
+    }
   protected:
     Type type;
     bool lval;
+    bool isLeft = false;
      // enumeration of valid types for a expression.
      // used to throw error on cases like "test"[0] := 4
     StringExpr stringExpr;
 };
 
 typedef std::vector<Expr *> ExprList;
-
-class Atom : public Expr {
-  public:
-};
 
 class IntConst : public Expr {
   public:
@@ -399,6 +830,7 @@ class IntConst : public Expr {
     }
     */
     virtual void sem() override { lval = false; stringExpr = OTHER; type = typeInteger; }
+    virtual llvm::Value* compile()override { return c64(num); }
   private:
     int num;
 };
@@ -416,6 +848,8 @@ class CharConst : public Expr {
     }
     */
     virtual void sem() override { lval = false; stringExpr = OTHER; type = typeChar; }
+    virtual llvm::Value* compile() override { return c8(character); }
+
   private:
     char character;
 };
@@ -433,6 +867,8 @@ class BoolConst : public Expr {
     }
     */
     virtual void sem() override { lval = false; stringExpr = OTHER; type = typeBoolean; }
+    virtual llvm::Value* compile() override { return c1(int(logic)); }
+
   private:
     bool logic;
 };
@@ -443,20 +879,6 @@ public:
   virtual void printOn(std::ostream &out) const override {
     out << "Id(" << var << "@" << ")";
   }
-  /*
-  virtual void compile() const override {
-    if (nestingDiff == 0)
-      // Local variable.
-      std::cout << "  pushl " << 4 * offset << "(%ebp)\n";
-    else {
-      // Non-local variable; follow nestingDiff access links.
-      std::cout << "  movl 0(%ebp), %esi\n";
-      for (int i = 1; i < nestingDiff; ++i)
-        std::cout << "  movl 0(%esi), %esi\n";
-      std::cout << "  pushl " << 4 * offset << "(%esi)\n";
-    }
-  }
-  */
   const char *getIdName() { return var; }
   EntryType getEntryType() {
     return entry;
@@ -466,16 +888,39 @@ public:
     SymbolEntry *e = lookupEntry(var,LOOKUP_ALL_SCOPES, false);
     if (e==NULL) { fatal("Id has not been declared"); }
     entry = e->entryType;
-    if (entry == ENTRY_VARIABLE ) {
+    if (entry == ENTRY_VARIABLE) {
       type = e->u.eVariable.type;
     }
-    else if (entry == ENTRY_FUNCTION ) {
+    else if (entry == ENTRY_FUNCTION) {
       type = e->u.eFunction.resultType;
     }
-    else if (entry == ENTRY_PARAMETER ) {
+    else if (entry == ENTRY_PARAMETER) {
       type = e->u.eParameter.type;
     }
     stringExpr = OTHER;
+  }
+  virtual llvm::Value* compile() override {
+    SymbolEntry *e = lookupEntry(var,LOOKUP_ALL_SCOPES, false);
+    if (e==NULL) { fatal("Id has not been declared"); }
+    entry = e->entryType;
+    if (entry == ENTRY_VARIABLE) {
+      if (!isLeft)
+        return Builder.CreateLoad(e->u.eVariable.allocainst, var);
+      else return e->u.eVariable.allocainst;
+    }
+    else if (entry == ENTRY_FUNCTION) {
+      return e->u.eFunction.llvmfun;
+    }
+    else if (entry == ENTRY_PARAMETER) {
+      type = e->u.eParameter.type;
+      if (e->u.eParameter.mode == PASS_BY_REFERENCE) ;
+    }
+    return nullptr;
+    //lookup the entry
+
+    // llvm::Value *v = Builder.CreateGEP(TheVars, {c32(0), c32(hashTheVars[e])} , name_ptr );
+    // return Builder.CreateLoad(v, name);
+
   }
 
 
@@ -486,46 +931,17 @@ private:
 
 class BinOp : public Expr {
 public:
-  BinOp(Expr *l, const char *o, Expr *r) : left(l), op(o), right(r) {}
+  BinOp(Expr *l, const char *o, Expr *r) : left(l), op(o), right(r) {
+    canBeShortCircuited = !strcmp(op, "and") || !strcmp(op, "or");
+  }
   ~BinOp() {
     delete left;
     delete right;
   }
   virtual void printOn(std::ostream &out) const override {
-    out << op << "(" << *left << ", " << *right << ")";
+    out << "a" <<  op << "(" << *left << ", " << *right << ")";
   }
-  /*
-  virtual void compile() const override {
-    left->compile();
-    right->compile();
-    std::cout << "  popl %ebx\n"  // right
-              << "  popl %eax\n"; // left
-    switch (op) {
-    case '+':
-      std::cout << "  addl %ebx, %eax\n"
-                << "  pushl %eax\n";
-      break;
-    case '-':
-      std::cout << "  subl %ebx, %eax\n"
-                << "  pushl %eax\n";
-      break;
-    case '*':
-      std::cout << "  mull %ebx\n"
-                << "  pushl %eax\n";
-      break;
-    case '/':
-      std::cout << "  cdq\n"
-                << "  divl %ebx\n"
-                << "  pushl %eax\n";
-      break;
-    case '%':
-      std::cout << "  cdq\n"
-                << "  divl %ebx\n"
-                << "  pushl %edx\n";
-      break;
-    }
-  }
-  */
+
   virtual void sem() override {
     lval = false;
     if (!strcmp(op, "+") || !strcmp(op, "-") || !strcmp(op, "*") || !strcmp(op, "/") || !strcmp(op, "mod")){
@@ -547,10 +963,62 @@ public:
     }
   }
 
+  virtual llvm::Value* compile() override {
+    llvm::Value* l = left->compile();
+    if(!canBeShortCircuited){
+      llvm::Value* r = right->compile();
+      if(!strcmp(op, "+")) return Builder.CreateAdd(l, r, "addtmp");
+      else if(!strcmp(op, "-")) return Builder.CreateSub(l, r, "subtmp");
+      else if(!strcmp(op, "*")) return Builder.CreateMul(l, r, "multmp");
+      else if(!strcmp(op, "/")) return Builder.CreateSDiv(l, r, "divtmp");
+      else if(!strcmp(op, "mod")) return Builder.CreateSRem(l, r, "modtmp");
+      else if(!strcmp(op, "=")) return Builder.CreateICmpEQ(l, r, "eqtmp");
+      else if(!strcmp(op, "<=")) return Builder.CreateICmpSLE(l, r, "addtmp");
+      else if(!strcmp(op, "<")) return Builder.CreateICmpSLT(l, r, "addtmp");
+      else if(!strcmp(op, ">=")) return Builder.CreateICmpSGE(l, r, "addtmp");
+      else if(!strcmp(op, ">")) return Builder.CreateICmpSGT(l, r, "addtmp");
+      else if(!strcmp(op, "<>")) return Builder.CreateICmpNE(l, r, "neqtmp");
+    }
+
+    else {
+      llvm::Value* r = right->compile(); // should be deleted afte shot chircuiting is implemented
+      if(!strcmp(op, "or"))
+        return Builder.CreateOr(l, r, "ortmp");
+      else if(!strcmp(op, "and"))
+        return Builder.CreateAnd(l, r, "andtmp");
+      /*
+      PN->llvm::PHINode::addIncoming(Builder.CreateAnd(l,r,"andtmp"),
+            Builder.GetInsertBlock());
+      llvm::PHINode *PN = Builder.CreatePHI(llvm::Type::getInt1Ty(TheContext), 2, "and_phi");
+      llvm::BasicBlock *PrevBB = Builder.GetInsertBlock();
+      llvm::Function *TheFunction = PrevBB->getParent();
+      llvm::BasicBlock *LogicBothBB =
+        llvm::BasicBlock::Create(TheContext, "loop", TheFunction);
+      llvm::BasicBlock *LogicOneBB =
+        llvm::BasicBlock::Create(TheContext, "loop", TheFunction);
+      if(!strcmp(op, "and")) {
+        llvm::Value *shortCircuitCond =
+          Builder.CreateICmpNE(l, c1(0), "shortcirc_and");
+        Builder.CreateCondBr(shortCircuitCond, LogicBothBB, LogicOneBB);
+        Builder.SetInsertPoint(LogicBothBB);
+
+        return Builder.CreateAnd(l, r, "andtmp"); // not sure yet if CreateAnd short circuits the logical expression
+        }
+      else if(!strcmp(op, "or")){
+        return Builder.CreateOr(l, r, "ortmp");
+        }
+      */
+    }
+
+    return nullptr;
+
+  }
+
 private:
   Expr *left;
   const char *op;
   Expr *right;
+  bool canBeShortCircuited;
 };
 
 class UnOp : public Expr {
@@ -576,6 +1044,14 @@ public:
     }
     else std::cout << "Aliens." << std::endl;
     stringExpr = OTHER;
+  }
+
+  virtual llvm::Value* compile() override {
+    llvm::Value* operand = expr->compile();
+    if(!strcmp(op, "+")) return operand;
+    else if(!strcmp(op, "-")) return Builder.CreateMul(operand, c64(-1), "minus_sign_tmp");
+    else return nullptr;
+
   }
 
 private:
@@ -606,6 +1082,9 @@ public:
     else std::cout << " Aliens." << std::endl;
     stringExpr = OTHER;
   }
+  virtual llvm::Value* compile() override {
+    return nullptr;
+  }
 private:
   const char *op;
   Expr *expr;
@@ -630,6 +1109,9 @@ public:
     else std::cout << "Aliens." << std::endl;
     stringExpr = OTHER;
   }
+  virtual llvm::Value* compile() override {
+    return nullptr;
+  }
 private:
   const char *op;
   Expr *expr1, *expr2;
@@ -646,6 +1128,9 @@ class Nil: public Expr {
       lval = false;
       type = typeList(typeAny);
       stringExpr = OTHER;
+    }
+    virtual llvm::Value* compile() override {
+      return nullptr;
     }
   private:
 };
@@ -664,6 +1149,9 @@ class StringConst: public Expr {
       type = typeIArray(typeChar); //Warning: may come back
       stringExpr = STRING;
     }
+    virtual llvm::Value* compile() override {
+      return nullptr;
+    }
   private:
     const char * stringconst;
 };
@@ -681,6 +1169,9 @@ class Array: public Expr {
       lval = false;
       sizeExpr->type_check(typeInteger);
       type = typeIArray(arrayType);
+    }
+    virtual llvm::Value* compile() override {
+      return nullptr;
     }
   private:
     Type arrayType;
@@ -708,6 +1199,9 @@ class ArrayItem: public Expr{
       type = atom->getType()->refType;
       //std :: cout << type << std::endl;
       lval = true;
+    }
+    virtual llvm::Value* compile() override {
+      return nullptr;
     }
   private:
     Expr *atom, *expr;
@@ -767,6 +1261,9 @@ public:
       args = p->u.eFunction.firstArgument;
       for (Expr *expr: reversed) {
         expr->sem();
+        if (args->u.eParameter.mode == PASS_BY_REFERENCE && !expr->isLValue()) {
+          fatal("Cannot pass by reference a non lvalue");
+        }
         if (!equalType(expr->getType(), args->u.eParameter.type)){
           fatal("Wrong parameter type at position %d", i);
         }
@@ -774,6 +1271,19 @@ public:
         i++;
       }
     }
+  }
+  virtual llvm::Value* compile() override {
+    SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_ALL_SCOPES, false);
+    llvm::Function *calledFun = p->u.eFunction.llvmfun;
+    std::vector<llvm::Value*> argv;
+    argv.clear();
+    if (exprlist == NULL) return Builder.CreateCall(calledFun, std::vector<llvm::Value*> {});
+    ExprList reversed = *exprlist;
+    std::reverse(reversed.begin(), reversed.end());
+    for (Expr *expr: reversed) {
+      argv.push_back(expr->compile());
+    }
+    return Builder.CreateCall(calledFun, argv);
   }
 private:
   Id *id;
@@ -835,6 +1345,9 @@ class CallStmt: public Stmt{
         args = p->u.eFunction.firstArgument;
         for (Expr *expr: reversed) {
           expr->sem();
+          if (args->u.eParameter.mode == PASS_BY_REFERENCE && !expr->isLValue()) {
+            fatal("Cannot pass by reference a non lvalue");
+          }
           if (!equalType(expr->getType(), args->u.eParameter.type)){
             fatal("Wrong parameter type at position %d.", i);
           }
@@ -842,6 +1355,21 @@ class CallStmt: public Stmt{
           i++;
         }
       }
+    }
+
+    virtual llvm::Value* compile() override {
+      SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_ALL_SCOPES, false);
+      llvm::Function *calledFun = p->u.eFunction.llvmfun;
+      std::vector<llvm::Value*> argv;
+      argv.clear();
+      if (exprlist == NULL) return Builder.CreateCall(calledFun, std::vector<llvm::Value*> {});
+      ExprList reversed = *exprlist;
+      std::reverse(reversed.begin(), reversed.end());
+      for (Expr *expr: reversed) {
+        argv.push_back(expr->compile());
+      }
+      Builder.CreateCall(calledFun, argv);
+      return nullptr;
     }
   private:
     Id *id;
@@ -856,6 +1384,7 @@ class Skip : public Stmt {
       out << "Empty instruction" << std::endl;
     }
     virtual void sem() override { setStmtType(SIMPLE_STMT); }
+    virtual llvm::Value* compile() override { return nullptr; }
 };
 
 class For : public Stmt {
@@ -924,6 +1453,43 @@ public:
       }
   }
 
+  virtual llvm::Value* compile() override {
+    //emit initialization code
+    /*unordered_map<Value *> init;
+    Value *Init [init_list.size()]
+    for (Stmt *s: *init_list) {
+      Value *i = s->compile();
+      if (i != nullptr)
+        init.insert(pair<,>);
+    }*/
+    llvm::BasicBlock *PrevBB = Builder.GetInsertBlock();
+    Builder.SetInsertPoint(PrevBB);
+    for (Stmt *s: *init_list) s->compile();
+    llvm::Function *TheFunction = PrevBB->getParent();
+    llvm::BasicBlock *LoopBB =
+      llvm::BasicBlock::Create(TheContext, "loop", TheFunction);
+    llvm::BasicBlock *BodyBB =
+      llvm::BasicBlock::Create(TheContext, "body", TheFunction);
+    llvm::BasicBlock *AfterBB =
+      llvm::BasicBlock::Create(TheContext, "endfor", TheFunction);
+    Builder.CreateBr(LoopBB);
+    Builder.SetInsertPoint(LoopBB);
+
+    llvm::Value *cond_value = terminate_expr->compile();
+    //llvm::Value *loop_cond =
+    //  Builder.CreateICmpNE(cond_value, c1(1), "loop_cond");
+    Builder.CreateCondBr(cond_value, BodyBB, AfterBB);
+    Builder.SetInsertPoint(BodyBB);
+    // Value *remaining =
+    //   Builder.CreateSub(phi_iter, c64(1), "remaining");
+    for (Stmt *s: *stmt_list) s->compile();
+    for (Stmt *s: *next_list) s->compile();
+    // phi_iter->addIncoming(remaining, Builder.GetInsertBlock());
+    Builder.CreateBr(LoopBB);
+    Builder.SetInsertPoint(AfterBB);
+    return nullptr;
+  }
+
 private:
   StmtList *init_list, *next_list, *stmt_list;
   Expr *terminate_expr;
@@ -973,7 +1539,6 @@ public:
      for (IfPair cond_st: *full_list) {
        atLeastOneInList = false;
        for (Stmt *s: *cond_st.second) {
-         std::cout << "hello " << std::endl;
          if(s->checkForReturns()) {
             setReturnType(s->getReturnType());
             if (!oneList) temp = s->getReturnType();
@@ -1006,7 +1571,7 @@ public:
          return false;
        }
      }
- }
+   }
 
   virtual void printOn(std::ostream &out) const override {
     out << "If(" << std::endl;
@@ -1045,6 +1610,65 @@ public:
     }
   }
 
+  virtual llvm::Value* compile()  override {
+
+    // number of if then pairs
+    int n = full_list->size(), counter=0;
+
+    // create after block. Should be inserted at the end of If_then_else block
+    llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
+
+    llvm::BasicBlock *AfterBB = llvm::BasicBlock::Create(TheContext, "endif", TheFunction);
+    llvm::BasicBlock *ElseIfBB;
+    if (n > 1) {
+      ElseIfBB = llvm::BasicBlock::Create(TheContext, "elseif", TheFunction);
+    }
+    llvm::BasicBlock *ElseBB = llvm::BasicBlock::Create(TheContext, "else", TheFunction);
+
+    llvm::BasicBlock *CurrentBB;
+
+    for(IfPair a: *full_list) {
+      if (counter > 0)
+        Builder.SetInsertPoint(CurrentBB);
+
+      Expr *e = a.first;
+      StmtList *s_list = a.second;
+      llvm::Value *v = e->compile();
+      llvm::Value *cond = Builder.CreateICmpNE(v, c1(0), "if_cond");
+      llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
+
+      llvm::BasicBlock *ThenBB =
+        llvm::BasicBlock::Create(TheContext, "then", TheFunction);
+      if (counter == n-1){
+        Builder.CreateCondBr(cond, ThenBB, ElseBB);
+      }
+      else {
+        Builder.CreateCondBr(cond, ThenBB, ElseIfBB);
+        CurrentBB = ElseIfBB;
+        if(counter < n-2)
+        ElseIfBB = llvm::BasicBlock::Create(TheContext, "elseif", TheFunction);
+      }
+
+      Builder.SetInsertPoint(ThenBB);
+
+      for(Stmt *s: *s_list) {
+        if(s!= nullptr) s->compile();
+      }
+      Builder.CreateBr(AfterBB);
+      counter++;
+    }
+
+    Builder.SetInsertPoint(ElseBB);
+    for(Stmt *s: *s_last) {
+      if(s!= nullptr) s->compile();
+    }
+    Builder.CreateBr(AfterBB);
+    Builder.SetInsertPoint(AfterBB);
+
+    return nullptr;
+
+  }
+
 private:
   IfPairList *elif, *full_list;
   StmtList *s_last;
@@ -1053,28 +1677,23 @@ private:
 class Let: public Stmt {
 public:
   Let(Expr *v, Expr *e): var(v),  expr(e) {}
-  /*
-  Let(Call *call, Expr *e) {
-    fatal("Cannot assign to non l-value");
-  }
-  Let(StringConst *s, Expr *e) {
-    fatal("Cannot assign to non l-value");
-  }
-  */
   ~Let() { delete expr; }
   virtual void printOn(std::ostream &out) const override {
     out << "Let(" << *var << " = " << *expr << ")" << std::endl;
   }
   virtual void sem() override {
     setStmtType(SIMPLE_STMT);
-    std::cout << "before var sem" << std::endl;
     var->sem();
     if (!var->isLValue()) fatal("Can't assign value to non lvalue");
     if (var->getStringExpr() == STRING_ITEM) fatal("Can't assign value to item of a constant string type object");
-    std::cout << "before expr type check" << std::endl;
     expr->type_check(var->getType());
-    std::cout << "after exp" << std::endl;
-    std::cout << *expr << std::endl;
+  }
+  virtual llvm::Value* compile() override {
+    var->setLeft();
+    llvm::Value * alloc_tmp = var->compile();
+    llvm::Value * val_tmp = expr->compile();
+    Builder.CreateStore(val_tmp, alloc_tmp);
+    return nullptr;
   }
 private:
   Expr *var;
@@ -1093,6 +1712,13 @@ public:
     returnExpr->sem();
     setReturnType(returnExpr->getType());
   }
+  virtual llvm::Value* compile() override {
+    llvm::Value *RetValue = returnExpr->compile();
+    Builder.CreateRet(RetValue);
+    return nullptr;
+   }
+
+
 private:
   Expr *returnExpr;
 };
@@ -1106,6 +1732,10 @@ class Exit: public Stmt {
     }
     virtual void sem() override {
       setStmtType(EXIT);
+    }
+    virtual llvm::Value* compile() override {
+      Builder.CreateRetVoid();
+      return nullptr;
     }
 };
 

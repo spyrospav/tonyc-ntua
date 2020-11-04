@@ -3,7 +3,9 @@
 #include "lexer.hpp"
 #include <string>
 #include "ast.hpp"
+#include "ast.cpp"
 #include "symbol.h"
+#include "general.h"
 
 %}
 
@@ -100,8 +102,17 @@
 
 
 program:
-  { initSymbolTable(2048); openScope(); printSymbolTable(); StandardLibraryInit(); }
-    func-def { $2->setMain();  $2->sem(); }
+  { initSymbolTable(2048); openScope(); StandardLibraryInit(); }
+    func-def {
+      $2->setMain();  $2->sem();
+      /* codegen  */
+      //std::cout << "Started codegen" << std::endl;
+      destroySymbolTable();
+      initSymbolTable(2048);
+      openScope();
+      StandardLibraryInit();
+      $2->llvm_compile_and_dump(doOptimize);
+  }
 ;
 
 func-def:
@@ -256,8 +267,22 @@ expr:
 
 %%
 
-int main(){
+int main(int argc, char *argv[]){
+
+  //std::cout << argc << std::endl;
+  if(argc>1) {
+    if (!(strcmp(argv[1], "-O")))
+      doOptimize = true;
+    else {
+      std::cout << "Wrong arguments given" << std::endl;
+      exit(1);
+    }
+  }
+  else
+    doOptimize = false;
+
   int result = yyparse();
-  if (result == 0) printf("Success.\n");
+
+  //if (result == 0) printf("Success.\n");
   return result;
 }

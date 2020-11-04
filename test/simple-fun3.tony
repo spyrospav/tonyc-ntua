@@ -1,0 +1,27 @@
+<*
+ * Test case: simple-fun3.tony
+ * Result: Pass
+ *>
+
+def program ():
+  int a
+  char ed
+  def voidfun(char c):
+    skip
+  end
+  def int fun(int a):
+    def int fun2(char d):
+      skip
+      return 2
+    end
+    skip
+    return fun2('e')
+  end
+  def int fun3():
+    return 5
+  end
+  int b, c
+  voidfun('c')
+  b := 5-fun(3)
+  c := 1000 + fun(4) + fun3()
+end

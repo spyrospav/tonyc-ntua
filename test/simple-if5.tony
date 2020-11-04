@@ -1,0 +1,23 @@
+<*
+ * Test case: simple-if5.tony
+ * Result: Pass
+ *>
+
+def program ():
+  int a,b,c
+
+  def fun (int a, b):
+    if a < 0:
+      if b > 0:
+        c := 2
+      end
+    elsif a > 0:
+      if b < 0:
+        c :=3
+      end
+    end
+  end
+  a := 1
+  b := 2
+  fun(a, b)
+end

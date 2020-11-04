@@ -1,0 +1,10 @@
+<*
+ * Test case: simple-let2.tony
+ * Result: Pass
+ *>
+
+def program():
+  int a, b
+  b := 0
+  a := b + 5
+end
