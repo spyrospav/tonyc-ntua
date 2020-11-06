@@ -60,18 +60,34 @@ E \\(n|t|r|0|\'|\"|\\|x{H}{H})
 
 \'([^\'\"\\]|{E})\' {
                         std::string temp = yytext;
-                        std::cout << temp << std::endl;
+                        //std::cout << temp << std::endl;
                         temp = temp.substr(1, temp.length()-1);
                         if(temp[0] == '\\' && temp[1] == 'x') {
+                          //for hexadecimals
                           char* yytext_end;
                           yylval.char_const = (char) std::strtol(&(yytext[3]), &yytext_end, 16);
-
+                        }
+                        else if(temp[0] == '\\') {
+                          //for escape chars
+                          char t;
+                          switch(temp[1]) {
+                            case 'n': t = '\n'; break;
+                            case 't': t = '\t'; break;
+                            case 'r': t = 'r'; break;
+                            case '0': t = '\0'; break;
+                            case '\\': t = 92; break;
+                            case '\'': t = 39; break;
+                            case '"': t = 34; break;
+                          }
+                          yylval.char_const = t;
                         }
                         else {
+                          //for simple chars
                           yylval.char_const = yytext[1];
                         }
                        return T_char_const;
                        }
+
 \"([^\n\'\"\\]|{E})*\" { yylval.string_const = strdup(yytext);  return T_string_const; }
 
 [\,\;\:] { return yytext[0]; }

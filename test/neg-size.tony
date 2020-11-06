@@ -1,0 +1,12 @@
+<*
+ * Test case: neg-size.tony
+ * Result: Fail
+ *>
+
+def program():
+  int[] a, c
+  int b
+  b := -2
+  a := new int[-2] %managable
+  c := new int[b]  %nope
+end

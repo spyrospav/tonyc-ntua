@@ -1,0 +1,12 @@
+<*
+ * Test case: geti.tony
+ * Result: Pass
+ *>
+
+def program():
+  int x, N
+  N := geti()
+  for x := 0; x < N; x := x +1:
+    puti(x)
+  end
+end
