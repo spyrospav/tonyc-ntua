@@ -111,7 +111,7 @@ program:
       initSymbolTable(2048);
       openScope();
       StandardLibraryInit();
-      //$2->llvm_compile_and_dump(doOptimize);
+      $2->llvm_compile_and_dump(doOptimize);
   }
 ;
 

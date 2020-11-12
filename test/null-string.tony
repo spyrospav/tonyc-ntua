@@ -1,0 +1,10 @@
+<*
+ * Test case: null-string.tony
+ * Result: Pass
+ *>
+
+ def program():
+   char[] s
+   s := "dasdas\ndasdasa"
+   puts(s)
+ end

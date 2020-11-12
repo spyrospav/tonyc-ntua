@@ -1154,7 +1154,13 @@ class StringConst: public Expr {
       stringExpr = STRING;
     }
     virtual llvm::Value* compile() override {
-      return nullptr;
+
+      // std::string our_string = stringconst;
+      // our_string.append("\0")
+      // llvm::ArrayType *llvm_string = llvm::ArrayType::get(i8, our_string.size())
+      // return  llvm::ConstantArray::get(our_string, {});
+      llvm::Value *temp = Builder.CreateGlobalStringPtr(stringconst);
+      return temp;
     }
   private:
     const char * stringconst;
@@ -1175,8 +1181,11 @@ class Array: public Expr {
       type = typeIArray(arrayType);
     }
     virtual llvm::Value* compile() override {
-
-
+      // llvm::BasicBlock *PrevBB = Builder.GetInsertBlock();
+      // llvm::Type *array_type = getLLVMType(arrayType);
+      // llvm::Value *array_size = sizeExpr->compile();
+      // auto alloc_size = llvm::ConstantExpr::getMul(sizeof(array_type), array_size);//llogika 8a 8elei dikia mas ylopoihsh to sizeof
+      // llvm::CreateMalloc(PrevBB, array_type->getPointerTo(), array_type, alloc_size )
       return nullptr;
     }
   private:
