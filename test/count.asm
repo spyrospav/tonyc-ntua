@@ -16,6 +16,8 @@ main:                                   # @main
                                         # =>This Inner Loop Header: Depth=1
 	movq	(%rsp), %rdi
 	callq	puti
+	movl	$10, %edi
+	callq	putc
 	incq	(%rsp)
 	cmpq	$41, (%rsp)
 	jle	.LBB0_2

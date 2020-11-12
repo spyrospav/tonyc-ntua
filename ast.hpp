@@ -18,6 +18,7 @@
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Verifier.h>
+#include <llvm/IR/DerivedTypes.h>
 
 /*------------ LLVM Optimizations -------------*/
 #include <llvm/Transforms/InstCombine/InstCombine.h>
@@ -112,11 +113,11 @@ class AST {
     // Initialize optimization Function Pass Manager
     if (doOptimize) {
       //std::cout << "Intermediate optimization" << std::endl;
-      //TheFPM->add(llvm::createPromoteMemoryToRegisterPass());
+      TheFPM->add(llvm::createPromoteMemoryToRegisterPass());
       TheFPM->add(llvm::createInstructionCombiningPass());
-      //TheFPM->add(llvm::createReassociatePass());
-      //TheFPM->add(llvm::createGVNPass());
-      //TheFPM->add(llvm::createCFGSimplificationPass());
+      TheFPM->add(llvm::createReassociatePass());
+      TheFPM->add(llvm::createGVNPass());
+      TheFPM->add(llvm::createCFGSimplificationPass());
     }
     TheFPM->doInitialization();
 
@@ -168,6 +169,7 @@ class AST {
     TheWriteString =
       llvm::Function::Create(writeString_type, llvm::Function::ExternalLinkage,
                        "puts", TheModule.get());
+
     p = lookupEntry("puts", LOOKUP_ALL_SCOPES, false);
     p->u.eFunction.llvmfun = TheWriteString;
 
@@ -301,6 +303,7 @@ class AST {
               retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
               break;
           case TYPE_IARRAY:
+              //retType = llvm::ArrayType::get
               retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
               break;
           case TYPE_LIST:
@@ -848,7 +851,8 @@ class CharConst : public Expr {
     }
     */
     virtual void sem() override { lval = false; stringExpr = OTHER; type = typeChar; }
-    virtual llvm::Value* compile() override { return c8(character); }
+    virtual llvm::Value* compile() override {
+      return c8(character); }
 
   private:
     char character;
@@ -1158,7 +1162,7 @@ class StringConst: public Expr {
 
 class Array: public Expr {
   public:
-    Array(Type t, Expr *e) : arrayType(t), sizeExpr(e), arraySize(10) {}
+    Array(Type t, Expr *e) : arrayType(t), sizeExpr(e), arraySize(-1) {}
     ~Array() {}
 
     virtual void printOn(std::ostream &out) const override {
@@ -1171,6 +1175,8 @@ class Array: public Expr {
       type = typeIArray(arrayType);
     }
     virtual llvm::Value* compile() override {
+
+
       return nullptr;
     }
   private:

@@ -2,6 +2,7 @@
 *.cpp
 *.ll
 *.imm
+*.asm
 !symbol.cpp
 !error.cpp
 !general.cpp

@@ -1,20 +1,8 @@
-'\x1d'
-'a'
-
-left or right
-while () {
-
-}
-right = left2 or right2
-
-x
-right = getRightExpression
-
-x or (b or (d and a))
-
-class Expr{
-  a or b or c
-}
-
-a or
- (b<c) or x<=
+Arrays:
+  - Parser reconstruction to deal with constant array sizes
+  - Semantic analysis for negative sizes (Static) on constant ints
+  - LLVM
+    -- Allocation (maybe PointerType with 0 size and suitable llvmtype)
+    -- New array (assignment)
+    -- Access array element
+    -- Reference in functions and assignments

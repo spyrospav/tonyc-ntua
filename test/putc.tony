@@ -1,0 +1,14 @@
+<*
+ * Test case: putc.tony
+ * Result: Pass
+ *>
+
+def program():
+  putc('c')
+  putc('\x44')
+  putc('\n')
+  putc('\t')
+  putc('\\')
+  putc('\'')
+  putc('\"')
+end

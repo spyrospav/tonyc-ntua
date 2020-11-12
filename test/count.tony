@@ -7,5 +7,6 @@ def program():
   int i
   for i := 1; i < 42; i := i+1:
     puti(i)
+    putc('\n')
   end
 end
