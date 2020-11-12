@@ -1,0 +1,10 @@
+<*
+ * Test case: nl-wrong.tony
+ * Result: Fail
+ *>
+
+def program():
+  char s[]
+  s := "asdasda
+  "
+end

@@ -1,0 +1,9 @@
+<*
+ * Test case: bad-hex.tony
+ * Result: Fail
+ *>
+
+def program():
+  char s
+  s := '\xxx'
+end
