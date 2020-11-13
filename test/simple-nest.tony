@@ -1,0 +1,18 @@
+<*
+ * Test case: simple-nest.tony
+ * Result: Pass
+ *>
+
+def program():
+  int a
+  def nested(int b):
+    puti(b+1)
+    putc('\n')
+    puti(50)
+    putc('\n')
+
+  end
+  a := 1
+  nested(4)
+  nested(a)
+end

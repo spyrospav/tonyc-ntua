@@ -1,0 +1,11 @@
+<*
+ * Test case: simple-nest2.tony
+ * Result: Pass
+ *>
+
+def program():
+  int a
+  a := 2
+  puti(a+1)
+  putc('\n')
+end

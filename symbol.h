@@ -159,6 +159,7 @@ struct SymbolEntry_tag {
          int           offset;                /* Offset ��� �.�.       */
          PassMode      mode;                  /* ������ ����������     */
          SymbolEntry * next;                  /* ������� ����������    */
+         llvm::AllocaInst * llvmpar;
       } eParameter;
 
       struct {                                /** ��������� ��������� **/
