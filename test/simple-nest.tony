@@ -1,18 +1,20 @@
 <*
- * Test case: simple-nest.tony
+ * Test case: simple-ref.tony
  * Result: Pass
  *>
 
 def program():
-  int a
+  int a, c
   def nested(int b):
     puti(b+1)
     putc('\n')
-    puti(50)
-    putc('\n')
-
+  end
+  def int add(int a):
+    return a + 5
   end
   a := 1
-  nested(4)
-  nested(a)
+  c := geti()
+  nested(c)
+  puti(add(c))
+  putc('\n')
 end

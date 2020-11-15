@@ -432,6 +432,7 @@ class Arg: public AST {
       out << ")" << " with Type " << type << " and pass by " << passmode;
     }
     int getArgSize() { return var_list.size(); }
+    PassMode getPassMode() { return passmode; }
     Type getType() { return type; }
     void sem(SymbolEntry *p) {
       for (const char *name: var_list) newParameter(name, type, passmode, p);
@@ -502,6 +503,7 @@ public:
         a->sem(p);
         for (int i = 0; i < a->getArgSize(); i++){
           llvm::Type *tempType = this->getLLVMType(a->getType());
+          if (a->getPassMode() == PASS_BY_REFERENCE) tempType = llvm::PointerType::get(tempType, 0);
           argTypes.push_back(tempType);
         }
       }
@@ -715,7 +717,7 @@ public:
 
     llvm::BasicBlock *BB = llvm::BasicBlock::Create(TheContext, "entry", thisFunction);
     Builder.SetInsertPoint(BB);
-
+    /*
     ArgList * harg = header->getHeaderArgList();
     for (Arg *a: *harg) {
       std::vector<const char *> tmp = a->getArgListNames();
@@ -725,6 +727,13 @@ public:
         llvm::AllocaInst *alloca_temp = CreateEntryBlockAlloca(thisFunction, tmp[i], tempType);
         e->u.eParameter.llvmpar = alloca_temp;
       }
+    }*/
+    for (auto &arg : thisFunction->args()) {
+      std::string name = arg.getName().str();
+      auto *alloca = Builder.CreateAlloca(arg.getType(), nullptr, name);
+      Builder.CreateStore(&arg, alloca);
+      SymbolEntry * e = lookupEntry(name.c_str(), LOOKUP_CURRENT_SCOPE, false);
+      e->u.eParameter.llvmpar = alloca;
     }
     //Builder.CreateCall(TheInit, {});
 
@@ -765,7 +774,7 @@ public:
 
     if (false) printSymbolTable();
     closeScope();
-    std::cout << header->getHeaderName() << " after stmt compile." << std::endl;
+
     // Emit the program code.
     //compile();
     if (isMain) {
@@ -774,12 +783,8 @@ public:
     else {
       if(equalType(header->getHeaderType(), typeVoid)) Builder.CreateRetVoid();
     }
-    std::cout << header->getHeaderName() << " after exit add" << std::endl;
-    //llvm::verifyFunction(*thisFunction);
 
-    std::cout << header->getHeaderName() << " after ver1" << std::endl;
     bool bad = llvm::verifyFunction(*thisFunction, &llvm::errs());
-    std::cout << header->getHeaderName() << " after ver2." << std::endl;
     if (bad) {
       std::cerr << "The function " << header->getHeaderName() << " is bad!" << std::endl;
       thisFunction->print(llvm::errs(), nullptr);
@@ -788,7 +793,6 @@ public:
     if (isMain) {
     TheFPM->run(*thisFunction);
     }
-    std::cout << header->getHeaderName() << " ended" << std::endl;
     return nullptr;
   }
 
@@ -1310,17 +1314,13 @@ public:
     ExprList reversed = *exprlist;
     std::reverse(reversed.begin(), reversed.end());
     SymbolEntry *args = p->u.eFunction.firstArgument;
+    args = p->u.eFunction.firstArgument;
     for (Expr *expr: reversed) {
       llvm::Value * v = expr->compile();
-      if (args->u.eParameter.mode == PASS_BY_VALUE) {
-        Builder.CreateStore(v, args->u.eParameter.llvmpar);
-      }
-      else if (args->u.eParameter.mode == PASS_BY_REFERENCE) {
-        ;
-      }
       argv.push_back(v);
       args = args->u.eParameter.next;
     }
+
     return Builder.CreateCall(calledFun, argv);
   }
 private:
@@ -1396,29 +1396,20 @@ class CallStmt: public Stmt{
     }
 
     virtual llvm::Value* compile() override {
-      //std::cout << "hey" << std::endl;
+
       SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_ALL_SCOPES, false);
-      //std::cout << "hey1" << std::endl;
+
       llvm::Function *calledFun = p->u.eFunction.llvmfun;
-      //std::cout << "hey2" << std::endl;
       std::vector<llvm::Value*> argv;
       argv.clear();
       if (exprlist == NULL) return Builder.CreateCall(calledFun, std::vector<llvm::Value*> {});
-      //std::cout << "hey3" << std::endl;
       ExprList reversed = *exprlist;
       std::reverse(reversed.begin(), reversed.end());
-
       SymbolEntry *args = p->u.eFunction.firstArgument;
+
+      args = p->u.eFunction.firstArgument;
       for (Expr *expr: reversed) {
         llvm::Value * v = expr->compile();
-        std::cout << *id << std::endl;
-        printSymbolTable();
-        if (args->u.eParameter.mode == PASS_BY_VALUE) {
-          Builder.CreateStore(v, args->u.eParameter.llvmpar);
-        }
-        else if (args->u.eParameter.mode == PASS_BY_REFERENCE) {
-          ;
-        }
         argv.push_back(v);
         args = args->u.eParameter.next;
       }
@@ -1744,7 +1735,6 @@ public:
     expr->type_check(var->getType());
   }
   virtual llvm::Value* compile() override {
-    std::cout << "Let" << std::endl;
     var->setLeft();
     llvm::Value * alloc_tmp = var->compile();
     llvm::Value * val_tmp = expr->compile();

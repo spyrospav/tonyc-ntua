@@ -5,7 +5,17 @@
 
 def program():
   int a
-  a := 2
-  puti(a+1)
-  putc('\n')
+  def nested(int b):
+
+    def nested_square(int c):
+      
+    puti(b+1)
+    putc('\n')
+    puti(nested_square(b))
+    putc('\n')
+  end
+  a := 1
+  nested(4)
+  nested(a*2)
+
 end
