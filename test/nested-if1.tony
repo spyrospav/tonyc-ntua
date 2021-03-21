@@ -18,4 +18,5 @@ def pipis():
   else:
     c := 4
   end
+  puti(c)
 end

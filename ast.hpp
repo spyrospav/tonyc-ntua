@@ -7,6 +7,7 @@
 #include <cstring>
 #include <stdio.h>
 #include <algorithm>
+#include <set>
 
 #include "symbol.h"
 #include "error.h"
@@ -81,13 +82,22 @@ inline std::ostream& operator<<(std::ostream &out, Type t) {
   return out;
 }
 
+/*
+ * Statements types :
+ *  Simple (For, If, Assignment)
+ *  Return
+ *  Exit
+ */
 enum StmtType{
   SIMPLE_STMT,
   RETURN,
-  EXIT,
-  COND_RETURN
+  EXIT
+  //COND_RETURN
 };
 
+/*
+ *
+ */
 enum StringExpr{
   STRING,
   STRING_ITEM,
@@ -97,194 +107,315 @@ enum StringExpr{
 
 class AST {
   public:
-    AST() {
-
-    }
+    AST() { }
     virtual ~AST() {
       destroySymbolTable();
     }
     virtual void printOn(std::ostream &out) const = 0;
-    virtual llvm::Value* compile() { return nullptr; } //const = 0;
+    virtual llvm::Value* compile() { return nullptr; }
     virtual void sem() {}
     void llvm_compile_and_dump(bool doOptimize=false) {
-    // Initialize
-    TheModule = std::make_unique<llvm::Module>("Tony program", TheContext);
-    TheFPM = std::make_unique<llvm::legacy::FunctionPassManager>(TheModule.get());
-    // Initialize optimization Function Pass Manager
-    if (doOptimize) {
-      //std::cout << "Intermediate optimization" << std::endl;
-      TheFPM->add(llvm::createPromoteMemoryToRegisterPass());
-      TheFPM->add(llvm::createInstructionCombiningPass());
-      TheFPM->add(llvm::createReassociatePass());
-      TheFPM->add(llvm::createGVNPass());
-      TheFPM->add(llvm::createCFGSimplificationPass());
-    }
-    TheFPM->doInitialization();
 
-    // Initialize types
-    i1 = llvm::IntegerType::get(TheContext, 1);
-    i8 = llvm::IntegerType::get(TheContext, 8);
-    i16 = llvm::IntegerType::get(TheContext, 16);
-    i32 = llvm::IntegerType::get(TheContext, 32);
-    i64 = llvm::IntegerType::get(TheContext, 64);
+      // Initialize TheModule
+      TheModule = std::make_unique<llvm::Module>("Tony program", TheContext);
 
-    // Initialize global variables (e.g newline)
-    llvm::ArrayType *nl_type = llvm::ArrayType::get(i8, 2); //create llvm array type of nl (it should have 2 items with 8 bits each (characters))
-    TheNL = new llvm::GlobalVariable(
-        *TheModule, nl_type, true, llvm::GlobalValue::PrivateLinkage,
-        llvm::ConstantArray::get(nl_type, {c8('\n'), c8('\0')}), "nl"
-    );
-    TheNL->setAlignment(1);
-    // Initialize Abenetopoulos library functions
-    llvm::FunctionType *writeInteger_type =
-      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i64}, false);
-    TheWriteInteger =
-      llvm::Function::Create(writeInteger_type, llvm::Function::ExternalLinkage,
-                       "puti", TheModule.get());
+      // Initialize Function Pass Manager
+      TheFPM = std::make_unique<llvm::legacy::FunctionPassManager>(TheModule.get());
 
-    SymbolEntry *p = lookupEntry("puti", LOOKUP_ALL_SCOPES, false);
-    p->u.eFunction.llvmfun = TheWriteInteger;
+      // add optimization Functions to FPM
+      // doOptimize = True -> Run the following optimization passess
+      if (doOptimize) {
+        //std::cout << "Intermediate optimization" << std::endl;
+        TheFPM->add(llvm::createPromoteMemoryToRegisterPass());
+        TheFPM->add(llvm::createInstructionCombiningPass());
+        TheFPM->add(llvm::createReassociatePass());
+        TheFPM->add(llvm::createGVNPass());
+        TheFPM->add(llvm::createCFGSimplificationPass());
+      }
+      TheFPM->doInitialization();
 
-   llvm::FunctionType *writeCharacter_type =
-     llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i8}, false);
-   TheWriteCharacter =
-     llvm::Function::Create(writeCharacter_type, llvm::Function::ExternalLinkage,
-                      "putc", TheModule.get());
+      // Initialize types
+      // i1: Boolean, i8: Char, i64: Integer
+      i1 = llvm::IntegerType::get(TheContext, 1);
+      i8 = llvm::IntegerType::get(TheContext, 8);
+      i16 = llvm::IntegerType::get(TheContext, 16);
+      i32 = llvm::IntegerType::get(TheContext, 32);
+      i64 = llvm::IntegerType::get(TheContext, 64);
 
-   p = lookupEntry("putc", LOOKUP_ALL_SCOPES, false);
-   p->u.eFunction.llvmfun = TheWriteCharacter;
 
-    llvm::FunctionType *writeBoolean_type =
-      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i1}, false);
-    TheWriteBoolean =
-      llvm::Function::Create(writeBoolean_type, llvm::Function::ExternalLinkage,
-                       "putb", TheModule.get());
 
-    p = lookupEntry("putb", LOOKUP_ALL_SCOPES, false);
-    p->u.eFunction.llvmfun = TheWriteBoolean;
+      // Initialize global variables (e.g newline)
+      llvm::ArrayType *nl_type = llvm::ArrayType::get(i8, 2); //create llvm array type of nl (it should have 2 items with 8 bits each (characters))
+      TheNL = new llvm::GlobalVariable(
+          *TheModule, nl_type, true, llvm::GlobalValue::PrivateLinkage,
+          llvm::ConstantArray::get(nl_type, {c8('\n'), c8('\0')}), "nl"
+      );
+      TheNL->setAlignment(1);
 
-    llvm::FunctionType *writeString_type =
-      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext),
-                        {llvm::PointerType::get(i8, 0)}, false);
-    TheWriteString =
-      llvm::Function::Create(writeString_type, llvm::Function::ExternalLinkage,
-                       "puts", TheModule.get());
+      // Initialize abenetopoulos library functions (https://github.com/abenetopoulos/edsger_lib)
 
-    p = lookupEntry("puts", LOOKUP_ALL_SCOPES, false);
-    p->u.eFunction.llvmfun = TheWriteString;
+      /*---------------- puti ----------------*/
+      llvm::FunctionType *writeInteger_type = llvm::FunctionType::get(
+        llvm::Type::getVoidTy(TheContext), {i64}, false
+      );
 
-      //---------------------READ functions---------------------
-     std::vector<llvm::Type *> t;
-     llvm::FunctionType *readInteger_type =
-       llvm::FunctionType::get(i64, std::vector<llvm::Type *> {}, false);
-     TheReadInteger =
-       llvm::Function::Create(readInteger_type, llvm::Function::ExternalLinkage,
-                        "geti", TheModule.get());
+      TheWriteInteger = llvm::Function::Create(
+        writeInteger_type,
+        llvm::Function::ExternalLinkage,
+        "puti",
+        TheModule.get()
+      );
+
+      SymbolEntry *p = lookupEntry("puti", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheWriteInteger;
+
+      /*---------------- putc ----------------*/
+      llvm::FunctionType *writeCharacter_type = llvm::FunctionType::get(
+        llvm::Type::getVoidTy(TheContext), {i8}, false
+      );
+
+      TheWriteCharacter = llvm::Function::Create(
+        writeCharacter_type, llvm::Function::ExternalLinkage, "putc", TheModule.get()
+      );
+
+      p = lookupEntry("putc", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheWriteCharacter;
+
+      /*---------------- putb ----------------*/
+      llvm::FunctionType *writeBoolean_type = llvm::FunctionType::get(
+        llvm::Type::getVoidTy(TheContext), {i1}, false
+      );
+
+      TheWriteBoolean = llvm::Function::Create(
+        writeBoolean_type,
+        llvm::Function::ExternalLinkage,
+        "putb",
+        TheModule.get()
+      );
+
+      p = lookupEntry("putb", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheWriteBoolean;
+
+      /*---------------- puts ----------------*/
+      llvm::FunctionType *writeString_type = llvm::FunctionType::get(
+        llvm::Type::getVoidTy(TheContext),
+        {llvm::PointerType::get(i8, 0)},
+        false
+      );
+
+      TheWriteString = llvm::Function::Create(
+        writeString_type,
+        llvm::Function::ExternalLinkage,
+        "puts",
+        TheModule.get());
+
+      p = lookupEntry("puts", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheWriteString;
+
+      /*---------------- geti ----------------*/
+      std::vector<llvm::Type *> t;
+
+      llvm::FunctionType *readInteger_type = llvm::FunctionType::get(
+        i64,
+        std::vector<llvm::Type *> {},
+        false
+      );
+
+      TheReadInteger = llvm::Function::Create(
+        readInteger_type,
+        llvm::Function::ExternalLinkage,
+        "geti",
+        TheModule.get()
+      );
+
       p = lookupEntry("geti", LOOKUP_ALL_SCOPES, false);
       p->u.eFunction.llvmfun = TheReadInteger;
 
-     llvm::FunctionType *readCharacter_type =
-      llvm::FunctionType::get(i8, std::vector<llvm::Type *> {}, false);
-     TheReadCharacter =
-      llvm::Function::Create(readCharacter_type, llvm::Function::ExternalLinkage,
-                       "getc", TheModule.get());
-     p = lookupEntry("getc", LOOKUP_ALL_SCOPES, false);
-     p->u.eFunction.llvmfun = TheReadCharacter;
+      /*---------------- getc ----------------*/
+      llvm::FunctionType *readCharacter_type = llvm::FunctionType::get(
+        i8,
+        std::vector<llvm::Type *> {},
+        false
+      );
 
-     llvm::FunctionType *readBoolean_type =
-       llvm::FunctionType::get(i1, std::vector<llvm::Type *>{}, false);
-     TheReadBoolean =
-       llvm::Function::Create(readBoolean_type, llvm::Function::ExternalLinkage,
-                        "getb", TheModule.get());
+      TheReadCharacter = llvm::Function::Create(
+        readCharacter_type,
+        llvm::Function::ExternalLinkage,
+        "getc",
+        TheModule.get()
+      );
+
+      p = lookupEntry("getc", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheReadCharacter;
+
+      /*---------------- getb ----------------*/
+      llvm::FunctionType *readBoolean_type = llvm::FunctionType::get(
+        i1,
+        std::vector<llvm::Type *>{},
+        false
+      );
+
+      TheReadBoolean = llvm::Function::Create(
+        readBoolean_type,
+        llvm::Function::ExternalLinkage,
+        "getb",
+        TheModule.get()
+      );
+
       p = lookupEntry("getb", LOOKUP_ALL_SCOPES, false);
       p->u.eFunction.llvmfun = TheReadBoolean;
 
-     llvm::FunctionType *readString_type =
-       llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext),
-                         {i64, llvm::PointerType::get(i8, 0)}, false);
-     TheReadString =
-       llvm::Function::Create(readString_type, llvm::Function::ExternalLinkage,
-                        "gets", TheModule.get());
+      /*---------------- gets ----------------*/
+      llvm::FunctionType *readString_type = llvm::FunctionType::get(
+        llvm::Type::getVoidTy(TheContext),
+        {i64, llvm::PointerType::get(i8, 0)},
+        false
+      );
+
+      TheReadString = llvm::Function::Create(
+        readString_type,
+        llvm::Function::ExternalLinkage,
+        "gets",
+        TheModule.get()
+      );
+
       p = lookupEntry("gets", LOOKUP_ALL_SCOPES, false);
       p->u.eFunction.llvmfun = TheReadString;
 
-      //---------------------Conversion functions---------------------
-      llvm::FunctionType *abs_type =
-        llvm::FunctionType::get(i64, {i64}, false);
-      TheAbs =
-        llvm::Function::Create(abs_type, llvm::Function::ExternalLinkage,
-                        "abs", TheModule.get());
+      /*---------------- abs ----------------*/
+      llvm::FunctionType *abs_type = llvm::FunctionType::get(
+        i64,
+        {i64},
+        false
+      );
+
+      TheAbs = llvm::Function::Create(
+        abs_type,
+        llvm::Function::ExternalLinkage,
+        "abs",
+        TheModule.get()
+      );
 
       p = lookupEntry("abs", LOOKUP_ALL_SCOPES, false);
       p->u.eFunction.llvmfun = TheAbs;
 
-      llvm::FunctionType *ord_type =
-        llvm::FunctionType::get(i64, {i8}, false);
-      TheOrd =
-        llvm::Function::Create(ord_type, llvm::Function::ExternalLinkage,
-                        "ord", TheModule.get());
+      /*---------------- ord ----------------*/
+      llvm::FunctionType *ord_type = llvm::FunctionType::get(
+        i64,
+        {i8},
+        false
+      );
+
+      TheOrd = llvm::Function::Create(
+        ord_type,
+        llvm::Function::ExternalLinkage,
+        "ord",
+        TheModule.get()
+      );
 
       p = lookupEntry("ord", LOOKUP_ALL_SCOPES, false);
       p->u.eFunction.llvmfun = TheOrd;
 
-      llvm::FunctionType *chr_type =
-        llvm::FunctionType::get(i8, {i64}, false);
-      TheChr =
-        llvm::Function::Create(chr_type, llvm::Function::ExternalLinkage,
-                        "chr", TheModule.get());
+      /*---------------- chr ----------------*/
+      llvm::FunctionType *chr_type = llvm::FunctionType::get(
+        i8,
+        {i64},
+        false
+      );
+
+      TheChr = llvm::Function::Create(
+        chr_type,
+        llvm::Function::ExternalLinkage,
+        "chr",
+        TheModule.get()
+      );
 
       p = lookupEntry("chr", LOOKUP_ALL_SCOPES, false);
       p->u.eFunction.llvmfun = TheChr;
 
-      llvm::FunctionType *strlen_type =
-        llvm::FunctionType::get(i64, {llvm::PointerType::get(i8, 0)}, false);
-      TheStrLen =
-        llvm::Function::Create(strlen_type, llvm::Function::ExternalLinkage,
-                        "strlen", TheModule.get());
+      /*---------------- strlen ----------------*/
+      llvm::FunctionType *strlen_type = llvm::FunctionType::get(
+        i64,
+        {llvm::PointerType::get(i8, 0)},
+        false
+      );
+
+      TheStrLen = llvm::Function::Create(
+        strlen_type,
+        llvm::Function::ExternalLinkage,
+        "strlen",
+        TheModule.get()
+      );
 
       p = lookupEntry("strlen", LOOKUP_ALL_SCOPES, false);
       p->u.eFunction.llvmfun = TheStrLen;
 
-      llvm::FunctionType *strcmp_type =
-        llvm::FunctionType::get(i64,
-          {llvm::PointerType::get(i8, 0), llvm::PointerType::get(i8, 0)}, false);
+      /*---------------- strcmp ----------------*/
+      llvm::FunctionType *strcmp_type = llvm::FunctionType::get(
+        i64,
+        {llvm::PointerType::get(i8, 0),
+        llvm::PointerType::get(i8, 0)},
+        false
+      );
+
       TheStrCmp =
-        llvm::Function::Create(strcmp_type, llvm::Function::ExternalLinkage,
-                        "strcmp", TheModule.get());
+        llvm::Function::Create(
+        strcmp_type,
+        llvm::Function::ExternalLinkage,
+        "strcmp",
+        TheModule.get()
+      );
 
       p = lookupEntry("strcmp", LOOKUP_ALL_SCOPES, false);
       p->u.eFunction.llvmfun = TheStrCmp;
 
-      llvm::FunctionType *strcpy_type =
-        llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext),
-          {llvm::PointerType::get(i8, 0), llvm::PointerType::get(i8, 0)}, false);
-      TheStrCpy =
-        llvm::Function::Create(strcpy_type, llvm::Function::ExternalLinkage,
-                        "strcpy", TheModule.get());
+      /*---------------- strcpy ----------------*/
+      llvm::FunctionType *strcpy_type = llvm::FunctionType::get(
+        llvm::Type::getVoidTy(TheContext),
+        {llvm::PointerType::get(i8, 0),
+        llvm::PointerType::get(i8, 0)},
+        false
+      );
+
+      TheStrCpy = llvm::Function::Create(
+        strcpy_type,
+        llvm::Function::ExternalLinkage,
+        "strcpy",
+        TheModule.get()
+      );
 
       p = lookupEntry("strcpy", LOOKUP_ALL_SCOPES, false);
       p->u.eFunction.llvmfun = TheStrCpy;
 
-      TheStrCat =
-        llvm::Function::Create(strcpy_type, llvm::Function::ExternalLinkage,
-                        "strcat", TheModule.get());
+      /*---------------- strcat ----------------*/
+      TheStrCat = llvm::Function::Create(
+        strcpy_type,
+        llvm::Function::ExternalLinkage,
+        "strcat",
+        TheModule.get()
+      );
 
       p = lookupEntry("strcat", LOOKUP_ALL_SCOPES, false);
       p->u.eFunction.llvmfun = TheStrCat;
 
-    compile();
-    bool bad = llvm::verifyModule(*TheModule, &llvm::errs());
-    if (bad) {
-      std::cerr << "The IR is bad!" << std::endl;
-      TheModule->print(llvm::errs(), nullptr);
-      std::exit(1);
+      // Compile code
+      compile();
+
+      // Verify Module
+      bool bad = llvm::verifyModule(*TheModule, &llvm::errs());
+      if (bad) {
+        std::cerr << "The IR is bad!" << std::endl;
+        TheModule->print(llvm::errs(), nullptr);
+        std::exit(1);
+      }
+
+      // Emit IR code
+      TheModule->print(llvm::outs(), nullptr);
     }
 
-
-    TheModule->print(llvm::outs(), nullptr);
-    }
+    // Converts Type to llvm::Type
     llvm::Type * getLLVMType(Type type) const{
-      llvm::Type * retType;
+      llvm::Type * retType, * tmp;
       bool isReference;
       switch (type->kind) {
           case TYPE_VOID:
@@ -303,11 +434,14 @@ class AST {
               retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
               break;
           case TYPE_IARRAY:
-              //retType = llvm::ArrayType::get
               retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
               break;
           case TYPE_LIST:
-              retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
+              // Struct(Type, *pointer)
+              // tmp = getLLVMType(type->refType)
+              // Struct(tmp, PointerType::get(tmp))
+              tmp =  getLLVMType(type->refType);
+              retType = llvm::StructType::get(tmp, llvm::PointerType::get(tmp, 0));
               break;
           case TYPE_ANY:
               retType = nullptr; //pithanon COnstantNullPointer.. ..
@@ -380,6 +514,7 @@ inline std::ostream& operator<< (std::ostream &out, const AST &t) {
   return out;
 };
 
+// Local variable definitions
 class VarList: public AST {
   public:
     VarList() : var_list(), type(NULL) {};
@@ -412,6 +547,7 @@ class VarList: public AST {
     Type type;
 };
 
+// Functions' arguments
 class Arg: public AST {
   public:
     Arg(PassMode pass, VarList *v): passmode(pass)
@@ -447,13 +583,13 @@ class Arg: public AST {
     Type type;
 };
 
+// Needed for expressions like (int a,b; char c; bool d,e,f)
 typedef std::vector<Arg *> ArgList;
 
 enum HeaderDef {
-  DECL,
-  DEF
+  DECL, // declaration
+  DEF // definitions
 };
-
 
 class Header: public AST {
 public:
@@ -490,45 +626,60 @@ public:
 
   llvm::Function * compilef() {
 
-      SymbolEntry * p;
-      p = newFunction(name);
-      if (hdef == DECL) {
-        forwardFunction(p);
-      }
+    SymbolEntry * p;
 
-      openScope();
-
-      std::vector<llvm::Type *> argTypes;
-      for (Arg *a: *arg_list) {
-        a->sem(p);
-        for (int i = 0; i < a->getArgSize(); i++){
-          llvm::Type *tempType = this->getLLVMType(a->getType());
-          if (a->getPassMode() == PASS_BY_REFERENCE) tempType = llvm::PointerType::get(tempType, 0);
-          argTypes.push_back(tempType);
-        }
-      }
-
-      llvm::FunctionType * FT = llvm::FunctionType::get(getLLVMType(type), argTypes, false );
-      llvm::Function * Function = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
-                                                      name, TheModule.get());
-
-      std::vector<const char *> names;
-
-      for (Arg *a: *arg_list) {
-        std::vector<const char *> tmp = a->getArgListNames();
-        names.insert(names.end(), tmp.begin(), tmp.end());
-      }
-
-      int i = 0;
-      for (auto &Arg : Function->args())
-          Arg.setName(names[i++]);
-
-      p->u.eFunction.llvmfun = Function;
-
-      endFunctionHeader(p, type);
-
-      return Function;
+    p = newFunction(name);
+    if (hdef == DECL) {
+      forwardFunction(p);
     }
+
+    openScope();
+
+    std::vector<llvm::Type *> argTypes;
+    for (Arg *a: *arg_list) {
+      a->sem(p);
+      for (int i = 0; i < a->getArgSize(); i++){
+        llvm::Type *tempType = this->getLLVMType(a->getType());
+        if (a->getPassMode() == PASS_BY_REFERENCE) tempType = llvm::PointerType::get(tempType, 0);
+        argTypes.push_back(tempType);
+      }
+    }
+
+    if (p->u.eFunction.llvmfun != nullptr) {
+      endFunctionHeader(p, type);
+      return p->u.eFunction.llvmfun;
+    }
+
+    llvm::FunctionType * FT = llvm::FunctionType::get(
+      getLLVMType(type),
+      argTypes,
+      false
+    );
+
+    llvm::Function * Function = llvm::Function::Create(
+      FT,
+      llvm::Function::ExternalLinkage,
+      name,
+      TheModule.get()
+    );
+
+    std::vector<const char *> names;
+
+    for (Arg *a: *arg_list) {
+      std::vector<const char *> tmp = a->getArgListNames();
+      names.insert(names.end(), tmp.begin(), tmp.end());
+    }
+
+    int i = 0;
+    for (auto &Arg : Function->args())
+        Arg.setName(names[i++]);
+
+    p->u.eFunction.llvmfun = Function;
+
+    endFunctionHeader(p, type);
+
+    return Function;
+  }
 
 private:
   Type type;
@@ -537,7 +688,7 @@ private:
   HeaderDef hdef;
 };
 
-
+// Abstract definition of statements
 class Stmt: public AST {
   public:
     virtual Type getReturnType() { return returntype; }
@@ -559,7 +710,6 @@ class Stmt: public AST {
 };
 
 typedef std::vector<Stmt *> StmtList;
-
 
 enum DefType {
   FUNCTION,
@@ -655,7 +805,6 @@ public:
       header->sem();
     }
 
-    if (false) printSymbolTable();;
     int v = 0, f = 0, d = 0;
     bool existsReturn = false;
     for (std::vector<DefType>::iterator it = sequence.begin(); it < sequence.end(); it++){
@@ -693,26 +842,30 @@ public:
       fatal("Non void function must have a return statement.");
     }
 
-    if (false) printSymbolTable();;
+    if (false) printSymbolTable();
+    live_variables = currentScope->live_variables;
+    /*
+    std::cout << "Fun : " << header->getHeaderName() << std::endl;
+    for (auto it = live_variables.begin(); it != live_variables.end(); ++it)
+        std::cout << ' ' << (*it)->id;
+    std::cout << std::endl;
+    */
     closeScope();
   }
 
   virtual llvm::Value* compile() override {
 
     if (!isMain) {
-        SymbolEntry * e = lookupEntry(header->getHeaderName(), LOOKUP_ALL_SCOPES, false);
-        if (!e){
-          thisFunction = header->compilef();
-        }
-        else {
-          thisFunction = e->u.eFunction.llvmfun;
-        }
+      thisFunction = header->compilef();
     }
-    else{
+    else {
       llvm::FunctionType *FT = llvm::FunctionType::get(i32, {}, false );
-      thisFunction = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
-                                                        "main", TheModule.get());
-
+      thisFunction = llvm::Function::Create(
+        FT,
+        llvm::Function::ExternalLinkage,
+        "main",
+        TheModule.get()
+      );
     }
 
     llvm::BasicBlock *BB = llvm::BasicBlock::Create(TheContext, "entry", thisFunction);
@@ -730,7 +883,7 @@ public:
     }*/
     for (auto &arg : thisFunction->args()) {
       std::string name = arg.getName().str();
-      auto *alloca = Builder.CreateAlloca(arg.getType(), nullptr, name);
+      llvm::AllocaInst *alloca = Builder.CreateAlloca(arg.getType(), nullptr, name);
       Builder.CreateStore(&arg, alloca);
       SymbolEntry * e = lookupEntry(name.c_str(), LOOKUP_CURRENT_SCOPE, false);
       e->u.eParameter.llvmpar = alloca;
@@ -758,7 +911,7 @@ public:
       else if (*it == DECLARATION) {
         decl_list[d]->compile();
         d++;
-        Builder.SetInsertPoint(BB);
+        // Builder.SetInsertPoint(BB);
       }
     }
 
@@ -806,6 +959,7 @@ private:
   int size;
   llvm::Function * thisFunction;
   bool isMain;
+  std::set<SymbolEntry *> live_variables;
 };
 
 // EXPRESSIONS (e.g atoms, constants, operations applied to expressions )
@@ -905,6 +1059,9 @@ public:
   virtual void sem() override {
     lval = true;
     SymbolEntry *e = lookupEntry(var,LOOKUP_ALL_SCOPES, false);
+    if (e->nestingLevel < currentScope->nestingLevel) {
+      addLiveVariable(e);
+    }
     if (e==NULL) { fatal("Id has not been declared"); }
     entry = e->entryType;
     if (entry == ENTRY_VARIABLE) {
@@ -928,7 +1085,7 @@ public:
       else return e->u.eVariable.allocainst;
     }
     else if (entry == ENTRY_FUNCTION) {
-      return e->u.eFunction.llvmfun;
+      return TheModule->getFunction(var);
     }
     else if (entry == ENTRY_PARAMETER) {
       SymbolEntry *e = lookupEntry(var,LOOKUP_ALL_SCOPES, false);
@@ -936,7 +1093,7 @@ public:
         return Builder.CreateLoad(e->u.eParameter.llvmpar, var);
       else return e->u.eParameter.llvmpar;
     }
-    //std::cout << "ID 3" << std::endl;
+
     return nullptr;
     //lookup the entry
 
@@ -1197,7 +1354,10 @@ class Array: public Expr {
       lval = false;
       sizeExpr->type_check(typeInteger);
       type = typeIArray(arrayType);
+      // Check if sizeExpr can be evaluated -> mini interpreter for that
+      // If we can't, throw fatal/error
     }
+
     virtual llvm::Value* compile() override {
       // llvm::BasicBlock *PrevBB = Builder.GetInsertBlock();
       // llvm::Type *array_type = getLLVMType(arrayType);
@@ -1267,7 +1427,7 @@ public:
     }
 
     SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_ALL_SCOPES, false);
-    if (p->u.eFunction.isForward) fatal("Function needs to be defined before calling it.");
+    //if (p->u.eFunction.isForward) fatal("Function needs to be defined before calling it.");
     type = p->u.eFunction.resultType;
     if (equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression should not be of type Void.");
 
@@ -1320,6 +1480,19 @@ public:
       argv.push_back(v);
       args = args->u.eParameter.next;
     }
+    // args_number == real_args
+    // outer_args_number
+    // args_number+outer_args_number == defined argument number
+    // if we can get defined argument number + their names
+    // add outer_args_number after we lookupEntry(name)->allocainst
+    // def fun(i64* a) a is outer scope and therefore extended as pointer
+    // lookup(a) -> allocainst. load(allocainst) -> gives real value
+    // fun() -> fun(a) here we do lookup -> allocainst
+    // fun2(ref int a)
+    // fun2(a) creategep
+
+    // SymbolTable -> keeps extended definitions of functions
+    // parameter d, d already exists
 
     return Builder.CreateCall(calledFun, argv);
   }
@@ -1357,7 +1530,7 @@ class CallStmt: public Stmt{
       }
 
       SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_ALL_SCOPES, false);
-      if (p->u.eFunction.isForward) fatal("Function needs to be defined before calling it.");
+      //if (p->u.eFunction.isForward) fatal("Function needs to be defined before calling it.");
       if (!equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression must of type Void.");
 
       SymbolEntry *args = p->u.eFunction.firstArgument;

@@ -6,13 +6,14 @@
 def program():
   int a
   def nested(int b):
-
-    def nested_square(int c):
-      
-    puti(b+1)
-    putc('\n')
-    puti(nested_square(b))
-    putc('\n')
+    def int nested_square(int c):
+      puti(a+1)
+      putc('\n')
+      puti(nested_square(a))
+      putc('\n')
+      return a*a
+    end
+    skip
   end
   a := 1
   nested(4)

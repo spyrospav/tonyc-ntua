@@ -1,0 +1,19 @@
+<*
+ * Test case: by-ref.tony
+ * Result: Pass
+ *>
+def program():
+  int c,d
+  def fun():
+    int a,b
+    def int fun2():
+      a := 2
+      b := 1
+      return a+b+d
+    end
+    d := 3
+    c := fun2()
+  end
+  fun()
+  puti(c)
+end

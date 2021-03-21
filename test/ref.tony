@@ -4,8 +4,11 @@
  *>
 
 def program():
+  int a
   def test (ref int b):
-    b:=b+1
+    b := b + 1
   end
+  a := 1
   test(5)
+  puti(a)
 end

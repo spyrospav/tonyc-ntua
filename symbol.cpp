@@ -31,6 +31,7 @@
 #include "error.h"
 #include "symbol.h"
 #include <map>
+#include <set>
 
 /* ---------------------------------------------------------------------
    ------------- ��������� ���������� ��� ������ �������� --------------
@@ -179,6 +180,8 @@ void openScope ()
     newScope->negOffset = START_NEGATIVE_OFFSET;
     newScope->parent    = currentScope;
     newScope->entries   = NULL;
+    std::set<SymbolEntry *> e;
+    newScope->live_variables = e;
 
     if (currentScope == NULL)
         newScope->nestingLevel = 1;
@@ -202,6 +205,12 @@ void closeScope ()
         e = next;
     }
 
+    if (currentScope->nestingLevel > 2) {
+      for (auto it = currentScope->live_variables.begin(); it != currentScope->live_variables.end(); ++it) {
+        if ((*it)->nestingLevel < currentScope->parent->nestingLevel)
+          currentScope->parent->live_variables.insert((*it));
+      }
+    }
     currentScope = currentScope->parent;
     my_delete(t);
 
@@ -907,4 +916,8 @@ void StandardLibraryInit() {
   endFunctionHeader(p, typeVoid);
   closeScope();
 
+}
+
+void addLiveVariable(SymbolEntry *e) {
+  currentScope->live_variables.insert(e);
 }

@@ -29,13 +29,10 @@
 
 #include <stdbool.h>
 #include <map>
+#include <set>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Instructions.h>
-/*
- *  �� �� �������� include ��� ������������� ��� ��� ���������
- *  ��� C ��� ��������������, �������������� �� �� �� ��������:
- */
 
 #if 0
 typedef enum { false=0, true=1 } bool;
@@ -181,6 +178,7 @@ struct Scope_tag {
     unsigned int   negOffset;                /* ������ �������� offset */
     Scope        * parent;                   /* ������������ ��������  */
     SymbolEntry  * entries;                  /* ������� ��� ���������  */
+    std::set<SymbolEntry *>  live_variables;
 };
 
 
@@ -245,5 +243,5 @@ void          printMode          (PassMode mode);
 
 void          printSymbolTable   ();
 void          StandardLibraryInit();
-
+void          addLiveVariable    (SymbolEntry * e);
 #endif

@@ -1,0 +1,17 @@
+<*
+ * Test case: decl.tony
+ * Result: Pass
+ *>
+
+def program():
+  decl int add(int a, b)
+  def int add3(int a):
+    return add(a, 3)
+  end
+
+  def int add(int a, b):
+    return a + b
+  end
+
+  puti(add3(6))
+end

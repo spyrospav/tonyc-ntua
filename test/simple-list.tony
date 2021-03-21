@@ -1,0 +1,16 @@
+<*
+ * Test case: simple-list.tony
+ * Result: Pass
+ *>
+
+ def program():
+  list[int] a
+  a := 5 # nil
+  puti(head a)
+  putc('\n')
+  a := 7 # (6 # a)
+  puti(head a)
+  putc('\n')
+  puti(head (tail a))
+  putc('\n')
+end
