@@ -60,7 +60,6 @@ E \\(n|t|r|0|\'|\"|\\|x{H}{H})
 
 \'([^\'\"\\]|{E})\' {
                         std::string temp = yytext;
-                        //std::cout << temp << std::endl;
                         temp = temp.substr(1, temp.length()-1);
                         if(temp[0] == '\\' && temp[1] == 'x') {
                           //for hexadecimals

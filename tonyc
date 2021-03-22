@@ -45,6 +45,7 @@ name = os.path.splitext(args.filename)[0]
 
 # Run Tony compiler
 #./tony {} < {} > {}.imm".format(optimize, args.filename, name) :the os way
+
 try:
     subprocess.run(
                 args_,

@@ -1,0 +1,15 @@
+<*
+ * Test case: basic-list.tony
+ * Result: Pass
+ *>
+
+ def program():
+  list[int] a
+  puti(4)
+  putc('\n')
+  a := 5 # nil
+  puti(head (a))
+  a := 6 # a
+  putc('\n')
+  skip
+end

@@ -20,6 +20,7 @@
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/Constants.h>
 
 /*------------ LLVM Optimizations -------------*/
 #include <llvm/Transforms/InstCombine/InstCombine.h>
@@ -125,7 +126,6 @@ class AST {
       // add optimization Functions to FPM
       // doOptimize = True -> Run the following optimization passess
       if (doOptimize) {
-        //std::cout << "Intermediate optimization" << std::endl;
         TheFPM->add(llvm::createPromoteMemoryToRegisterPass());
         TheFPM->add(llvm::createInstructionCombiningPass());
         TheFPM->add(llvm::createReassociatePass());
@@ -135,14 +135,22 @@ class AST {
       TheFPM->doInitialization();
 
       // Initialize types
-      // i1: Boolean, i8: Char, i64: Integer
+      // i1: Boolean, i8: Char, i32: Main return, i64: Integer
       i1 = llvm::IntegerType::get(TheContext, 1);
       i8 = llvm::IntegerType::get(TheContext, 8);
       i16 = llvm::IntegerType::get(TheContext, 16);
       i32 = llvm::IntegerType::get(TheContext, 32);
       i64 = llvm::IntegerType::get(TheContext, 64);
 
+      // Node type : {i64, *i64}
+      llvm::StructType *NodeType = llvm::StructType::create(TheContext, "nodetype");
+      NodeType->setBody({i64, llvm::PointerType::get(NodeType, 0)});
+      TheNodeTypePtr = llvm::PointerType::get(NodeType, 0);
 
+      // Node type : {*{i64, *i64}, *i64}
+      llvm::StructType *ListType = llvm::StructType::create(TheContext, "listtype");
+      ListType->setBody({TheNodeTypePtr, llvm::PointerType::get(ListType, 0)});
+      TheListTypePtr = llvm::PointerType::get(ListType, 0);
 
       // Initialize global variables (e.g newline)
       llvm::ArrayType *nl_type = llvm::ArrayType::get(i8, 2); //create llvm array type of nl (it should have 2 items with 8 bits each (characters))
@@ -437,14 +445,13 @@ class AST {
               retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
               break;
           case TYPE_LIST:
-              // Struct(Type, *pointer)
-              // tmp = getLLVMType(type->refType)
-              // Struct(tmp, PointerType::get(tmp))
-              tmp =  getLLVMType(type->refType);
-              retType = llvm::StructType::get(tmp, llvm::PointerType::get(tmp, 0));
+              if (type->refType->kind != TYPE_LIST)
+                retType = TheNodeTypePtr; // Node type : {i64, *i64}
+              else
+                retType = TheListTypePtr; // Node type : {*{i64, *i64}, *i64}
               break;
           case TYPE_ANY:
-              retType = nullptr; //pithanon COnstantNullPointer.. ..
+              retType = nullptr;
               break;
           default:
               retType = i64;
@@ -467,6 +474,8 @@ class AST {
     static llvm::Type *i16;
     static llvm::Type *i32;
     static llvm::Type *i64;
+    static llvm::Type *TheNodeTypePtr;
+    static llvm::Type *TheListTypePtr;
 
 
     // Global Variables
@@ -844,12 +853,6 @@ public:
 
     if (false) printSymbolTable();
     live_variables = currentScope->live_variables;
-    /*
-    std::cout << "Fun : " << header->getHeaderName() << std::endl;
-    for (auto it = live_variables.begin(); it != live_variables.end(); ++it)
-        std::cout << ' ' << (*it)->id;
-    std::cout << std::endl;
-    */
     closeScope();
   }
 
@@ -1165,28 +1168,7 @@ public:
         return Builder.CreateOr(l, r, "ortmp");
       else if(!strcmp(op, "and"))
         return Builder.CreateAnd(l, r, "andtmp");
-      /*
-      PN->llvm::PHINode::addIncoming(Builder.CreateAnd(l,r,"andtmp"),
-            Builder.GetInsertBlock());
-      llvm::PHINode *PN = Builder.CreatePHI(llvm::Type::getInt1Ty(TheContext), 2, "and_phi");
-      llvm::BasicBlock *PrevBB = Builder.GetInsertBlock();
-      llvm::Function *TheFunction = PrevBB->getParent();
-      llvm::BasicBlock *LogicBothBB =
-        llvm::BasicBlock::Create(TheContext, "loop", TheFunction);
-      llvm::BasicBlock *LogicOneBB =
-        llvm::BasicBlock::Create(TheContext, "loop", TheFunction);
-      if(!strcmp(op, "and")) {
-        llvm::Value *shortCircuitCond =
-          Builder.CreateICmpNE(l, c1(0), "shortcirc_and");
-        Builder.CreateCondBr(shortCircuitCond, LogicBothBB, LogicOneBB);
-        Builder.SetInsertPoint(LogicBothBB);
 
-        return Builder.CreateAnd(l, r, "andtmp"); // not sure yet if CreateAnd short circuits the logical expression
-        }
-      else if(!strcmp(op, "or")){
-        return Builder.CreateOr(l, r, "ortmp");
-        }
-      */
     }
 
     return nullptr;
@@ -1262,6 +1244,22 @@ public:
     stringExpr = OTHER;
   }
   virtual llvm::Value* compile() override {
+    llvm::Value *v = expr->compile();
+    if(strcmp(op, "nil?") == 0) {
+      return Builder.CreateICmpEQ(v, llvm::Constant::getNullValue(TheNodeTypePtr), "eqtmp");
+    }
+    else if(strcmp(op, "head") == 0) {
+      llvm::Value *n = Builder.CreateBitCast(v, TheNodeTypePtr, "nodetmp");
+      llvm::Value *h = Builder.CreateGEP(n, {c32(0), c32(0)}, "headptr");
+      return Builder.CreateLoad(h, "head");
+    }
+    else if(strcmp(op, "tail") == 0) {
+      llvm::Value *n = Builder.CreateBitCast(v, TheNodeTypePtr, "nodetmp");
+      llvm::Value *t = Builder.CreateGEP(n, {c32(0), c32(1)}, "tailptr");
+      return Builder.CreateLoad(t, "tail");
+      // return t;
+    }
+    else std::cout << " Aliens." << std::endl;
     return nullptr;
   }
 private:
@@ -1289,7 +1287,16 @@ public:
     stringExpr = OTHER;
   }
   virtual llvm::Value* compile() override {
-    return nullptr;
+    llvm::Value *l = expr1->compile();
+    llvm::Value *r = expr2->compile();
+    llvm::AllocaInst *alloca = Builder.CreateAlloca(TheNodeTypePtr, nullptr, "l");
+    llvm::Value *n = Builder.CreateBitCast(alloca, TheNodeTypePtr, "nodetmp");
+    llvm::Value *h = Builder.CreateGEP(n, {c32(0), c32(0)}, "headptr");
+    Builder.CreateStore(l, h);
+    llvm::Value *t = Builder.CreateGEP(n, {c32(0), c32(1)}, "tailptr");
+    Builder.CreateStore(r, t);
+    return n;
+
   }
 private:
   const char *op;
@@ -1309,7 +1316,7 @@ class Nil: public Expr {
       stringExpr = OTHER;
     }
     virtual llvm::Value* compile() override {
-      return nullptr;
+      return llvm::Constant::getNullValue(TheNodeTypePtr);
     }
   private:
 };
