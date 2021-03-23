@@ -178,7 +178,6 @@ struct Scope_tag {
     unsigned int   negOffset;                /* ������ �������� offset */
     Scope        * parent;                   /* ������������ ��������  */
     SymbolEntry  * entries;                  /* ������� ��� ���������  */
-    std::set<SymbolEntry *>  live_variables;
 };
 
 
@@ -194,9 +193,10 @@ typedef enum {
    ------------- ��������� ���������� ��� ������ �������� --------------
    --------------------------------------------------------------------- */
 
-extern Scope        * currentScope;       /* �������� ��������         */
-extern unsigned int   quadNext;           /* ������� �������� �������� */
-extern unsigned int   tempNumber;         /* �������� ��� temporaries  */
+extern Scope        * currentScope;
+extern std::set<SymbolEntry *> live_variables;
+extern unsigned int   quadNext;
+extern unsigned int   tempNumber;
 
 extern const Type typeVoid;
 extern const Type typeInteger;

@@ -51,6 +51,7 @@
 %left<op>               T_or
 %left<op>               T_and
 %nonassoc<op>           T_not
+%nonassoc<op>           T_head T_nil_quest T_tail
 %nonassoc<op>           T_geq T_leq '>' '<' '=' T_neq
 %right<op>              '#'
 %left<op>               '+' '-'
@@ -104,9 +105,8 @@
 program:
   { initSymbolTable(2048); openScope(); StandardLibraryInit(); }
     func-def {
-      $2->setMain();  $2->sem();
+      $2->setMain(); $2->sem();
       /* codegen  */
-      //std::cout << "Started codegen" << std::endl;
       destroySymbolTable();
       initSymbolTable(2048);
       openScope();
@@ -218,6 +218,7 @@ call-expr:
     T_id '(' expr-list ')' { $$ = new CallExpr(new Id($1), $3); }
   | T_id '('')' { $$ = new CallExpr(new Id($1)); }
 ;
+
 expr-list:
     expr expr-list-plus { $2->insert($2->begin(), $1); $$ = $2; }
 ;
@@ -258,10 +259,10 @@ expr:
   | expr '<' expr { $$ = new BinOp($1, $2, $3); }
   | expr "<>" expr { $$ = new BinOp($1, $2, $3); }
   | "new" type '[' expr ']' { $$ = new Array($2, $4); }
+  | T_nil_quest '(' expr ')' {  $$ = new ListUnOp("nil?", $3); }
   | "nil" { $$ = new Nil(); }
-  | "nil?" '(' expr ')' { $$ = new ListUnOp("nil?", $3); }
   | expr '#' expr { $$ = new ListBinOp($2, $1, $3); }
-  | "head" '(' expr ')' { $$ = new ListUnOp("head", $3); }
+  | "head" '(' expr ')' {$$ = new ListUnOp("head", $3); }
   | "tail" '(' expr ')' { $$ = new ListUnOp("tail", $3); }
 ;
 

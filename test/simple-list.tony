@@ -5,12 +5,18 @@
 
  def program():
   list[int] a
-  a := 5 # nil
+  putc('\n')
+  a := nil
+  putb(nil?(a))
+  a := 5 # a
+  putb(nil?(a))
   puti(head (a))
   putc('\n')
-  a := 7 # (6 # a)
-  putc('\n')
+  a := 6 # a
   puti(head (a))
+  putc('\n')
+  a := 8 # (7 # a)
+  putc('\n')
   puti(head (tail (a)))
   putc('\n')
 end

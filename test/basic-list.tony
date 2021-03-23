@@ -4,12 +4,24 @@
  *>
 
  def program():
-  list[int] a
-  puti(4)
+  list[int] a, b
+  int c
+  a := nil
+  a := 6 # (5 # a)
+  c := head(tail(a))
+  % puti(head (a))
+  % putc('\n')
+  puti(c)
   putc('\n')
-  a := 5 # nil
-  puti(head (a))
-  a := 6 # a
-  putc('\n')
-  skip
+  puti(head (tail (a)))
+  % putc('\n')
+  % puti(head (tail (6 # (5 # nil))))
+  % putc('\n')
+  % puti(head (6 # (5 # nil)))
+  % putc('\n')
 end
+
+<*
+ * tail (a) load *alloca a -> pointer to cell (head a, pointer to tail a) let that be p
+ * load *p
+ *>

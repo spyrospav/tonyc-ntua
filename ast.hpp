@@ -164,7 +164,9 @@ class AST {
 
       /*---------------- puti ----------------*/
       llvm::FunctionType *writeInteger_type = llvm::FunctionType::get(
-        llvm::Type::getVoidTy(TheContext), {i64}, false
+        llvm::Type::getVoidTy(TheContext),
+        {i64},
+        false
       );
 
       TheWriteInteger = llvm::Function::Create(
@@ -179,11 +181,16 @@ class AST {
 
       /*---------------- putc ----------------*/
       llvm::FunctionType *writeCharacter_type = llvm::FunctionType::get(
-        llvm::Type::getVoidTy(TheContext), {i8}, false
+        llvm::Type::getVoidTy(TheContext),
+        {i8},
+        false
       );
 
       TheWriteCharacter = llvm::Function::Create(
-        writeCharacter_type, llvm::Function::ExternalLinkage, "putc", TheModule.get()
+        writeCharacter_type,
+        llvm::Function::ExternalLinkage,
+        "putc",
+        TheModule.get()
       );
 
       p = lookupEntry("putc", LOOKUP_ALL_SCOPES, false);
@@ -191,7 +198,9 @@ class AST {
 
       /*---------------- putb ----------------*/
       llvm::FunctionType *writeBoolean_type = llvm::FunctionType::get(
-        llvm::Type::getVoidTy(TheContext), {i1}, false
+        llvm::Type::getVoidTy(TheContext),
+        {i1},
+        false
       );
 
       TheWriteBoolean = llvm::Function::Create(
@@ -830,18 +839,14 @@ public:
         d++;
       }
     }
-
+    int counter = 1;
     if (stmt_list != NULL) {
       for (Stmt *stmt : *stmt_list) {
         stmt->sem();
-
         if(stmt->checkForReturns()){
-
           if(stmt->checkForExits() && header->getHeaderType() != typeVoid)
             fatal("Exit can only be used inside void function blocks");
-          //std::cout << "statement " << *stmt << " has checkReturn() " << std::endl;
           existsReturn = true;
-          //std::cout << "header type = " << header->getHeaderType() << " return type = " << stmt->getReturnType() <<std::endl;
           stmt->checkReturnType(header);
         }
       }
@@ -851,8 +856,7 @@ public:
       fatal("Non void function must have a return statement.");
     }
 
-    if (false) printSymbolTable();
-    live_variables = currentScope->live_variables;
+    live_vars = live_variables;
     closeScope();
   }
 
@@ -892,7 +896,6 @@ public:
       e->u.eParameter.llvmpar = alloca;
     }
     //Builder.CreateCall(TheInit, {});
-
     int v = 0, f = 0, d = 0;
     int count = 1;
     for (std::vector<DefType>::iterator it = sequence.begin(); it < sequence.end(); it++){
@@ -928,7 +931,6 @@ public:
       }
     }
 
-    if (false) printSymbolTable();
     closeScope();
 
     // Emit the program code.
@@ -962,7 +964,7 @@ private:
   int size;
   llvm::Function * thisFunction;
   bool isMain;
-  std::set<SymbolEntry *> live_variables;
+  std::set<SymbolEntry *> live_vars;
 };
 
 // EXPRESSIONS (e.g atoms, constants, operations applied to expressions )
@@ -1003,7 +1005,6 @@ class IntConst : public Expr {
       out << "IntConst(" << num << ")";
     }
     ~IntConst() {}
-
     virtual void sem() override { lval = false; stringExpr = OTHER; type = typeInteger; }
     virtual llvm::Value* compile()override { return c64(num); }
   private:
@@ -1017,11 +1018,6 @@ class CharConst : public Expr {
       out << "CharConst(" << character << ")";
     }
     ~CharConst() {}
-    /*
-    virtual void compile() const override {
-      std::cout << "  pushl $" << num << "\n";
-    }
-    */
     virtual void sem() override { lval = false; stringExpr = OTHER; type = typeChar; }
     virtual llvm::Value* compile() override {
       return c8(character); }
@@ -1037,11 +1033,6 @@ class BoolConst : public Expr {
     virtual void printOn(std::ostream &out) const override {
       out << "Logic(" << logic << ")";
     }
-    /*
-    virtual void compile() const override {
-      std::cout << "  pushl $" << num << "\n";
-    }
-    */
     virtual void sem() override { lval = false; stringExpr = OTHER; type = typeBoolean; }
     virtual llvm::Value* compile() override { return c1(int(logic)); }
 
@@ -1062,9 +1053,6 @@ public:
   virtual void sem() override {
     lval = true;
     SymbolEntry *e = lookupEntry(var,LOOKUP_ALL_SCOPES, false);
-    if (e->nestingLevel < currentScope->nestingLevel) {
-      addLiveVariable(e);
-    }
     if (e==NULL) { fatal("Id has not been declared"); }
     entry = e->entryType;
     if (entry == ENTRY_VARIABLE) {
@@ -1080,7 +1068,9 @@ public:
   }
   virtual llvm::Value* compile() override {
     SymbolEntry *e = lookupEntry(var,LOOKUP_ALL_SCOPES, false);
-    if (e==NULL) { fatal("Id has not been declared"); }
+    if (e->nestingLevel < currentScope->nestingLevel) {
+      addLiveVariable(e);
+    }
     entry = e->entryType;
     if (entry == ENTRY_VARIABLE) {
       if (!isLeft)
@@ -1098,11 +1088,6 @@ public:
     }
 
     return nullptr;
-    //lookup the entry
-
-    // llvm::Value *v = Builder.CreateGEP(TheVars, {c32(0), c32(hashTheVars[e])} , name_ptr );
-    // return Builder.CreateLoad(v, name);
-
   }
 
 
@@ -1231,7 +1216,7 @@ public:
     lval = false;
     expr->sem();
     if(expr->getType()->kind != TYPE_LIST) fatal("Operand is not a list");
-    if(strcmp(op, "nil?") == 0) type = typeBoolean;
+    if(strcmp(op, "nil?") == 0){ type = typeBoolean; }
     else if(strcmp(op, "head") == 0) {
       if (isTypeAny(expr->getType()->refType)) fatal("Cannot apply head operator on empty list.");
       type = expr->getType()->refType;
@@ -1240,26 +1225,22 @@ public:
       if (isTypeAny(expr->getType()->refType)) fatal("Cannot apply tail operator on empty list.");
       type = expr->getType();
     }
-    else std::cout << " Aliens." << std::endl;
     stringExpr = OTHER;
   }
   virtual llvm::Value* compile() override {
     llvm::Value *v = expr->compile();
+    //llvm::Value *n = Builder.CreateBitCast(v, TheNodeTypePtr, "nodetmp");
     if(strcmp(op, "nil?") == 0) {
       return Builder.CreateICmpEQ(v, llvm::Constant::getNullValue(TheNodeTypePtr), "eqtmp");
     }
     else if(strcmp(op, "head") == 0) {
-      llvm::Value *n = Builder.CreateBitCast(v, TheNodeTypePtr, "nodetmp");
-      llvm::Value *h = Builder.CreateGEP(n, {c32(0), c32(0)}, "headptr");
+      llvm::Value *h = Builder.CreateGEP(v, {c32(0), c32(0)}, "headptr");
       return Builder.CreateLoad(h, "head");
     }
     else if(strcmp(op, "tail") == 0) {
-      llvm::Value *n = Builder.CreateBitCast(v, TheNodeTypePtr, "nodetmp");
-      llvm::Value *t = Builder.CreateGEP(n, {c32(0), c32(1)}, "tailptr");
+      llvm::Value *t = Builder.CreateGEP(v, {c32(0), c32(1)}, "tailptr");
       return Builder.CreateLoad(t, "tail");
-      // return t;
     }
-    else std::cout << " Aliens." << std::endl;
     return nullptr;
   }
 private:
@@ -1287,6 +1268,7 @@ public:
     stringExpr = OTHER;
   }
   virtual llvm::Value* compile() override {
+
     llvm::Value *l = expr1->compile();
     llvm::Value *r = expr2->compile();
     llvm::AllocaInst *alloca = Builder.CreateAlloca(TheNodeTypePtr, nullptr, "l");
@@ -1295,6 +1277,7 @@ public:
     Builder.CreateStore(l, h);
     llvm::Value *t = Builder.CreateGEP(n, {c32(0), c32(1)}, "tailptr");
     Builder.CreateStore(r, t);
+
     return n;
 
   }
@@ -1487,20 +1470,6 @@ public:
       argv.push_back(v);
       args = args->u.eParameter.next;
     }
-    // args_number == real_args
-    // outer_args_number
-    // args_number+outer_args_number == defined argument number
-    // if we can get defined argument number + their names
-    // add outer_args_number after we lookupEntry(name)->allocainst
-    // def fun(i64* a) a is outer scope and therefore extended as pointer
-    // lookup(a) -> allocainst. load(allocainst) -> gives real value
-    // fun() -> fun(a) here we do lookup -> allocainst
-    // fun2(ref int a)
-    // fun2(a) creategep
-
-    // SymbolTable -> keeps extended definitions of functions
-    // parameter d, d already exists
-
     return Builder.CreateCall(calledFun, argv);
   }
 private:
@@ -1594,7 +1563,6 @@ class CallStmt: public Stmt{
         args = args->u.eParameter.next;
       }
       Builder.CreateCall(calledFun, argv);
-      //std::cout << "after create call " << std::endl;
       return nullptr;
     }
   private:

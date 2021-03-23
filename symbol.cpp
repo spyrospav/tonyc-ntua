@@ -38,6 +38,7 @@
    --------------------------------------------------------------------- */
 
 Scope        * currentScope;           /* �������� ��������              */
+std::set<SymbolEntry *> live_variables;
 unsigned int   quadNext;               /* ������� �������� ��������      */
 unsigned int   tempNumber;             /* �������� ��� temporaries       */
 
@@ -147,6 +148,7 @@ void initSymbolTable (unsigned int size)
     /* �������� �������������� */
 
     currentScope = NULL;
+    live_variables = std::set<SymbolEntry *>();
     quadNext     = 1;
     tempNumber   = 1;
     numInserted = 0;
@@ -180,8 +182,6 @@ void openScope ()
     newScope->negOffset = START_NEGATIVE_OFFSET;
     newScope->parent    = currentScope;
     newScope->entries   = NULL;
-    std::set<SymbolEntry *> e;
-    newScope->live_variables = e;
 
     if (currentScope == NULL)
         newScope->nestingLevel = 1;
@@ -206,10 +206,13 @@ void closeScope ()
     }
 
     if (currentScope->nestingLevel > 2) {
-      for (auto it = currentScope->live_variables.begin(); it != currentScope->live_variables.end(); ++it) {
+      for (auto it = live_variables.begin(); it != live_variables.end(); ++it) {
         if ((*it)->nestingLevel < currentScope->parent->nestingLevel)
-          currentScope->parent->live_variables.insert((*it));
+          live_variables.insert((*it));
       }
+    }
+    else {
+      live_variables.clear();
     }
     currentScope = currentScope->parent;
     my_delete(t);
@@ -361,17 +364,15 @@ SymbolEntry * newConstant (const char * name, Type type, ...)
 SymbolEntry * newFunction (const char * name, llvm::Function * f)
 {
     SymbolEntry * e = lookupEntry(name, LOOKUP_CURRENT_SCOPE, false);
-
     if (e == NULL) {
         e = newEntry(name);
         if (e != NULL) {
-
-            e->entryType = ENTRY_FUNCTION;
-            e->u.eFunction.isForward = false;
-            e->u.eFunction.pardef = PARDEF_DEFINE;
-            e->u.eFunction.firstArgument = e->u.eFunction.lastArgument = NULL;
-            e->u.eFunction.resultType = NULL;
-            e->u.eFunction.llvmfun = f;
+          e->entryType = ENTRY_FUNCTION;
+          e->u.eFunction.isForward = false;
+          e->u.eFunction.pardef = PARDEF_DEFINE;
+          e->u.eFunction.firstArgument = e->u.eFunction.lastArgument = NULL;
+          e->u.eFunction.resultType = NULL;
+          e->u.eFunction.llvmfun = f;
         }
         return e;
     }
@@ -819,7 +820,7 @@ void StandardLibraryInit() {
   //decl putb (bool b)
   p = newFunction("putb");
   openScope();
-  newParameter("b", typeBoolean, PASS_BY_VALUE, p);
+  newParameter("c", typeBoolean, PASS_BY_VALUE, p);
   endFunctionHeader(p, typeVoid);
   closeScope();
 
@@ -919,5 +920,5 @@ void StandardLibraryInit() {
 }
 
 void addLiveVariable(SymbolEntry *e) {
-  currentScope->live_variables.insert(e);
+  live_variables.insert(e);
 }
