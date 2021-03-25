@@ -1,5 +1,4 @@
 Arrays:
-  - Parser reconstruction to deal with constant array sizes
   - Semantic analysis for negative sizes (Static) on constant ints
   - LLVM
     -- Allocation (maybe PointerType with 0 size and suitable llvmtype)
@@ -7,7 +6,14 @@ Arrays:
     -- Access array element
     -- Reference in functions and assignments
 
-5 # nil
+
+TODO:
+  -- Recursive Lists
+  -- Array Indexing, Recursive Arrays
+  -- Short circuiting
+  -- If/ElseIf/Else fix
+  -- By Ref parameter passing
+  -- Outer Scope parameter passing
 
 rhs = COnstantNullPointer
 ConstantInt(5)
@@ -22,50 +28,25 @@ Assign:
     Nu
 
 LOG:
-./tony <  test/basic-list.tony
-ListBinOp
-RHS, LHS compiled
-Allocated
-GEP1 followed
-Stored head followed
-GEP2 followed
-Stored tail followed
-ListUnOp
-Stored value type does not match pointer operand type!
-  store %nodetype** %l, %nodetype** %a
- %nodetype*Call parameter type does not match function signature!
-  %headptr2 = getelementptr %nodetype, %nodetype* %a1, i32 0, i32 0
- i64  call void @puti(i64* %headptr2)
-The function program is bad!
-define i32 @main() {
-entry:
-  %a = alloca %nodetype*
-  %l = alloca %nodetype*
-  %nodetmp = bitcast %nodetype** %l to %nodetype*
-  %headptr = getelementptr %nodetype, %nodetype* %nodetmp, i32 0, i32 0
-  store i64 5, i64* %headptr
-  %tailptr = getelementptr %nodetype, %nodetype* %nodetmp, i32 0, i32 1
-  store %nodetype* null, %nodetype** %tailptr
-  store %nodetype** %l, %nodetype** %a
-  %a1 = load %nodetype*, %nodetype** %a
-  %headptr2 = getelementptr %nodetype, %nodetype* %a1, i32 0, i32 0
-  call void @puti(i64* %headptr2)
-  ret i32 0
-}
+
 
 ------------
-nodetype = type {i64, *nodetype}
-listtype = type {*nodetype}
 
-define i32 @main() {
-  %a = alloca %nodetype*
-  %l = alloca %nodetype*
-  %nodetmp = bitcast %nodetype** %l to %nodetype*
-  %headptr = getelementptr %nodetype, %nodetype* %nodetmp, i32 0, i32 0
-  store i64 5, i64* %headptr
-  %tailptr = getelementptr %nodetype, %nodetype* %nodetmp, i32 0, i32 1
-  store %nodetype* null, %nodetype** %tailptr
-  store %nodetype* %l, %nodetype** %a
-  call void @puti()
-  ret i32 0
+list[list[int]] a
+
+list[int] b
+list[int] c
+
+a := b # (c # nill)
+
+{i64, *i64}
+
+a -> heap address 1 -> heap address 2 where a list starts
+
+enum lval {
+  RVALUE,
+  LVALUE,
+  POSLVALUE
 }
+
+id
