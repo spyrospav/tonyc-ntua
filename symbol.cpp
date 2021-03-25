@@ -647,9 +647,10 @@ unsigned int sizeOfType (Type type)
             break;
         case TYPE_INTEGER:
         case TYPE_IARRAY:
-        case TYPE_LIST:
         case TYPE_POINTER:
-            return 2;
+          return 8;
+        case TYPE_LIST:
+            return 16;
         case TYPE_BOOLEAN:
         case TYPE_CHAR:
             return 1;

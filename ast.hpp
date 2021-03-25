@@ -145,12 +145,7 @@ class AST {
       // Node type : {i64, *i64}
       llvm::StructType *NodeType = llvm::StructType::create(TheContext, "nodetype");
       NodeType->setBody({i64, llvm::PointerType::get(NodeType, 0)});
-      TheNodeTypePtr = llvm::PointerType::get(NodeType, 0);
-
-      // Node type : {*{i64, *i64}, *i64}
-      llvm::StructType *ListType = llvm::StructType::create(TheContext, "listtype");
-      ListType->setBody({TheNodeTypePtr, llvm::PointerType::get(ListType, 0)});
-      TheListTypePtr = llvm::PointerType::get(ListType, 0);
+      TheListType = llvm::PointerType::get(NodeType, 0);
 
       // Initialize global variables (e.g newline)
       llvm::ArrayType *nl_type = llvm::ArrayType::get(i8, 2); //create llvm array type of nl (it should have 2 items with 8 bits each (characters))
@@ -482,10 +477,13 @@ class AST {
               retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
               break;
           case TYPE_LIST:
+              /*
               if (type->refType->kind != TYPE_LIST)
                 retType = TheNodeTypePtr; // Node type : {i64, *i64}
               else
                 retType = TheListTypePtr; // Node type : {*{i64, *i64}, *i64}
+              */
+              retType = TheListType;
               break;
           case TYPE_ANY:
               retType = nullptr;
@@ -511,8 +509,7 @@ class AST {
     static llvm::Type *i16;
     static llvm::Type *i32;
     static llvm::Type *i64;
-    static llvm::Type *TheNodeTypePtr;
-    static llvm::Type *TheListTypePtr;
+    static llvm::Type *TheListType;
 
 
     // Global Variables
@@ -910,17 +907,7 @@ public:
     if (isMain) {
       Builder.CreateCall(TheInit, {});
     }
-    /*
-    ArgList * harg = header->getHeaderArgList();
-    for (Arg *a: *harg) {
-      std::vector<const char *> tmp = a->getArgListNames();
-      llvm::Type *tempType = this->getLLVMType(a->getType());
-      for (int i = 0; i < a->getArgSize(); i++){
-        SymbolEntry * e = lookupEntry(tmp[i], LOOKUP_CURRENT_SCOPE, false);
-        llvm::AllocaInst *alloca_temp = CreateEntryBlockAlloca(thisFunction, tmp[i], tempType);
-        e->u.eParameter.llvmpar = alloca_temp;
-      }
-    }*/
+
     for (auto &arg : thisFunction->args()) {
       std::string name = arg.getName().str();
       llvm::AllocaInst *alloca = Builder.CreateAlloca(arg.getType(), nullptr, name);
@@ -966,12 +953,11 @@ public:
 
     closeScope();
 
-    // Emit the program code.
-    //compile();
     if (isMain) {
       Builder.CreateRet(c32(0));
     }
     else {
+      // Return statement produce by class Return for non-main function
       if(equalType(header->getHeaderType(), typeVoid)) Builder.CreateRetVoid();
     }
 
@@ -982,7 +968,7 @@ public:
       std::exit(1);
     }
     if (isMain) {
-    TheFPM->run(*thisFunction);
+      TheFPM->run(*thisFunction);
     }
     return nullptr;
   }
@@ -1000,7 +986,7 @@ private:
   std::set<SymbolEntry *> live_vars;
 };
 
-// EXPRESSIONS (e.g atoms, constants, operations applied to expressions )
+// Expressions (e.g atoms, constants, operations applied to expressions )
 
 class Expr : public AST {
   public:
@@ -1013,7 +999,7 @@ class Expr : public AST {
     bool isBasicType(Type t) {
       return (equalType(t, typeChar) || equalType(t, typeBoolean) || equalType(t, typeInteger));
     }
-    void setLeft() { isLeft = true; }
+    void setLeft() { realLeft = true; }
     Type getType() { return type; }
     bool isLValue() { return lval; }
     StringExpr getStringExpr() { return stringExpr; }
@@ -1024,6 +1010,7 @@ class Expr : public AST {
     Type type;
     bool lval;
     bool isLeft = false;
+    bool realLeft = false;
      // enumeration of valid types for a expression.
      // used to throw error on cases like "test"[0] := 4
     StringExpr stringExpr;
@@ -1264,7 +1251,7 @@ public:
     llvm::Value *v = expr->compile();
     //llvm::Value *n = Builder.CreateBitCast(v, TheNodeTypePtr, "nodetmp");
     if(strcmp(op, "nil?") == 0) {
-      return Builder.CreateICmpEQ(v, llvm::Constant::getNullValue(TheNodeTypePtr), "eqtmp");
+      return Builder.CreateICmpEQ(v, llvm::Constant::getNullValue(TheListType), "eqtmp");
     }
     else if(strcmp(op, "head") == 0) {
       llvm::Value *h = Builder.CreateGEP(v, {c32(0), c32(0)}, "headptr");
@@ -1306,7 +1293,7 @@ public:
     llvm::Value *r = expr2->compile();
     //llvm::AllocaInst *alloca = Builder.CreateAlloca(TheNodeTypePtr, nullptr, "l");
     llvm::Value *alloca = Builder.CreateCall(TheMalloc, {c64(16)}, "l");
-    llvm::Value *n = Builder.CreateBitCast(alloca, TheNodeTypePtr, "nodetmp");
+    llvm::Value *n = Builder.CreateBitCast(alloca, TheListType, "nodetmp");
     llvm::Value *h = Builder.CreateGEP(n, {c32(0), c32(0)}, "headptr");
     Builder.CreateStore(l, h);
     llvm::Value *t = Builder.CreateGEP(n, {c32(0), c32(1)}, "tailptr");
@@ -1333,7 +1320,7 @@ class Nil: public Expr {
       stringExpr = OTHER;
     }
     virtual llvm::Value* compile() override {
-      return llvm::Constant::getNullValue(TheNodeTypePtr);
+      return llvm::Constant::getNullValue(TheListType);
     }
   private:
 };
@@ -1383,12 +1370,13 @@ class Array: public Expr {
     }
 
     virtual llvm::Value* compile() override {
-      // llvm::BasicBlock *PrevBB = Builder.GetInsertBlock();
-      // llvm::Type *array_type = getLLVMType(arrayType);
-      // llvm::Value *array_size = sizeExpr->compile();
-      // auto alloc_size = llvm::ConstantExpr::getMul(sizeof(array_type), array_size);//llogika 8a 8elei dikia mas ylopoihsh to sizeof
-      // llvm::CreateMalloc(PrevBB, array_type->getPointerTo(), array_type, alloc_size )
-      return nullptr;
+      llvm::Value *r = sizeExpr->compile();
+      llvm::Value *rsize = Builder.CreateMul(r, c64(sizeOfType(arrayType)), "arraysize");
+      //llvm::ConstantInt* CI = llvm::dyn_cast<llvm::ConstantInt>(rsize);
+
+      llvm::Value *alloca = Builder.CreateCall(TheMalloc, {rsize}, "arraytmp"); //rsize may be WRONG!
+      llvm::Value *n = Builder.CreateBitCast(alloca, llvm::PointerType::get(getLLVMType(arrayType), 0), "arrayptr");
+      return n;
     }
   private:
     Type arrayType;
@@ -1398,7 +1386,7 @@ class Array: public Expr {
 
 class ArrayItem: public Expr{
   public:
-    ArrayItem(Expr *a, Expr *e): atom(a), expr(e) {}
+    ArrayItem(Expr *a, Expr *e): arr(a), expr(e) {}
     ~ArrayItem() {}
     virtual void printOn(std::ostream &out) const override {
       out << "Item Array of type " << type << std::endl;
@@ -1406,22 +1394,25 @@ class ArrayItem: public Expr{
 
     virtual void sem() override {
       expr->type_check(typeInteger);
-
-      atom->sem();
-      if (!isTypeArray(atom->getType())) fatal("Non array type is not subscritable");
-      if (atom->getStringExpr() == STRING) stringExpr = STRING_ITEM;
+      arr->sem();
+      if (!isTypeArray(arr->getType())) fatal("Non array type is not subscritable");
+      if (arr->getStringExpr() == STRING) stringExpr = STRING_ITEM;
       else stringExpr = OTHER;
-      //std::cout << "Type of atom " << atom->getType() << std::endl;
-      //std::cout << "ref type of " << atom->getType()->refType << std::endl;
-      type = atom->getType()->refType;
-      //std :: cout << type << std::endl;
+      type = arr->getType()->refType;
       lval = true;
     }
     virtual llvm::Value* compile() override {
+      // a[1]; -> load address of a,  get index 1 and load from there
+      if (realLeft) std::cout << "Horray" << std::endl;
+      else std::cout << "Baddd" << std::endl;
+      //llvm::Value *arrptr = arr->compile();
+      //llvm::Value *index = expr->compile();
+      //llvm::Value* n = Builder.CreateGEP(arrptr, {index, c32(0)}, "arrayidx");
+      //return Builder.CreateLoad(n, "arrayitem");
       return nullptr;
     }
   private:
-    Expr *atom, *expr;
+    Expr *arr, *expr;
 };
 
 class CallExpr : public Expr {
@@ -1915,9 +1906,9 @@ public:
     if (!var->isLValue()) fatal("Can't assign value to non lvalue");
     if (var->getStringExpr() == STRING_ITEM) fatal("Can't assign value to item of a constant string type object");
     expr->type_check(var->getType());
+    var->setLeft();
   }
   virtual llvm::Value* compile() override {
-    var->setLeft();
     llvm::Value * alloc_tmp = var->compile();
     llvm::Value * val_tmp = expr->compile();
     Builder.CreateStore(val_tmp, alloc_tmp);

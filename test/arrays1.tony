@@ -6,7 +6,8 @@
 def progran():
   int[] a
   char[][] c
-  int b
   a := new int[10]
-  b := a[1]
+  a[2] := 3
+  a[5] := a[2]
+  puti(a[2])
 end

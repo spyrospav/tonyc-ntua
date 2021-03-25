@@ -5,6 +5,7 @@
 
  def program():
   list[int] a
+  list[int] b
   putc('\n')
   a := nil
   putb(nil?(a))
@@ -18,5 +19,8 @@
   a := 8 # (7 # a)
   putc('\n')
   puti(head (tail (a)))
+  putc('\n')
+  b := tail (a)
+  puti(head (tail (tail (b))))
   putc('\n')
 end

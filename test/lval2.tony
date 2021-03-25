@@ -1,0 +1,14 @@
+<*
+ * Test case: lval2.tony
+ * Result: Pass
+ *>
+
+def program():
+  int a, b
+  a := 5
+  puti(a)
+  putc('\n')
+  b := a
+  puti(b)
+  putc('\n')
+end
