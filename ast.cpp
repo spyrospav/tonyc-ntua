@@ -37,3 +37,6 @@ llvm::Function *AST::TheStrLen;
 llvm::Function *AST::TheStrCmp;
 llvm::Function *AST::TheStrCpy;
 llvm::Function *AST::TheStrCat;
+
+llvm::Function *AST::TheInit;
+llvm::Function *AST::TheMalloc;

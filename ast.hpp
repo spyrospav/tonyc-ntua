@@ -415,6 +415,34 @@ class AST {
       p = lookupEntry("strcat", LOOKUP_ALL_SCOPES, false);
       p->u.eFunction.llvmfun = TheStrCat;
 
+      /*---------------- GC_malloc ----------------*/
+      llvm::FunctionType *malloc_type = llvm::FunctionType::get(
+        llvm::PointerType::get(i8, 0),
+        {i64},
+        false
+      );
+
+      TheMalloc = llvm::Function::Create(
+        malloc_type,
+        llvm::Function::ExternalLinkage,
+        "GC_malloc",
+        TheModule.get()
+      );
+
+      /*---------------- GC_init ----------------*/
+      llvm::FunctionType *init_type = llvm::FunctionType::get(
+        llvm::Type::getVoidTy(TheContext),
+        {},
+        false
+      );
+
+      TheInit = llvm::Function::Create(
+        init_type,
+        llvm::Function::ExternalLinkage,
+        "GC_init",
+        TheModule.get()
+      );
+
       // Compile code
       compile();
 
@@ -525,6 +553,8 @@ class AST {
     static llvm::Function *TheStrCpy;
     static llvm::Function *TheStrCat;
 
+    static llvm::Function *TheInit;
+    static llvm::Function *TheMalloc;
 };
 
 inline std::ostream& operator<< (std::ostream &out, const AST &t) {
@@ -877,6 +907,9 @@ public:
 
     llvm::BasicBlock *BB = llvm::BasicBlock::Create(TheContext, "entry", thisFunction);
     Builder.SetInsertPoint(BB);
+    if (isMain) {
+      Builder.CreateCall(TheInit, {});
+    }
     /*
     ArgList * harg = header->getHeaderArgList();
     for (Arg *a: *harg) {
@@ -895,7 +928,7 @@ public:
       SymbolEntry * e = lookupEntry(name.c_str(), LOOKUP_CURRENT_SCOPE, false);
       e->u.eParameter.llvmpar = alloca;
     }
-    //Builder.CreateCall(TheInit, {});
+
     int v = 0, f = 0, d = 0;
     int count = 1;
     for (std::vector<DefType>::iterator it = sequence.begin(); it < sequence.end(); it++){
@@ -1271,7 +1304,8 @@ public:
 
     llvm::Value *l = expr1->compile();
     llvm::Value *r = expr2->compile();
-    llvm::AllocaInst *alloca = Builder.CreateAlloca(TheNodeTypePtr, nullptr, "l");
+    //llvm::AllocaInst *alloca = Builder.CreateAlloca(TheNodeTypePtr, nullptr, "l");
+    llvm::Value *alloca = Builder.CreateCall(TheMalloc, {c64(16)}, "l");
     llvm::Value *n = Builder.CreateBitCast(alloca, TheNodeTypePtr, "nodetmp");
     llvm::Value *h = Builder.CreateGEP(n, {c32(0), c32(0)}, "headptr");
     Builder.CreateStore(l, h);

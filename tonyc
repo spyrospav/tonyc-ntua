@@ -1,4 +1,4 @@
-#!/usr/bin/python3.7
+#!/usr/bin/python3
 
 import argparse
 import os
@@ -78,7 +78,7 @@ if args.f:
 try:
     print("clang-10", "-o", name + ".out", name + ".asm", "./edsger_lib-master/lib.a")
     subprocess.run(
-            ["clang-10", "-o", name + ".out", name + ".asm", "./edsger_lib-master/lib.a"],
+            ["clang-10", "-o", name + ".out", name + ".asm", "./edsger_lib-master/lib.a", "-lgc"],
             check=True
             )
 except subprocess.CalledProcessError as e:
