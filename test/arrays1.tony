@@ -4,10 +4,31 @@
  *>
 
 def progran():
-  int[] a
-  char[][] c
-  a := new int[10]
-  a[2] := 3
-  a[5] := a[2]
-  puti(a[2])
+  int[] a, c
+  int[][] b
+  a := new int[2]
+  b := new int[][10]    
+  a[0] := 3
+  a[1] := 4
+  a[1] := a[0]
+  a[0] := 4
+  puti(a[0])
+  putc('\n')
+  puti(a[1])
+  putc('\n')
+  b[0] := a
+  putc('\n')
+  puti(b[0][1])
+  putc('\n')
+  c := a
+  puts("c0\n")
+  c[0] := c[0] + 1
+  puti(c[0])
+  putc('\n')
+  puti(c[1])
+  putc('\n')
+  puti(a[0])
+  putc('\n')
+  puti(a[1])
+  putc('\n')
 end

@@ -1,33 +1,21 @@
 Arrays:
   - Semantic analysis for negative sizes (Static) on constant ints
   - LLVM
-    -- Allocation (maybe PointerType with 0 size and suitable llvmtype)
     -- New array (assignment)
     -- Access array element
     -- Reference in functions and assignments
 
 
 TODO:
+GROUP1:
   -- Recursive Lists
-  -- Array Indexing, Recursive Arrays
-  -- Short circuiting
-  -- If/ElseIf/Else fix
+  -- Recursive Arrays
+GROUP2:
+  -- Short circuiting (DISTRIB)
+  -- If/ElseIf/Else fix (possible for)
+GROUP3:
   -- By Ref parameter passing
   -- Outer Scope parameter passing
-
-rhs = COnstantNullPointer
-ConstantInt(5)
-allocainst({5, rhs})
-return Pointer::get()
-
-
-*-----------------LISTS-----------------*
-
-Assign:
-  RHS == NULL:
-    Nu
-
-LOG:
 
 
 ------------
@@ -43,10 +31,7 @@ a := b # (c # nill)
 
 a -> heap address 1 -> heap address 2 where a list starts
 
-enum lval {
-  RVALUE,
-  LVALUE,
-  POSLVALUE
-}
-
 id
+
+def int[] fun():
+return a

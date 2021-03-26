@@ -1,0 +1,50 @@
+<*
+ * Test case: arrays2.tony
+ * Result: Pass
+ *>
+
+def progran():
+  int[] a, c
+  int[][] b
+  int[][][] d
+  a := new int[2]
+  b := new int[][10]
+  d := new int[][][10]
+  a[0] := 3
+  a[1] := 4
+
+  b[0] := a
+  puti(b[0][1]) % should output 4
+  putc('\n')
+  puti(b[0][0]) % should output 3
+
+  d[0] := b
+  putc('\n')
+  puti(d[0][0][1]) % should output 4
+  putc('\n')
+  puti(d[0][0][0]) % should output 3
+  putc('\n')
+
+  d[1] := new int[][10]
+  puts("c1\n")
+  d[1][0] := new int[2]
+  d[1][0][1] := 4
+  d[1][0][0] := 3
+  puts("c2\n")
+
+  puti(d[1][0][1]) % should output 4
+  putc('\n')
+  puti(d[0][0][0]) % should output 3
+  putc('\n')
+
+  d[2] := new int[][10]
+  puts("c3\n")
+  d[2][0] := c
+  puts("c4\n")
+
+  puti(d[2][0][1]) % should output 4
+  putc('\n')
+  puti(d[2][0][0]) % should output 3
+  putc('\n')
+
+end

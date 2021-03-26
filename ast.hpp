@@ -1093,8 +1093,7 @@ public:
     }
     entry = e->entryType;
     if (entry == ENTRY_VARIABLE) {
-      if (!isLeft)
-        return Builder.CreateLoad(e->u.eVariable.allocainst, var);
+      if (!realLeft) return Builder.CreateLoad(e->u.eVariable.allocainst, var);
       else return e->u.eVariable.allocainst;
     }
     else if (entry == ENTRY_FUNCTION) {
@@ -1291,7 +1290,6 @@ public:
 
     llvm::Value *l = expr1->compile();
     llvm::Value *r = expr2->compile();
-    //llvm::AllocaInst *alloca = Builder.CreateAlloca(TheNodeTypePtr, nullptr, "l");
     llvm::Value *alloca = Builder.CreateCall(TheMalloc, {c64(16)}, "l");
     llvm::Value *n = Builder.CreateBitCast(alloca, TheListType, "nodetmp");
     llvm::Value *h = Builder.CreateGEP(n, {c32(0), c32(0)}, "headptr");
@@ -1372,12 +1370,11 @@ class Array: public Expr {
     virtual llvm::Value* compile() override {
       llvm::Value *r = sizeExpr->compile();
       llvm::Value *rsize = Builder.CreateMul(r, c64(sizeOfType(arrayType)), "arraysize");
-      //llvm::ConstantInt* CI = llvm::dyn_cast<llvm::ConstantInt>(rsize);
-
-      llvm::Value *alloca = Builder.CreateCall(TheMalloc, {rsize}, "arraytmp"); //rsize may be WRONG!
+      llvm::Value *alloca = Builder.CreateCall(TheMalloc, {rsize}, "arraytmp");
       llvm::Value *n = Builder.CreateBitCast(alloca, llvm::PointerType::get(getLLVMType(arrayType), 0), "arrayptr");
       return n;
     }
+
   private:
     Type arrayType;
     Expr *sizeExpr;
@@ -1388,6 +1385,7 @@ class ArrayItem: public Expr{
   public:
     ArrayItem(Expr *a, Expr *e): arr(a), expr(e) {}
     ~ArrayItem() {}
+
     virtual void printOn(std::ostream &out) const override {
       out << "Item Array of type " << type << std::endl;
     }
@@ -1402,14 +1400,16 @@ class ArrayItem: public Expr{
       lval = true;
     }
     virtual llvm::Value* compile() override {
-      // a[1]; -> load address of a,  get index 1 and load from there
-      if (realLeft) std::cout << "Horray" << std::endl;
-      else std::cout << "Baddd" << std::endl;
-      //llvm::Value *arrptr = arr->compile();
-      //llvm::Value *index = expr->compile();
-      //llvm::Value* n = Builder.CreateGEP(arrptr, {index, c32(0)}, "arrayidx");
-      //return Builder.CreateLoad(n, "arrayitem");
-      return nullptr;
+
+      llvm::Value *arrptr = arr->compile();
+      llvm::Value *index = expr->compile();
+      uint64_t Idx;
+      if (llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(index)) {
+        Idx = CI->getZExtValue();
+      }
+      llvm::Value* n = Builder.CreateInBoundsGEP(arrptr, c32(Idx), "idx");
+      if (realLeft) return n;
+      else return Builder.CreateLoad(n, "arrayitem");
     }
   private:
     Expr *arr, *expr;
