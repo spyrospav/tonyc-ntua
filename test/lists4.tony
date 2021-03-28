@@ -1,0 +1,13 @@
+<*
+ * Test case: lists4.tony
+ * Result: Pass
+ *>
+
+def test ():
+  list[list[int]] a
+  list[int] b
+  b := 5 # nil
+  a := nil
+  a := b # a
+  puti(head (head (a))) % should output 5
+end

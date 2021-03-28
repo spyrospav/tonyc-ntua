@@ -471,18 +471,10 @@ class AST {
               retType = i8;
               break;
           case TYPE_ARRAY:
-              retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
-              break;
           case TYPE_IARRAY:
               retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
               break;
           case TYPE_LIST:
-              /*
-              if (type->refType->kind != TYPE_LIST)
-                retType = TheNodeTypePtr; // Node type : {i64, *i64}
-              else
-                retType = TheListTypePtr; // Node type : {*{i64, *i64}, *i64}
-              */
               retType = TheListType;
               break;
           case TYPE_ANY:
@@ -509,7 +501,7 @@ class AST {
     static llvm::Type *i16;
     static llvm::Type *i32;
     static llvm::Type *i64;
-    static llvm::Type *TheListType;
+    static llvm::PointerType *TheListType;
 
 
     // Global Variables
@@ -1247,14 +1239,21 @@ public:
     stringExpr = OTHER;
   }
   virtual llvm::Value* compile() override {
+    //std::cout << "hello1" << std::endl;
     llvm::Value *v = expr->compile();
-    //llvm::Value *n = Builder.CreateBitCast(v, TheNodeTypePtr, "nodetmp");
     if(strcmp(op, "nil?") == 0) {
-      return Builder.CreateICmpEQ(v, llvm::Constant::getNullValue(TheListType), "eqtmp");
+      return Builder.CreateICmpEQ(v, llvm::ConstantPointerNull::get(TheListType), "eqtmp");
     }
     else if(strcmp(op, "head") == 0) {
       llvm::Value *h = Builder.CreateGEP(v, {c32(0), c32(0)}, "headptr");
-      return Builder.CreateLoad(h, "head");
+      if ((type->kind != TYPE_LIST) || (type->kind != TYPE_IARRAY)) {
+        std::cout << "not ptr" << std::endl;
+        return  Builder.CreateTrunc(Builder.CreateLoad(h, "headtmp"), getLLVMType(type), "head");
+      }
+      else {
+        std::cout << "ptr" << std::endl;
+        return Builder.CreateIntToPtr(Builder.CreateLoad(h, "head"), getLLVMType(type));
+      }
     }
     else if(strcmp(op, "tail") == 0) {
       llvm::Value *t = Builder.CreateGEP(v, {c32(0), c32(1)}, "tailptr");
@@ -1287,16 +1286,24 @@ public:
     stringExpr = OTHER;
   }
   virtual llvm::Value* compile() override {
-
     llvm::Value *l = expr1->compile();
     llvm::Value *r = expr2->compile();
     llvm::Value *alloca = Builder.CreateCall(TheMalloc, {c64(16)}, "l");
     llvm::Value *n = Builder.CreateBitCast(alloca, TheListType, "nodetmp");
     llvm::Value *h = Builder.CreateGEP(n, {c32(0), c32(0)}, "headptr");
-    Builder.CreateStore(l, h);
+    if ((expr1->getType()->kind != TYPE_LIST) || (expr1->getType()->kind != TYPE_IARRAY)) {
+      // cast to i64 to keep compatibility with list type
+        std::cout << "not ptr" << std::endl;
+      llvm::Value *l_cast = Builder.CreateZExt(l, i64, "headcast");
+      Builder.CreateStore(l_cast, h);
+    }
+    else {
+      llvm::Value *l_cast = Builder.CreatePtrToInt(l, i64, "headcast");
+        std::cout << "ptr" << std::endl;
+      Builder.CreateStore(l, h);
+    }
     llvm::Value *t = Builder.CreateGEP(n, {c32(0), c32(1)}, "tailptr");
     Builder.CreateStore(r, t);
-
     return n;
 
   }
@@ -1318,7 +1325,7 @@ class Nil: public Expr {
       stringExpr = OTHER;
     }
     virtual llvm::Value* compile() override {
-      return llvm::Constant::getNullValue(TheListType);
+      return llvm::ConstantPointerNull::get(TheListType);
     }
   private:
 };

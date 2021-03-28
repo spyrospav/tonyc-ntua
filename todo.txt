@@ -9,7 +9,7 @@ Arrays:
 TODO:
 GROUP1:
   -- Recursive Lists
-  -- Recursive Arrays
+  -- Test list/arrays on different types from int
 GROUP2:
   -- Short circuiting (DISTRIB)
   -- If/ElseIf/Else fix (possible for)
@@ -41,3 +41,12 @@ return a
 *********
 **** * **
 * *
+
+
+10001101
+->
+SExt/ZExt (i64)
+->
+0000000000000000000000000000000000000000000010001101
+->
+10001101

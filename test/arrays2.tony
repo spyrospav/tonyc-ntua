@@ -12,6 +12,7 @@ def progran():
   d := new int[][][10]
   a[0] := 3
   a[1] := 4
+  c := a
 
   b[0] := a
   puti(b[0][1]) % should output 4

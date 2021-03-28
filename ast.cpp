@@ -13,7 +13,7 @@ llvm::Type *AST::i8;
 llvm::Type *AST::i16;
 llvm::Type *AST::i32;
 llvm::Type *AST::i64;
-llvm::Type *AST::TheListType;
+llvm::PointerType *AST::TheListType;
 //llvm::Type *AST::ConstantPointerNull;
 // Global Variables
 llvm::GlobalVariable *AST::TheNL;

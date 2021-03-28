@@ -1,0 +1,22 @@
+<*
+ * Test case: basic-list2.tony
+ * Result: Pass
+ *>
+
+ def program():
+  list[char] a, b
+  char c
+  a := nil
+  a := '6' # ('5' # a)
+  c := head(tail(a))
+  putc(head (a))
+  putc('\n')
+  putc(c)
+  putc('\n')
+  putc(head (tail (a)))
+  putc('\n')
+  putc(head (tail ('6' # ('5' # nil))))
+  putc('\n')
+  putc(head ('6' # ('5' # nil)))
+  putc('\n')
+end
