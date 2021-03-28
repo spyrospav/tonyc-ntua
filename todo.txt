@@ -9,7 +9,6 @@ Arrays:
 TODO:
 GROUP1:
   -- Recursive Lists
-  -- Test list/arrays on different types from int
 GROUP2:
   -- Short circuiting (DISTRIB)
   -- If/ElseIf/Else fix (possible for)
