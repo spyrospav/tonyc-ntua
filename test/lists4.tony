@@ -5,9 +5,16 @@
 
 def test ():
   list[list[int]] a
-  list[int] b
+  list[int] b, c
   b := 5 # nil
   a := nil
   a := b # a
   puti(head (head (a))) % should output 5
+  putc('\n')
+  c := 7 # (6 # b)
+  a := c # a
+  puti(head (head (a))) % should output 7
+  putc('\n')
+  puti(head (head (tail (a)))) % should output 5
+  putc('\n')
 end

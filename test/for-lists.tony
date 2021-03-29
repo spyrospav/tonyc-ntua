@@ -1,0 +1,23 @@
+<*
+ * Test case: for-lists.tony
+ * Result: Pass
+ *>
+
+def program():
+  list[int] a, b
+  int size
+  def make_list():
+    list[int] c
+    int s
+    for s:= 1; s < 10000001; s := s + 1:
+      a := s # a
+    end
+  end
+
+  a := nil
+  size := 5
+  for size:= 1; size <= 10000; size := size + 1:
+    make_list()
+  end
+
+end

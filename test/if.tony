@@ -6,6 +6,7 @@
 
 def program ():
   int a, c
+  a := 5
   if a > 1:
     c := 2
   elsif a = 0:
@@ -18,4 +19,5 @@ def program ():
     c := 4
   end
   puts("abc\n")
+  puti(c)
 end

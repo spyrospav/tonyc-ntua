@@ -8,10 +8,13 @@
   char[] b
   char[] c
   b := new char[2]
-  b[0] := '1'
+  b[0] := 'c'
   b[1] := '2'
   a := nil
   a := b # a
   c := head(a)
-  putc(c[0])
+  putc(c[0]) % Should print 1
+  putc('\n')
+  putc(c[1]) % should print 2
+  putc('\n')
 end

@@ -1,46 +1,19 @@
 Arrays:
   - Semantic analysis for negative sizes (Static) on constant ints
   - LLVM
-    -- New array (assignment)
-    -- Access array element
     -- Reference in functions and assignments
 
 
 TODO:
-GROUP1:
-  -- Recursive Lists
 GROUP2:
   -- Short circuiting (DISTRIB)
-  -- If/ElseIf/Else fix (possible for)
+  -- If/ElseIf/Else fix (should be ok, check when nested functions are debugged)
 GROUP3:
   -- By Ref parameter passing
   -- Outer Scope parameter passing
-
+  -- Check Garbage Collector (for-lists.tony)
 
 ------------
-
-list[list[int]] a
-
-list[int] b
-list[int] c
-
-a := b # (c # nill)
-
-{i64, *i64}
-
-a -> heap address 1 -> heap address 2 where a list starts
-
-id
-
-def int[] fun():
-return a
-
-
-*************
-*********
-**** * **
-* *
-
 
 10001101
 ->

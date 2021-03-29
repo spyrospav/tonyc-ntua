@@ -9,14 +9,14 @@
   a := nil
   a := '6' # ('5' # a)
   c := head(tail(a))
-  putc(head (a))
+  putc(head (a))                        % should output 6
   putc('\n')
-  putc(c)
+  putc(c)                               % should output 5
   putc('\n')
-  putc(head (tail (a)))
+  putc(head (tail (a)))                 % should output 5
   putc('\n')
-  putc(head (tail ('6' # ('5' # nil))))
+  putc(head (tail ('6' # ('5' # nil)))) % should output 5
   putc('\n')
-  putc(head ('6' # ('5' # nil)))
+  putc(head ('6' # ('5' # nil)))        % should output 6
   putc('\n')
 end

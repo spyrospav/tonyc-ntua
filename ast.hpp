@@ -1246,12 +1246,12 @@ public:
     }
     else if(strcmp(op, "head") == 0) {
       llvm::Value *h = Builder.CreateGEP(v, {c32(0), c32(0)}, "headptr");
-      if ((type->kind != TYPE_LIST) || (type->kind != TYPE_IARRAY)) {
-        std::cout << "not ptr" << std::endl;
+      if ((type->kind != TYPE_LIST) && (type->kind != TYPE_IARRAY)) {
+        //std::cout << "not ptr" << std::endl;
         return  Builder.CreateTrunc(Builder.CreateLoad(h, "headtmp"), getLLVMType(type), "head");
       }
       else {
-        std::cout << "ptr" << std::endl;
+        //std::cout << "ptr" << std::endl;
         return Builder.CreateIntToPtr(Builder.CreateLoad(h, "head"), getLLVMType(type));
       }
     }
@@ -1291,16 +1291,16 @@ public:
     llvm::Value *alloca = Builder.CreateCall(TheMalloc, {c64(16)}, "l");
     llvm::Value *n = Builder.CreateBitCast(alloca, TheListType, "nodetmp");
     llvm::Value *h = Builder.CreateGEP(n, {c32(0), c32(0)}, "headptr");
-    if ((expr1->getType()->kind != TYPE_LIST) || (expr1->getType()->kind != TYPE_IARRAY)) {
+    if ((expr1->getType()->kind != TYPE_LIST) && (expr1->getType()->kind != TYPE_IARRAY)) {
       // cast to i64 to keep compatibility with list type
-        std::cout << "not ptr" << std::endl;
+      //std::cout << "not ptr" << std::endl;
       llvm::Value *l_cast = Builder.CreateZExt(l, i64, "headcast");
       Builder.CreateStore(l_cast, h);
     }
     else {
       llvm::Value *l_cast = Builder.CreatePtrToInt(l, i64, "headcast");
-        std::cout << "ptr" << std::endl;
-      Builder.CreateStore(l, h);
+      //std::cout << "ptr" << std::endl;
+      Builder.CreateStore(l_cast, h);
     }
     llvm::Value *t = Builder.CreateGEP(n, {c32(0), c32(1)}, "tailptr");
     Builder.CreateStore(r, t);
