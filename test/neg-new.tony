@@ -4,12 +4,16 @@
  *>
 
  def program():
-    int[] a, b
+    int[] a, b, c
     int size
     size := geti()
     puts("just read size: ")
     puti(size)
     putc('\n')
+    c := new int[10]
+    c[0] := 142
+    c[1] := 143
+    c[2] := 144
     a := new int[size]
     a[0] := 10
     a[1] := 42
@@ -18,5 +22,10 @@
     b[1] := 443
     b[2] := 444
     puti(a[1])
+    putc('\n')
     puti(b[1])
+    putc('\n')
+    puti(c[1])
+    putc('\n')
+
 end
