@@ -1,0 +1,22 @@
+<*
+ * Test case: neg-new.tony
+ * Result: Pass
+ *>
+
+ def program():
+    int[] a, b
+    int size
+    size := geti()
+    puts("just read size: ")
+    puti(size)
+    putc('\n')
+    a := new int[size]
+    a[0] := 10
+    a[1] := 42
+    b := new int[10]
+    b[0] := 442
+    b[1] := 443
+    b[2] := 444
+    puti(a[1])
+    puti(b[1])
+end

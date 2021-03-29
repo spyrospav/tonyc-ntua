@@ -3,11 +3,11 @@
  * Result: Pass
  *>
 
-def progran():
+def program():
   int[] a, c
   int[][] b
   a := new int[2]
-  b := new int[][10]    
+  b := new int[][10]
   a[0] := 3
   a[1] := 4
   a[1] := a[0]
