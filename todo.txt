@@ -7,8 +7,10 @@ Arrays:
 TODO:
 GROUP2:
   -- Short circuiting (DISTRIB)
-  -- If/ElseIf/Else fix (should be ok, check when nested functions are debugged)
+  -- Problem with return (multiple returns in the same block are not allowed, however
+      every basic block must have a terminating statement- theoritika einai ok)
 GROUP3:
+  -- seira metavlhtwn sto call (?)
   -- By Ref parameter passing
   -- Outer Scope parameter passing
   -- Check Garbage Collector (for-lists.tony)
@@ -22,3 +24,42 @@ SExt/ZExt (i64)
 0000000000000000000000000000000000000000000010001101
 ->
 10001101
+
+a ||( b || c)
+--  --------
+_true = Builder.Create.Icmpq(....)
+_false = .....
+Phi res
+if a
+Phi res
+
+
+def program():
+  int b
+  def fun():
+    def fun2():
+      int a
+      a := 42
+    a := 2
+    exit
+  end
+  int a
+  a := 3
+  fun()
+end
+
+
+def program():
+  int a
+  def fun(ref int a):
+    def fun2(ref int b):
+      b := b + 1
+    end
+    a := a + 1
+    fun2(a)
+  end
+  a := 1
+  fun(a)
+  puti(a) % 3
+  putc('\n')
+end

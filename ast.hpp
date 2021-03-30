@@ -875,7 +875,7 @@ public:
       fatal("Non void function must have a return statement.");
     }
 
-    live_vars = live_variables;
+    // live_vars = live_variables;
     closeScope();
   }
 
@@ -905,7 +905,7 @@ public:
       llvm::AllocaInst *alloca = Builder.CreateAlloca(arg.getType(), nullptr, name);
       Builder.CreateStore(&arg, alloca);
       SymbolEntry * e = lookupEntry(name.c_str(), LOOKUP_CURRENT_SCOPE, false);
-      e->u.eParameter.llvmpar = alloca;
+      e->allocainst = alloca;
     }
 
     int v = 0, f = 0, d = 0;
@@ -922,7 +922,7 @@ public:
         for (const char * s : var_list[v]->getVarList()) {
             llvm::AllocaInst *alloca_temp = CreateEntryBlockAlloca(thisFunction, s, t);
             SymbolEntry * e = lookupEntry(s, LOOKUP_ALL_SCOPES, false);
-            e->u.eVariable.allocainst = alloca_temp;
+            e->allocainst = alloca_temp;
         }
         v++;
       }
@@ -950,7 +950,14 @@ public:
     }
     else {
       // Return statement produce by class Return for non-main function
-      if(equalType(header->getHeaderType(), typeVoid)) Builder.CreateRetVoid();
+      if(equalType(header->getHeaderType(), typeVoid)) {
+        if (Builder.GetInsertBlock()->getTerminator()) {
+          Builder.SetInsertPoint(
+            llvm::BasicBlock::Create(TheContext, "lone_exit", Builder.GetInsertBlock()->getParent())
+          );
+        }
+        Builder.CreateRetVoid();
+      }
     }
 
     bool bad = llvm::verifyFunction(*thisFunction, &llvm::errs());
@@ -1080,22 +1087,25 @@ public:
   }
   virtual llvm::Value* compile() override {
     SymbolEntry *e = lookupEntry(var,LOOKUP_ALL_SCOPES, false);
-    if (e->nestingLevel < currentScope->nestingLevel) {
-      addLiveVariable(e);
-    }
     entry = e->entryType;
     if (entry == ENTRY_VARIABLE) {
-      if (!realLeft) return Builder.CreateLoad(e->u.eVariable.allocainst, var);
-      else return e->u.eVariable.allocainst;
+      if (!realLeft) return Builder.CreateLoad(e->allocainst, var);
+      else return e->allocainst;
     }
     else if (entry == ENTRY_FUNCTION) {
       return TheModule->getFunction(var);
     }
     else if (entry == ENTRY_PARAMETER) {
-      SymbolEntry *e = lookupEntry(var,LOOKUP_ALL_SCOPES, false);
-      if (!isLeft)
-        return Builder.CreateLoad(e->u.eParameter.llvmpar, var);
-      else return e->u.eParameter.llvmpar;
+
+      if (e->u.eParameter.mode == PASS_BY_REFERENCE) {
+        if (!realLeft)
+          return Builder.CreateLoad(Builder.CreateLoad(e->allocainst, var), var);
+        else return Builder.CreateLoad(e->allocainst, var);
+      }
+      //SymbolEntry *e = lookupEntry(var,LOOKUP_ALL_SCOPES, false);
+      if (!realLeft)
+        return Builder.CreateLoad(e->allocainst, var);
+      else return e->allocainst;
     }
 
     return nullptr;
@@ -1498,6 +1508,9 @@ public:
     SymbolEntry *args = p->u.eFunction.firstArgument;
     args = p->u.eFunction.firstArgument;
     for (Expr *expr: reversed) {
+      if (args->u.eParameter.mode == PASS_BY_REFERENCE) {
+        expr->setLeft();
+      }
       llvm::Value * v = expr->compile();
       argv.push_back(v);
       args = args->u.eParameter.next;
@@ -1590,6 +1603,9 @@ class CallStmt: public Stmt{
 
       args = p->u.eFunction.firstArgument;
       for (Expr *expr: reversed) {
+        if (args->u.eParameter.mode == PASS_BY_REFERENCE) {
+          expr->setLeft();
+        }
         llvm::Value * v = expr->compile();
         argv.push_back(v);
         args = args->u.eParameter.next;
@@ -1880,7 +1896,9 @@ public:
       for(Stmt *s: *s_list) {
         if(s!= nullptr) s->compile();
       }
-      Builder.CreateBr(AfterBB);
+      if (!Builder.GetInsertBlock()->getTerminator()) {
+        Builder.CreateBr(AfterBB);
+      }
       counter++;
     }
 
@@ -1888,7 +1906,9 @@ public:
     for(Stmt *s: *s_last) {
       if(s!= nullptr) s->compile();
     }
-    Builder.CreateBr(AfterBB);
+    if (!Builder.GetInsertBlock()->getTerminator()) {
+      Builder.CreateBr(AfterBB);
+    }
     Builder.SetInsertPoint(AfterBB);
 
     return nullptr;
@@ -1939,8 +1959,20 @@ public:
     setReturnType(returnExpr->getType());
   }
   virtual llvm::Value* compile() override {
+    // return 1
+    // bb:
+    //  a = alloca
+    //  ret kati
+    // return 2
+    if (Builder.GetInsertBlock()->getTerminator()) {
+      Builder.SetInsertPoint(
+        llvm::BasicBlock::Create(TheContext, "lone_ret", Builder.GetInsertBlock()->getParent())
+      );
+    }
     llvm::Value *RetValue = returnExpr->compile();
     Builder.CreateRet(RetValue);
+    // create after block. Should be inserted at the end of If_then_else block
+
     return nullptr;
    }
 
@@ -1960,6 +1992,11 @@ class Exit: public Stmt {
       setStmtType(EXIT);
     }
     virtual llvm::Value* compile() override {
+      if (Builder.GetInsertBlock()->getTerminator()) {
+        Builder.SetInsertPoint(
+          llvm::BasicBlock::Create(TheContext, "lone_exit", Builder.GetInsertBlock()->getParent())
+        );
+      }
       Builder.CreateRetVoid();
       return nullptr;
     }

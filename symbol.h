@@ -29,7 +29,6 @@
 
 #include <stdbool.h>
 #include <map>
-#include <set>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Instructions.h>
@@ -121,13 +120,12 @@ struct SymbolEntry_tag {
    unsigned int   hashValue;          /* ���� ���������������          */
    SymbolEntry  * nextHash;           /* ������� ������� ���� �.�.     */
    SymbolEntry  * nextInScope;        /* ������� ������� ���� �������� */
-
+   llvm::AllocaInst * allocainst;
    union {                            /* ������� �� ��� ���� ��������: */
 
       struct {                                /******* ��������� *******/
          Type          type;                  /* �����                 */
          int           offset;                /* Offset ��� �.�.       */
-         llvm::AllocaInst * allocainst;
       } eVariable;
 
       struct {                                /******** ������� ********/
@@ -156,7 +154,6 @@ struct SymbolEntry_tag {
          int           offset;                /* Offset ��� �.�.       */
          PassMode      mode;                  /* ������ ����������     */
          SymbolEntry * next;                  /* ������� ����������    */
-         llvm::AllocaInst * llvmpar;
       } eParameter;
 
       struct {                                /** ��������� ��������� **/
@@ -194,7 +191,6 @@ typedef enum {
    --------------------------------------------------------------------- */
 
 extern Scope        * currentScope;
-extern std::set<SymbolEntry *> live_variables;
 extern unsigned int   quadNext;
 extern unsigned int   tempNumber;
 
@@ -243,5 +239,4 @@ void          printMode          (PassMode mode);
 
 void          printSymbolTable   ();
 void          StandardLibraryInit();
-void          addLiveVariable    (SymbolEntry * e);
 #endif

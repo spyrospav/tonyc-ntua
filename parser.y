@@ -247,8 +247,8 @@ expr:
   | expr '*' expr { $$ = new BinOp($1, $2, $3); }
   | expr '/' expr { $$ = new BinOp($1, $2, $3); }
   | expr T_mod expr { $$ = new BinOp($1, $2, $3); }
-  | "true" { $$ = new BoolConst("true"); }
-  | "false" { $$ = new BoolConst("false"); }
+  | "true" { $$ = new BoolConst(true); }
+  | "false" { $$ = new BoolConst(false); }
   | T_not expr {$$ = new UnOp("not", $2); }
   | expr "and" expr { $$ = new BinOp($1, $2, $3); }
   | expr "or" expr { $$ = new BinOp($1, $2, $3); }

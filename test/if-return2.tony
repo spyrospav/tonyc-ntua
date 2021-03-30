@@ -5,16 +5,23 @@
 
 def program ():
   def bool opposite_sign? (int a, b):
+    puts("printing a, b\n")
+    puti(a)
+    putc('\n')
+    puti(b)
+    putc('\n')
     if a < 0:
       if b > 0:
+        puts("a<0, b>0\n")
         return true
       end
     elsif a > 0:
       if b < 0:
+        puts("a>0, b<0\n")
         return true
       end
     end
     return false
   end
-  putb(opposite_sign?(1,-1))
+  putb(opposite_sign?(1,1))
 end

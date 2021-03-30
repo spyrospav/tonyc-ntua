@@ -31,14 +31,12 @@
 #include "error.h"
 #include "symbol.h"
 #include <map>
-#include <set>
 
 /* ---------------------------------------------------------------------
    ------------- ��������� ���������� ��� ������ �������� --------------
    --------------------------------------------------------------------- */
 
 Scope        * currentScope;           /* �������� ��������              */
-std::set<SymbolEntry *> live_variables;
 unsigned int   quadNext;               /* ������� �������� ��������      */
 unsigned int   tempNumber;             /* �������� ��� temporaries       */
 
@@ -148,7 +146,6 @@ void initSymbolTable (unsigned int size)
     /* �������� �������������� */
 
     currentScope = NULL;
-    live_variables = std::set<SymbolEntry *>();
     quadNext     = 1;
     tempNumber   = 1;
     numInserted = 0;
@@ -205,15 +202,6 @@ void closeScope ()
         e = next;
     }
 
-    if (currentScope->nestingLevel > 2) {
-      for (auto it = live_variables.begin(); it != live_variables.end(); ++it) {
-        if ((*it)->nestingLevel < currentScope->parent->nestingLevel)
-          live_variables.insert((*it));
-      }
-    }
-    else {
-      live_variables.clear();
-    }
     currentScope = currentScope->parent;
     my_delete(t);
 
@@ -258,7 +246,7 @@ SymbolEntry * newVariable (const char * name, Type type, llvm::AllocaInst * a)
     if (e != NULL) {
         e->entryType = ENTRY_VARIABLE;
         e->u.eVariable.type = type;
-        e->u.eVariable.allocainst = a;
+        e->allocainst = a;
         type->refCount++;
         currentScope->negOffset -= sizeOfType(type);
         e->u.eVariable.offset = currentScope->negOffset;
@@ -918,8 +906,4 @@ void StandardLibraryInit() {
   endFunctionHeader(p, typeVoid);
   closeScope();
 
-}
-
-void addLiveVariable(SymbolEntry *e) {
-  live_variables.insert(e);
 }
