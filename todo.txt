@@ -60,6 +60,9 @@ def program():
   end
   a := 1
   fun(a)
-  puti(a) % 3
+  puti(a) % Should print 3
   putc('\n')
 end
+
+call(a, b)
+!realLeft -> Load(alloainst)
