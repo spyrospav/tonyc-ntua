@@ -130,8 +130,8 @@ func-def-list:
 ;
 
 header:
-    type T_id '(' formal-list ')' { $$ = new Header($1, $2, $4);}// std::cout << *$$ << std::endl; }
-  | T_id '(' formal-list ')' {  $$ = new Header(typeVoid, $1, $3);}// std::cout << *$$ << std::endl; }
+    type T_id '(' formal-list ')' { $$ = new Header($1, $2, $4); }
+  | T_id '(' formal-list ')' { $$ = new Header(typeVoid, $1, $3); }
 ;
 
 formal-list:
@@ -164,7 +164,7 @@ var-def: type T_id id-list { $3->var_append($2); $3->var_type($1); $$ = $3; }
 
 id-list:
     /* nothing */ { $$ = new VarList();}
-  | ',' T_id id-list { $3->var_append($2); $$ =$3; }
+  | ',' T_id id-list { $3->var_append($2); $$ = $3; }
 ;
 
 stmt-list-plus:

@@ -7,7 +7,7 @@ def main ():
 
   def list[int] qsort (list[int] l):
 
-    def list[int] qsort_aux (list[int] l; list[int] rest):
+    def list[int] qsort_aux (list[int] l, rest):
       int pivot, x
       list[int] lt, ge
 
