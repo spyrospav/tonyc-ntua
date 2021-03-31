@@ -896,6 +896,7 @@ public:
 
     llvm::BasicBlock *BB = llvm::BasicBlock::Create(TheContext, "entry", thisFunction);
     Builder.SetInsertPoint(BB);
+
     if (isMain) {
       Builder.CreateCall(TheInit, {});
     }
@@ -1217,7 +1218,7 @@ public:
     llvm::Value* operand = expr->compile();
     if(!strcmp(op, "+")) return operand;
     else if(!strcmp(op, "-")) return Builder.CreateMul(operand, c64(-1), "minus_sign_tmp");
-    else return nullptr;
+    else if(!strcmp(op, "not")) return Builder.CreateNot(operand, "not_value");
 
   }
 
@@ -1417,14 +1418,9 @@ class ArrayItem: public Expr{
       lval = true;
     }
     virtual llvm::Value* compile() override {
-
       llvm::Value *arrptr = arr->compile();
       llvm::Value *index = expr->compile();
-      uint64_t Idx;
-      if (llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(index)) {
-        Idx = CI->getZExtValue();
-      }
-      llvm::Value* n = Builder.CreateInBoundsGEP(arrptr, c32(Idx), "idx");
+      llvm::Value* n = Builder.CreateInBoundsGEP(arrptr, index, "idx");
       if (realLeft) return n;
       else return Builder.CreateLoad(n, "arrayitem");
     }

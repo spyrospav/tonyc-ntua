@@ -7,17 +7,27 @@ def main ():
 
   def list[int] qsort (list[int] l):
 
-    def list[int] qsort_aux (list[int] l, rest):
+    def list[int] qsort_aux (list[int] l; list[int] rest):
       int pivot, x
       list[int] lt, ge
 
+      %puts("qsort_aux\n")
+      if nil?(l):
+        %puts("list in qsort_aux is nil\n ")
 
-      if nil?(l): return rest end
-        pivot := head(l)
+        return rest end
+      pivot := head(l)
       l := tail(l)
-      for lt := nil, ge := nil; nil?(l); l := tail(l):
+      for lt := nil, ge := nil; not nil?(l); l := tail(l):
         x := head(l)
-        if x < pivot: lt := x # lt else: ge := x # ge end
+        % puts("inside for ") puti(x) putc('\n')
+        if x < pivot:
+          % puts("x = " ) puti(x) puts(" < pivot = ") puti(pivot) putc('\n')
+          lt := x # lt
+        else:
+          % puts("x = " ) puti(x) puts(" >= pivot = ") puti(pivot) putc('\n')
+          ge := x # ge
+        end
       end
       return qsort_aux(lt, pivot # qsort_aux(ge, rest))
     end

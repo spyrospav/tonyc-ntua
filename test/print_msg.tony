@@ -1,0 +1,12 @@
+<*
+ * Test case: print_msg.tony
+ * Result: Pass
+ *>
+
+
+def main():
+  char[] msg
+  msg := new char[10]
+  gets(10, msg)
+  puts(msg)
+end
