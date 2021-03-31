@@ -1,0 +1,26 @@
+<*
+ * Test case: simple-list.tony
+ * Result: Pass
+ *>
+
+ def program():
+  list[int] a
+  list[int] b
+  putc('\n')
+  a := nil
+  putb(nil?(a)) % should output true
+  a := 5 # a
+  putb(nil?(a)) % should output false
+  puti(head (a)) % should output 5
+  putc('\n')
+  a := 6 # a
+  puti(head (a)) % should output 6
+  putc('\n')
+  a := 8 # (7 # a)
+  putc('\n')
+  puti(head (tail (a))) % should output 7
+  putc('\n')
+  b := tail (a)
+  puti(head (tail (tail (b)))) % should output 5
+  putc('\n')
+end

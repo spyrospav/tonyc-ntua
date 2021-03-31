@@ -7,6 +7,7 @@
 #include <cstring>
 #include <stdio.h>
 #include <algorithm>
+#include <set>
 
 #include "symbol.h"
 #include "error.h"
@@ -19,6 +20,7 @@
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/Constants.h>
 
 /*------------ LLVM Optimizations -------------*/
 #include <llvm/Transforms/InstCombine/InstCombine.h>
@@ -81,13 +83,22 @@ inline std::ostream& operator<<(std::ostream &out, Type t) {
   return out;
 }
 
+/*
+ * Statements types :
+ *  Simple (For, If, Assignment)
+ *  Return
+ *  Exit
+ */
 enum StmtType{
   SIMPLE_STMT,
   RETURN,
-  EXIT,
-  COND_RETURN
+  EXIT
+  //COND_RETURN
 };
 
+/*
+ *
+ */
 enum StringExpr{
   STRING,
   STRING_ITEM,
@@ -97,194 +108,354 @@ enum StringExpr{
 
 class AST {
   public:
-    AST() {
-
-    }
+    AST() { }
     virtual ~AST() {
       destroySymbolTable();
     }
     virtual void printOn(std::ostream &out) const = 0;
-    virtual llvm::Value* compile() { return nullptr; } //const = 0;
+    virtual llvm::Value* compile() { return nullptr; }
     virtual void sem() {}
     void llvm_compile_and_dump(bool doOptimize=false) {
-    // Initialize
-    TheModule = std::make_unique<llvm::Module>("Tony program", TheContext);
-    TheFPM = std::make_unique<llvm::legacy::FunctionPassManager>(TheModule.get());
-    // Initialize optimization Function Pass Manager
-    if (doOptimize) {
-      //std::cout << "Intermediate optimization" << std::endl;
-      TheFPM->add(llvm::createPromoteMemoryToRegisterPass());
-      TheFPM->add(llvm::createInstructionCombiningPass());
-      TheFPM->add(llvm::createReassociatePass());
-      TheFPM->add(llvm::createGVNPass());
-      TheFPM->add(llvm::createCFGSimplificationPass());
-    }
-    TheFPM->doInitialization();
 
-    // Initialize types
-    i1 = llvm::IntegerType::get(TheContext, 1);
-    i8 = llvm::IntegerType::get(TheContext, 8);
-    i16 = llvm::IntegerType::get(TheContext, 16);
-    i32 = llvm::IntegerType::get(TheContext, 32);
-    i64 = llvm::IntegerType::get(TheContext, 64);
+      // Initialize TheModule
+      TheModule = std::make_unique<llvm::Module>("Tony program", TheContext);
 
-    // Initialize global variables (e.g newline)
-    llvm::ArrayType *nl_type = llvm::ArrayType::get(i8, 2); //create llvm array type of nl (it should have 2 items with 8 bits each (characters))
-    TheNL = new llvm::GlobalVariable(
-        *TheModule, nl_type, true, llvm::GlobalValue::PrivateLinkage,
-        llvm::ConstantArray::get(nl_type, {c8('\n'), c8('\0')}), "nl"
-    );
-    TheNL->setAlignment(1);
-    // Initialize Abenetopoulos library functions
-    llvm::FunctionType *writeInteger_type =
-      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i64}, false);
-    TheWriteInteger =
-      llvm::Function::Create(writeInteger_type, llvm::Function::ExternalLinkage,
-                       "puti", TheModule.get());
+      // Initialize Function Pass Manager
+      TheFPM = std::make_unique<llvm::legacy::FunctionPassManager>(TheModule.get());
 
-    SymbolEntry *p = lookupEntry("puti", LOOKUP_ALL_SCOPES, false);
-    p->u.eFunction.llvmfun = TheWriteInteger;
+      // add optimization Functions to FPM
+      // doOptimize = True -> Run the following optimization passess
+      if (doOptimize) {
+        TheFPM->add(llvm::createPromoteMemoryToRegisterPass());
+        TheFPM->add(llvm::createInstructionCombiningPass());
+        TheFPM->add(llvm::createReassociatePass());
+        TheFPM->add(llvm::createGVNPass());
+        TheFPM->add(llvm::createCFGSimplificationPass());
+      }
+      TheFPM->doInitialization();
 
-   llvm::FunctionType *writeCharacter_type =
-     llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i8}, false);
-   TheWriteCharacter =
-     llvm::Function::Create(writeCharacter_type, llvm::Function::ExternalLinkage,
-                      "putc", TheModule.get());
+      // Initialize types
+      // i1: Boolean, i8: Char, i32: Main return, i64: Integer
+      i1 = llvm::IntegerType::get(TheContext, 1);
+      i8 = llvm::IntegerType::get(TheContext, 8);
+      i16 = llvm::IntegerType::get(TheContext, 16);
+      i32 = llvm::IntegerType::get(TheContext, 32);
+      i64 = llvm::IntegerType::get(TheContext, 64);
 
-   p = lookupEntry("putc", LOOKUP_ALL_SCOPES, false);
-   p->u.eFunction.llvmfun = TheWriteCharacter;
+      // Node type : {i64, *i64}
+      llvm::StructType *NodeType = llvm::StructType::create(TheContext, "nodetype");
+      NodeType->setBody({i64, llvm::PointerType::get(NodeType, 0)});
+      TheListType = llvm::PointerType::get(NodeType, 0);
 
-    llvm::FunctionType *writeBoolean_type =
-      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i1}, false);
-    TheWriteBoolean =
-      llvm::Function::Create(writeBoolean_type, llvm::Function::ExternalLinkage,
-                       "putb", TheModule.get());
+      // Initialize global variables (e.g newline)
+      llvm::ArrayType *nl_type = llvm::ArrayType::get(i8, 2); //create llvm array type of nl (it should have 2 items with 8 bits each (characters))
+      TheNL = new llvm::GlobalVariable(
+          *TheModule, nl_type, true, llvm::GlobalValue::PrivateLinkage,
+          llvm::ConstantArray::get(nl_type, {c8('\n'), c8('\0')}), "nl"
+      );
+      TheNL->setAlignment(1);
 
-    p = lookupEntry("putb", LOOKUP_ALL_SCOPES, false);
-    p->u.eFunction.llvmfun = TheWriteBoolean;
+      // Initialize abenetopoulos library functions (https://github.com/abenetopoulos/edsger_lib)
 
-    llvm::FunctionType *writeString_type =
-      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext),
-                        {llvm::PointerType::get(i8, 0)}, false);
-    TheWriteString =
-      llvm::Function::Create(writeString_type, llvm::Function::ExternalLinkage,
-                       "puts", TheModule.get());
+      /*---------------- puti ----------------*/
+      llvm::FunctionType *writeInteger_type = llvm::FunctionType::get(
+        llvm::Type::getVoidTy(TheContext),
+        {i64},
+        false
+      );
 
-    p = lookupEntry("puts", LOOKUP_ALL_SCOPES, false);
-    p->u.eFunction.llvmfun = TheWriteString;
+      TheWriteInteger = llvm::Function::Create(
+        writeInteger_type,
+        llvm::Function::ExternalLinkage,
+        "puti",
+        TheModule.get()
+      );
 
-      //---------------------READ functions---------------------
-     std::vector<llvm::Type *> t;
-     llvm::FunctionType *readInteger_type =
-       llvm::FunctionType::get(i64, std::vector<llvm::Type *> {}, false);
-     TheReadInteger =
-       llvm::Function::Create(readInteger_type, llvm::Function::ExternalLinkage,
-                        "geti", TheModule.get());
+      SymbolEntry *p = lookupEntry("puti", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheWriteInteger;
+
+      /*---------------- putc ----------------*/
+      llvm::FunctionType *writeCharacter_type = llvm::FunctionType::get(
+        llvm::Type::getVoidTy(TheContext),
+        {i8},
+        false
+      );
+
+      TheWriteCharacter = llvm::Function::Create(
+        writeCharacter_type,
+        llvm::Function::ExternalLinkage,
+        "putc",
+        TheModule.get()
+      );
+
+      p = lookupEntry("putc", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheWriteCharacter;
+
+      /*---------------- putb ----------------*/
+      llvm::FunctionType *writeBoolean_type = llvm::FunctionType::get(
+        llvm::Type::getVoidTy(TheContext),
+        {i1},
+        false
+      );
+
+      TheWriteBoolean = llvm::Function::Create(
+        writeBoolean_type,
+        llvm::Function::ExternalLinkage,
+        "putb",
+        TheModule.get()
+      );
+
+      p = lookupEntry("putb", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheWriteBoolean;
+
+      /*---------------- puts ----------------*/
+      llvm::FunctionType *writeString_type = llvm::FunctionType::get(
+        llvm::Type::getVoidTy(TheContext),
+        {llvm::PointerType::get(i8, 0)},
+        false
+      );
+
+      TheWriteString = llvm::Function::Create(
+        writeString_type,
+        llvm::Function::ExternalLinkage,
+        "puts",
+        TheModule.get());
+
+      p = lookupEntry("puts", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheWriteString;
+
+      /*---------------- geti ----------------*/
+      std::vector<llvm::Type *> t;
+
+      llvm::FunctionType *readInteger_type = llvm::FunctionType::get(
+        i64,
+        std::vector<llvm::Type *> {},
+        false
+      );
+
+      TheReadInteger = llvm::Function::Create(
+        readInteger_type,
+        llvm::Function::ExternalLinkage,
+        "geti",
+        TheModule.get()
+      );
+
       p = lookupEntry("geti", LOOKUP_ALL_SCOPES, false);
       p->u.eFunction.llvmfun = TheReadInteger;
 
-     llvm::FunctionType *readCharacter_type =
-      llvm::FunctionType::get(i8, std::vector<llvm::Type *> {}, false);
-     TheReadCharacter =
-      llvm::Function::Create(readCharacter_type, llvm::Function::ExternalLinkage,
-                       "getc", TheModule.get());
-     p = lookupEntry("getc", LOOKUP_ALL_SCOPES, false);
-     p->u.eFunction.llvmfun = TheReadCharacter;
+      /*---------------- getc ----------------*/
+      llvm::FunctionType *readCharacter_type = llvm::FunctionType::get(
+        i8,
+        std::vector<llvm::Type *> {},
+        false
+      );
 
-     llvm::FunctionType *readBoolean_type =
-       llvm::FunctionType::get(i1, std::vector<llvm::Type *>{}, false);
-     TheReadBoolean =
-       llvm::Function::Create(readBoolean_type, llvm::Function::ExternalLinkage,
-                        "getb", TheModule.get());
+      TheReadCharacter = llvm::Function::Create(
+        readCharacter_type,
+        llvm::Function::ExternalLinkage,
+        "getc",
+        TheModule.get()
+      );
+
+      p = lookupEntry("getc", LOOKUP_ALL_SCOPES, false);
+      p->u.eFunction.llvmfun = TheReadCharacter;
+
+      /*---------------- getb ----------------*/
+      llvm::FunctionType *readBoolean_type = llvm::FunctionType::get(
+        i1,
+        std::vector<llvm::Type *>{},
+        false
+      );
+
+      TheReadBoolean = llvm::Function::Create(
+        readBoolean_type,
+        llvm::Function::ExternalLinkage,
+        "getb",
+        TheModule.get()
+      );
+
       p = lookupEntry("getb", LOOKUP_ALL_SCOPES, false);
       p->u.eFunction.llvmfun = TheReadBoolean;
 
-     llvm::FunctionType *readString_type =
-       llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext),
-                         {i64, llvm::PointerType::get(i8, 0)}, false);
-     TheReadString =
-       llvm::Function::Create(readString_type, llvm::Function::ExternalLinkage,
-                        "gets", TheModule.get());
+      /*---------------- gets ----------------*/
+      llvm::FunctionType *readString_type = llvm::FunctionType::get(
+        llvm::Type::getVoidTy(TheContext),
+        {i64, llvm::PointerType::get(i8, 0)},
+        false
+      );
+
+      TheReadString = llvm::Function::Create(
+        readString_type,
+        llvm::Function::ExternalLinkage,
+        "gets",
+        TheModule.get()
+      );
+
       p = lookupEntry("gets", LOOKUP_ALL_SCOPES, false);
       p->u.eFunction.llvmfun = TheReadString;
 
-      //---------------------Conversion functions---------------------
-      llvm::FunctionType *abs_type =
-        llvm::FunctionType::get(i64, {i64}, false);
-      TheAbs =
-        llvm::Function::Create(abs_type, llvm::Function::ExternalLinkage,
-                        "abs", TheModule.get());
+      /*---------------- abs ----------------*/
+      llvm::FunctionType *abs_type = llvm::FunctionType::get(
+        i64,
+        {i64},
+        false
+      );
+
+      TheAbs = llvm::Function::Create(
+        abs_type,
+        llvm::Function::ExternalLinkage,
+        "abs",
+        TheModule.get()
+      );
 
       p = lookupEntry("abs", LOOKUP_ALL_SCOPES, false);
       p->u.eFunction.llvmfun = TheAbs;
 
-      llvm::FunctionType *ord_type =
-        llvm::FunctionType::get(i64, {i8}, false);
-      TheOrd =
-        llvm::Function::Create(ord_type, llvm::Function::ExternalLinkage,
-                        "ord", TheModule.get());
+      /*---------------- ord ----------------*/
+      llvm::FunctionType *ord_type = llvm::FunctionType::get(
+        i64,
+        {i8},
+        false
+      );
+
+      TheOrd = llvm::Function::Create(
+        ord_type,
+        llvm::Function::ExternalLinkage,
+        "ord",
+        TheModule.get()
+      );
 
       p = lookupEntry("ord", LOOKUP_ALL_SCOPES, false);
       p->u.eFunction.llvmfun = TheOrd;
 
-      llvm::FunctionType *chr_type =
-        llvm::FunctionType::get(i8, {i64}, false);
-      TheChr =
-        llvm::Function::Create(chr_type, llvm::Function::ExternalLinkage,
-                        "chr", TheModule.get());
+      /*---------------- chr ----------------*/
+      llvm::FunctionType *chr_type = llvm::FunctionType::get(
+        i8,
+        {i64},
+        false
+      );
+
+      TheChr = llvm::Function::Create(
+        chr_type,
+        llvm::Function::ExternalLinkage,
+        "chr",
+        TheModule.get()
+      );
 
       p = lookupEntry("chr", LOOKUP_ALL_SCOPES, false);
       p->u.eFunction.llvmfun = TheChr;
 
-      llvm::FunctionType *strlen_type =
-        llvm::FunctionType::get(i64, {llvm::PointerType::get(i8, 0)}, false);
-      TheStrLen =
-        llvm::Function::Create(strlen_type, llvm::Function::ExternalLinkage,
-                        "strlen", TheModule.get());
+      /*---------------- strlen ----------------*/
+      llvm::FunctionType *strlen_type = llvm::FunctionType::get(
+        i64,
+        {llvm::PointerType::get(i8, 0)},
+        false
+      );
+
+      TheStrLen = llvm::Function::Create(
+        strlen_type,
+        llvm::Function::ExternalLinkage,
+        "strlen",
+        TheModule.get()
+      );
 
       p = lookupEntry("strlen", LOOKUP_ALL_SCOPES, false);
       p->u.eFunction.llvmfun = TheStrLen;
 
-      llvm::FunctionType *strcmp_type =
-        llvm::FunctionType::get(i64,
-          {llvm::PointerType::get(i8, 0), llvm::PointerType::get(i8, 0)}, false);
+      /*---------------- strcmp ----------------*/
+      llvm::FunctionType *strcmp_type = llvm::FunctionType::get(
+        i64,
+        {llvm::PointerType::get(i8, 0),
+        llvm::PointerType::get(i8, 0)},
+        false
+      );
+
       TheStrCmp =
-        llvm::Function::Create(strcmp_type, llvm::Function::ExternalLinkage,
-                        "strcmp", TheModule.get());
+        llvm::Function::Create(
+        strcmp_type,
+        llvm::Function::ExternalLinkage,
+        "strcmp",
+        TheModule.get()
+      );
 
       p = lookupEntry("strcmp", LOOKUP_ALL_SCOPES, false);
       p->u.eFunction.llvmfun = TheStrCmp;
 
-      llvm::FunctionType *strcpy_type =
-        llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext),
-          {llvm::PointerType::get(i8, 0), llvm::PointerType::get(i8, 0)}, false);
-      TheStrCpy =
-        llvm::Function::Create(strcpy_type, llvm::Function::ExternalLinkage,
-                        "strcpy", TheModule.get());
+      /*---------------- strcpy ----------------*/
+      llvm::FunctionType *strcpy_type = llvm::FunctionType::get(
+        llvm::Type::getVoidTy(TheContext),
+        {llvm::PointerType::get(i8, 0),
+        llvm::PointerType::get(i8, 0)},
+        false
+      );
+
+      TheStrCpy = llvm::Function::Create(
+        strcpy_type,
+        llvm::Function::ExternalLinkage,
+        "strcpy",
+        TheModule.get()
+      );
 
       p = lookupEntry("strcpy", LOOKUP_ALL_SCOPES, false);
       p->u.eFunction.llvmfun = TheStrCpy;
 
-      TheStrCat =
-        llvm::Function::Create(strcpy_type, llvm::Function::ExternalLinkage,
-                        "strcat", TheModule.get());
+      /*---------------- strcat ----------------*/
+      TheStrCat = llvm::Function::Create(
+        strcpy_type,
+        llvm::Function::ExternalLinkage,
+        "strcat",
+        TheModule.get()
+      );
 
       p = lookupEntry("strcat", LOOKUP_ALL_SCOPES, false);
       p->u.eFunction.llvmfun = TheStrCat;
 
-    compile();
-    bool bad = llvm::verifyModule(*TheModule, &llvm::errs());
-    if (bad) {
-      std::cerr << "The IR is bad!" << std::endl;
-      TheModule->print(llvm::errs(), nullptr);
-      std::exit(1);
+      /*---------------- GC_malloc ----------------*/
+      llvm::FunctionType *malloc_type = llvm::FunctionType::get(
+        llvm::PointerType::get(i8, 0),
+        {i64},
+        false
+      );
+
+      TheMalloc = llvm::Function::Create(
+        malloc_type,
+        llvm::Function::ExternalLinkage,
+        "GC_malloc",
+        TheModule.get()
+      );
+
+      /*---------------- GC_init ----------------*/
+      llvm::FunctionType *init_type = llvm::FunctionType::get(
+        llvm::Type::getVoidTy(TheContext),
+        {},
+        false
+      );
+
+      TheInit = llvm::Function::Create(
+        init_type,
+        llvm::Function::ExternalLinkage,
+        "GC_init",
+        TheModule.get()
+      );
+
+      // Compile code
+      compile();
+
+      // Verify Module
+      bool bad = llvm::verifyModule(*TheModule, &llvm::errs());
+      if (bad) {
+        std::cerr << "The IR is bad!" << std::endl;
+        TheModule->print(llvm::errs(), nullptr);
+        std::exit(1);
+      }
+
+      // Emit IR code
+      TheModule->print(llvm::outs(), nullptr);
     }
 
-
-    TheModule->print(llvm::outs(), nullptr);
-    }
+    // Converts Type to llvm::Type
     llvm::Type * getLLVMType(Type type) const{
-      llvm::Type * retType;
+      llvm::Type * retType, * tmp;
       bool isReference;
       switch (type->kind) {
           case TYPE_VOID:
@@ -300,17 +471,14 @@ class AST {
               retType = i8;
               break;
           case TYPE_ARRAY:
-              retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
-              break;
           case TYPE_IARRAY:
-              //retType = llvm::ArrayType::get
               retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
               break;
           case TYPE_LIST:
-              retType = llvm::PointerType::get(getLLVMType(type->refType), 0);
+              retType = TheListType;
               break;
           case TYPE_ANY:
-              retType = nullptr; //pithanon COnstantNullPointer.. ..
+              retType = nullptr;
               break;
           default:
               retType = i64;
@@ -333,6 +501,7 @@ class AST {
     static llvm::Type *i16;
     static llvm::Type *i32;
     static llvm::Type *i64;
+    static llvm::PointerType *TheListType;
 
 
     // Global Variables
@@ -373,6 +542,8 @@ class AST {
     static llvm::Function *TheStrCpy;
     static llvm::Function *TheStrCat;
 
+    static llvm::Function *TheInit;
+    static llvm::Function *TheMalloc;
 };
 
 inline std::ostream& operator<< (std::ostream &out, const AST &t) {
@@ -380,6 +551,7 @@ inline std::ostream& operator<< (std::ostream &out, const AST &t) {
   return out;
 };
 
+// Local variable definitions
 class VarList: public AST {
   public:
     VarList() : var_list(), type(NULL) {};
@@ -412,6 +584,7 @@ class VarList: public AST {
     Type type;
 };
 
+// Functions' arguments
 class Arg: public AST {
   public:
     Arg(PassMode pass, VarList *v): passmode(pass)
@@ -432,6 +605,7 @@ class Arg: public AST {
       out << ")" << " with Type " << type << " and pass by " << passmode;
     }
     int getArgSize() { return var_list.size(); }
+    PassMode getPassMode() { return passmode; }
     Type getType() { return type; }
     void sem(SymbolEntry *p) {
       for (const char *name: var_list) newParameter(name, type, passmode, p);
@@ -446,13 +620,13 @@ class Arg: public AST {
     Type type;
 };
 
+// Needed for expressions like (int a,b; char c; bool d,e,f)
 typedef std::vector<Arg *> ArgList;
 
 enum HeaderDef {
-  DECL,
-  DEF
+  DECL, // declaration
+  DEF // definitions
 };
-
 
 class Header: public AST {
 public:
@@ -489,44 +663,60 @@ public:
 
   llvm::Function * compilef() {
 
-      SymbolEntry * p;
-      p = newFunction(name);
-      if (hdef == DECL) {
-        forwardFunction(p);
-      }
+    SymbolEntry * p;
 
-      openScope();
-
-      std::vector<llvm::Type *> argTypes;
-      for (Arg *a: *arg_list) {
-        a->sem(p);
-        for (int i = 0; i < a->getArgSize(); i++){
-          llvm::Type *tempType = this->getLLVMType(a->getType());
-          argTypes.push_back(tempType);
-        }
-      }
-
-      llvm::FunctionType * FT = llvm::FunctionType::get(getLLVMType(type), argTypes, false );
-      llvm::Function * Function = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
-                                                      name, TheModule.get());
-
-      std::vector<const char *> names;
-
-      for (Arg *a: *arg_list) {
-        std::vector<const char *> tmp = a->getArgListNames();
-        names.insert(names.end(), tmp.begin(), tmp.end());
-      }
-
-      int i = 0;
-      for (auto &Arg : Function->args())
-          Arg.setName(names[i++]);
-
-      p->u.eFunction.llvmfun = Function;
-
-      endFunctionHeader(p, type);
-
-      return Function;
+    p = newFunction(name);
+    if (hdef == DECL) {
+      forwardFunction(p);
     }
+
+    openScope();
+
+    std::vector<llvm::Type *> argTypes;
+    for (Arg *a: *arg_list) {
+      a->sem(p);
+      for (int i = 0; i < a->getArgSize(); i++){
+        llvm::Type *tempType = this->getLLVMType(a->getType());
+        if (a->getPassMode() == PASS_BY_REFERENCE) tempType = llvm::PointerType::get(tempType, 0);
+        argTypes.push_back(tempType);
+      }
+    }
+
+    if (p->u.eFunction.llvmfun != nullptr) {
+      endFunctionHeader(p, type);
+      return p->u.eFunction.llvmfun;
+    }
+
+    llvm::FunctionType * FT = llvm::FunctionType::get(
+      getLLVMType(type),
+      argTypes,
+      false
+    );
+
+    llvm::Function * Function = llvm::Function::Create(
+      FT,
+      llvm::Function::ExternalLinkage,
+      name,
+      TheModule.get()
+    );
+
+    std::vector<const char *> names;
+
+    for (Arg *a: *arg_list) {
+      std::vector<const char *> tmp = a->getArgListNames();
+      names.insert(names.end(), tmp.begin(), tmp.end());
+    }
+
+    int i = 0;
+    for (auto &Arg : Function->args())
+        Arg.setName(names[i++]);
+
+    p->u.eFunction.llvmfun = Function;
+
+    endFunctionHeader(p, type);
+
+    return Function;
+  }
 
 private:
   Type type;
@@ -535,7 +725,7 @@ private:
   HeaderDef hdef;
 };
 
-
+// Abstract definition of statements
 class Stmt: public AST {
   public:
     virtual Type getReturnType() { return returntype; }
@@ -557,7 +747,6 @@ class Stmt: public AST {
 };
 
 typedef std::vector<Stmt *> StmtList;
-
 
 enum DefType {
   FUNCTION,
@@ -653,7 +842,6 @@ public:
       header->sem();
     }
 
-    if (false) printSymbolTable();;
     int v = 0, f = 0, d = 0;
     bool existsReturn = false;
     for (std::vector<DefType>::iterator it = sequence.begin(); it < sequence.end(); it++){
@@ -670,18 +858,14 @@ public:
         d++;
       }
     }
-
+    int counter = 1;
     if (stmt_list != NULL) {
       for (Stmt *stmt : *stmt_list) {
         stmt->sem();
-
         if(stmt->checkForReturns()){
-
           if(stmt->checkForExits() && header->getHeaderType() != typeVoid)
             fatal("Exit can only be used inside void function blocks");
-          //std::cout << "statement " << *stmt << " has checkReturn() " << std::endl;
           existsReturn = true;
-          //std::cout << "header type = " << header->getHeaderType() << " return type = " << stmt->getReturnType() <<std::endl;
           stmt->checkReturnType(header);
         }
       }
@@ -691,33 +875,39 @@ public:
       fatal("Non void function must have a return statement.");
     }
 
-    if (false) printSymbolTable();;
+    // live_vars = live_variables;
     closeScope();
   }
 
   virtual llvm::Value* compile() override {
 
     if (!isMain) {
-        SymbolEntry * e = lookupEntry(header->getHeaderName(), LOOKUP_ALL_SCOPES, false);
-        if (!e){
-          thisFunction = header->compilef();
-        }
-        else {
-          thisFunction = e->u.eFunction.llvmfun;
-        }
+      thisFunction = header->compilef();
     }
-    else{
+    else {
       llvm::FunctionType *FT = llvm::FunctionType::get(i32, {}, false );
-      thisFunction = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
-                                                        "main", TheModule.get());
-
+      thisFunction = llvm::Function::Create(
+        FT,
+        llvm::Function::ExternalLinkage,
+        "main",
+        TheModule.get()
+      );
     }
 
     llvm::BasicBlock *BB = llvm::BasicBlock::Create(TheContext, "entry", thisFunction);
     Builder.SetInsertPoint(BB);
 
+    if (isMain) {
+      Builder.CreateCall(TheInit, {});
+    }
 
-    //Builder.CreateCall(TheInit, {});
+    for (auto &arg : thisFunction->args()) {
+      std::string name = arg.getName().str();
+      llvm::AllocaInst *alloca = Builder.CreateAlloca(arg.getType(), nullptr, name);
+      Builder.CreateStore(&arg, alloca);
+      SymbolEntry * e = lookupEntry(name.c_str(), LOOKUP_CURRENT_SCOPE, false);
+      e->allocainst = alloca;
+    }
 
     int v = 0, f = 0, d = 0;
     int count = 1;
@@ -733,14 +923,14 @@ public:
         for (const char * s : var_list[v]->getVarList()) {
             llvm::AllocaInst *alloca_temp = CreateEntryBlockAlloca(thisFunction, s, t);
             SymbolEntry * e = lookupEntry(s, LOOKUP_ALL_SCOPES, false);
-            e->u.eVariable.allocainst = alloca_temp;
+            e->allocainst = alloca_temp;
         }
         v++;
       }
       else if (*it == DECLARATION) {
         decl_list[d]->compile();
         d++;
-        Builder.SetInsertPoint(BB);
+        // Builder.SetInsertPoint(BB);
       }
     }
 
@@ -754,17 +944,23 @@ public:
       }
     }
 
-    if (false) printSymbolTable();;
     closeScope();
-    // Emit the program code.
-    //compile();
+
     if (isMain) {
       Builder.CreateRet(c32(0));
     }
     else {
-      if(equalType(header->getHeaderType(), typeVoid)) Builder.CreateRetVoid();
+      // Return statement produce by class Return for non-main function
+      if(equalType(header->getHeaderType(), typeVoid)) {
+        if (Builder.GetInsertBlock()->getTerminator()) {
+          Builder.SetInsertPoint(
+            llvm::BasicBlock::Create(TheContext, "lone_exit", Builder.GetInsertBlock()->getParent())
+          );
+        }
+        Builder.CreateRetVoid();
+      }
     }
-    llvm::verifyFunction(*thisFunction);
+
     bool bad = llvm::verifyFunction(*thisFunction, &llvm::errs());
     if (bad) {
       std::cerr << "The function " << header->getHeaderName() << " is bad!" << std::endl;
@@ -772,7 +968,7 @@ public:
       std::exit(1);
     }
     if (isMain) {
-    TheFPM->run(*thisFunction);
+      TheFPM->run(*thisFunction);
     }
     return nullptr;
   }
@@ -787,9 +983,10 @@ private:
   int size;
   llvm::Function * thisFunction;
   bool isMain;
+  std::set<SymbolEntry *> live_vars;
 };
 
-// EXPRESSIONS (e.g atoms, constants, operations applied to expressions )
+// Expressions (e.g atoms, constants, operations applied to expressions )
 
 class Expr : public AST {
   public:
@@ -802,7 +999,7 @@ class Expr : public AST {
     bool isBasicType(Type t) {
       return (equalType(t, typeChar) || equalType(t, typeBoolean) || equalType(t, typeInteger));
     }
-    void setLeft() { isLeft = true; }
+    void setLeft() { realLeft = true; }
     Type getType() { return type; }
     bool isLValue() { return lval; }
     StringExpr getStringExpr() { return stringExpr; }
@@ -813,6 +1010,7 @@ class Expr : public AST {
     Type type;
     bool lval;
     bool isLeft = false;
+    bool realLeft = false;
      // enumeration of valid types for a expression.
      // used to throw error on cases like "test"[0] := 4
     StringExpr stringExpr;
@@ -827,11 +1025,6 @@ class IntConst : public Expr {
       out << "IntConst(" << num << ")";
     }
     ~IntConst() {}
-    /*
-    virtual void compile() const override {
-      std::cout << "  pushl $" << num << "\n";
-    }
-    */
     virtual void sem() override { lval = false; stringExpr = OTHER; type = typeInteger; }
     virtual llvm::Value* compile()override { return c64(num); }
   private:
@@ -845,11 +1038,6 @@ class CharConst : public Expr {
       out << "CharConst(" << character << ")";
     }
     ~CharConst() {}
-    /*
-    virtual void compile() const override {
-      std::cout << "  pushl $" << num << "\n";
-    }
-    */
     virtual void sem() override { lval = false; stringExpr = OTHER; type = typeChar; }
     virtual llvm::Value* compile() override {
       return c8(character); }
@@ -865,11 +1053,6 @@ class BoolConst : public Expr {
     virtual void printOn(std::ostream &out) const override {
       out << "Logic(" << logic << ")";
     }
-    /*
-    virtual void compile() const override {
-      std::cout << "  pushl $" << num << "\n";
-    }
-    */
     virtual void sem() override { lval = false; stringExpr = OTHER; type = typeBoolean; }
     virtual llvm::Value* compile() override { return c1(int(logic)); }
 
@@ -905,26 +1088,28 @@ public:
   }
   virtual llvm::Value* compile() override {
     SymbolEntry *e = lookupEntry(var,LOOKUP_ALL_SCOPES, false);
-    if (e==NULL) { fatal("Id has not been declared"); }
     entry = e->entryType;
     if (entry == ENTRY_VARIABLE) {
-      if (!isLeft)
-        return Builder.CreateLoad(e->u.eVariable.allocainst, var);
-      else return e->u.eVariable.allocainst;
+      if (!realLeft) return Builder.CreateLoad(e->allocainst, var);
+      else return e->allocainst;
     }
     else if (entry == ENTRY_FUNCTION) {
-      return e->u.eFunction.llvmfun;
+      return TheModule->getFunction(var);
     }
     else if (entry == ENTRY_PARAMETER) {
-      type = e->u.eParameter.type;
-      if (e->u.eParameter.mode == PASS_BY_REFERENCE) ;
+
+      if (e->u.eParameter.mode == PASS_BY_REFERENCE) {
+        if (!realLeft)
+          return Builder.CreateLoad(Builder.CreateLoad(e->allocainst, var), var);
+        else return Builder.CreateLoad(e->allocainst, var);
+      }
+      //SymbolEntry *e = lookupEntry(var,LOOKUP_ALL_SCOPES, false);
+      if (!realLeft)
+        return Builder.CreateLoad(e->allocainst, var);
+      else return e->allocainst;
     }
+
     return nullptr;
-    //lookup the entry
-
-    // llvm::Value *v = Builder.CreateGEP(TheVars, {c32(0), c32(hashTheVars[e])} , name_ptr );
-    // return Builder.CreateLoad(v, name);
-
   }
 
 
@@ -943,7 +1128,7 @@ public:
     delete right;
   }
   virtual void printOn(std::ostream &out) const override {
-    out << "a" <<  op << "(" << *left << ", " << *right << ")";
+    out << op << "(" << *left << ", " << *right << ")";
   }
 
   virtual void sem() override {
@@ -990,28 +1175,7 @@ public:
         return Builder.CreateOr(l, r, "ortmp");
       else if(!strcmp(op, "and"))
         return Builder.CreateAnd(l, r, "andtmp");
-      /*
-      PN->llvm::PHINode::addIncoming(Builder.CreateAnd(l,r,"andtmp"),
-            Builder.GetInsertBlock());
-      llvm::PHINode *PN = Builder.CreatePHI(llvm::Type::getInt1Ty(TheContext), 2, "and_phi");
-      llvm::BasicBlock *PrevBB = Builder.GetInsertBlock();
-      llvm::Function *TheFunction = PrevBB->getParent();
-      llvm::BasicBlock *LogicBothBB =
-        llvm::BasicBlock::Create(TheContext, "loop", TheFunction);
-      llvm::BasicBlock *LogicOneBB =
-        llvm::BasicBlock::Create(TheContext, "loop", TheFunction);
-      if(!strcmp(op, "and")) {
-        llvm::Value *shortCircuitCond =
-          Builder.CreateICmpNE(l, c1(0), "shortcirc_and");
-        Builder.CreateCondBr(shortCircuitCond, LogicBothBB, LogicOneBB);
-        Builder.SetInsertPoint(LogicBothBB);
 
-        return Builder.CreateAnd(l, r, "andtmp"); // not sure yet if CreateAnd short circuits the logical expression
-        }
-      else if(!strcmp(op, "or")){
-        return Builder.CreateOr(l, r, "ortmp");
-        }
-      */
     }
 
     return nullptr;
@@ -1054,7 +1218,7 @@ public:
     llvm::Value* operand = expr->compile();
     if(!strcmp(op, "+")) return operand;
     else if(!strcmp(op, "-")) return Builder.CreateMul(operand, c64(-1), "minus_sign_tmp");
-    else return nullptr;
+    else if(!strcmp(op, "not")) return Builder.CreateNot(operand, "not_value");
 
   }
 
@@ -1074,7 +1238,7 @@ public:
     lval = false;
     expr->sem();
     if(expr->getType()->kind != TYPE_LIST) fatal("Operand is not a list");
-    if(strcmp(op, "nil?") == 0) type = typeBoolean;
+    if(strcmp(op, "nil?") == 0){ type = typeBoolean; }
     else if(strcmp(op, "head") == 0) {
       if (isTypeAny(expr->getType()->refType)) fatal("Cannot apply head operator on empty list.");
       type = expr->getType()->refType;
@@ -1083,10 +1247,29 @@ public:
       if (isTypeAny(expr->getType()->refType)) fatal("Cannot apply tail operator on empty list.");
       type = expr->getType();
     }
-    else std::cout << " Aliens." << std::endl;
     stringExpr = OTHER;
   }
   virtual llvm::Value* compile() override {
+    //std::cout << "hello1" << std::endl;
+    llvm::Value *v = expr->compile();
+    if(strcmp(op, "nil?") == 0) {
+      return Builder.CreateICmpEQ(v, llvm::ConstantPointerNull::get(TheListType), "eqtmp");
+    }
+    else if(strcmp(op, "head") == 0) {
+      llvm::Value *h = Builder.CreateGEP(v, {c32(0), c32(0)}, "headptr");
+      if ((type->kind != TYPE_LIST) && (type->kind != TYPE_IARRAY)) {
+        //std::cout << "not ptr" << std::endl;
+        return  Builder.CreateTrunc(Builder.CreateLoad(h, "headtmp"), getLLVMType(type), "head");
+      }
+      else {
+        //std::cout << "ptr" << std::endl;
+        return Builder.CreateIntToPtr(Builder.CreateLoad(h, "head"), getLLVMType(type));
+      }
+    }
+    else if(strcmp(op, "tail") == 0) {
+      llvm::Value *t = Builder.CreateGEP(v, {c32(0), c32(1)}, "tailptr");
+      return Builder.CreateLoad(t, "tail");
+    }
     return nullptr;
   }
 private:
@@ -1114,7 +1297,26 @@ public:
     stringExpr = OTHER;
   }
   virtual llvm::Value* compile() override {
-    return nullptr;
+    llvm::Value *l = expr1->compile();
+    llvm::Value *r = expr2->compile();
+    llvm::Value *alloca = Builder.CreateCall(TheMalloc, {c64(16)}, "l");
+    llvm::Value *n = Builder.CreateBitCast(alloca, TheListType, "nodetmp");
+    llvm::Value *h = Builder.CreateGEP(n, {c32(0), c32(0)}, "headptr");
+    if ((expr1->getType()->kind != TYPE_LIST) && (expr1->getType()->kind != TYPE_IARRAY)) {
+      // cast to i64 to keep compatibility with list type
+      //std::cout << "not ptr" << std::endl;
+      llvm::Value *l_cast = Builder.CreateZExt(l, i64, "headcast");
+      Builder.CreateStore(l_cast, h);
+    }
+    else {
+      llvm::Value *l_cast = Builder.CreatePtrToInt(l, i64, "headcast");
+      //std::cout << "ptr" << std::endl;
+      Builder.CreateStore(l_cast, h);
+    }
+    llvm::Value *t = Builder.CreateGEP(n, {c32(0), c32(1)}, "tailptr");
+    Builder.CreateStore(r, t);
+    return n;
+
   }
 private:
   const char *op;
@@ -1134,7 +1336,7 @@ class Nil: public Expr {
       stringExpr = OTHER;
     }
     virtual llvm::Value* compile() override {
-      return nullptr;
+      return llvm::ConstantPointerNull::get(TheListType);
     }
   private:
 };
@@ -1179,15 +1381,18 @@ class Array: public Expr {
       lval = false;
       sizeExpr->type_check(typeInteger);
       type = typeIArray(arrayType);
+      // Check if sizeExpr can be evaluated -> mini interpreter for that
+      // If we can't, throw fatal/error
     }
+
     virtual llvm::Value* compile() override {
-      // llvm::BasicBlock *PrevBB = Builder.GetInsertBlock();
-      // llvm::Type *array_type = getLLVMType(arrayType);
-      // llvm::Value *array_size = sizeExpr->compile();
-      // auto alloc_size = llvm::ConstantExpr::getMul(sizeof(array_type), array_size);//llogika 8a 8elei dikia mas ylopoihsh to sizeof
-      // llvm::CreateMalloc(PrevBB, array_type->getPointerTo(), array_type, alloc_size )
-      return nullptr;
+      llvm::Value *r = sizeExpr->compile();
+      llvm::Value *rsize = Builder.CreateMul(r, c64(sizeOfType(arrayType)), "arraysize");
+      llvm::Value *alloca = Builder.CreateCall(TheMalloc, {rsize}, "arraytmp");
+      llvm::Value *n = Builder.CreateBitCast(alloca, llvm::PointerType::get(getLLVMType(arrayType), 0), "arrayptr");
+      return n;
     }
+
   private:
     Type arrayType;
     Expr *sizeExpr;
@@ -1196,30 +1401,31 @@ class Array: public Expr {
 
 class ArrayItem: public Expr{
   public:
-    ArrayItem(Expr *a, Expr *e): atom(a), expr(e) {}
+    ArrayItem(Expr *a, Expr *e): arr(a), expr(e) {}
     ~ArrayItem() {}
+
     virtual void printOn(std::ostream &out) const override {
       out << "Item Array of type " << type << std::endl;
     }
 
     virtual void sem() override {
       expr->type_check(typeInteger);
-
-      atom->sem();
-      if (!isTypeArray(atom->getType())) fatal("Non array type is not subscritable");
-      if (atom->getStringExpr() == STRING) stringExpr = STRING_ITEM;
+      arr->sem();
+      if (!isTypeArray(arr->getType())) fatal("Non array type is not subscritable");
+      if (arr->getStringExpr() == STRING) stringExpr = STRING_ITEM;
       else stringExpr = OTHER;
-      //std::cout << "Type of atom " << atom->getType() << std::endl;
-      //std::cout << "ref type of " << atom->getType()->refType << std::endl;
-      type = atom->getType()->refType;
-      //std :: cout << type << std::endl;
+      type = arr->getType()->refType;
       lval = true;
     }
     virtual llvm::Value* compile() override {
-      return nullptr;
+      llvm::Value *arrptr = arr->compile();
+      llvm::Value *index = expr->compile();
+      llvm::Value* n = Builder.CreateInBoundsGEP(arrptr, index, "idx");
+      if (realLeft) return n;
+      else return Builder.CreateLoad(n, "arrayitem");
     }
   private:
-    Expr *atom, *expr;
+    Expr *arr, *expr;
 };
 
 class CallExpr : public Expr {
@@ -1249,7 +1455,7 @@ public:
     }
 
     SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_ALL_SCOPES, false);
-    if (p->u.eFunction.isForward) fatal("Function needs to be defined before calling it.");
+    //if (p->u.eFunction.isForward) fatal("Function needs to be defined before calling it.");
     type = p->u.eFunction.resultType;
     if (equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression should not be of type Void.");
 
@@ -1295,8 +1501,15 @@ public:
     if (exprlist == NULL) return Builder.CreateCall(calledFun, std::vector<llvm::Value*> {});
     ExprList reversed = *exprlist;
     std::reverse(reversed.begin(), reversed.end());
+    SymbolEntry *args = p->u.eFunction.firstArgument;
+    args = p->u.eFunction.firstArgument;
     for (Expr *expr: reversed) {
-      argv.push_back(expr->compile());
+      if (args->u.eParameter.mode == PASS_BY_REFERENCE) {
+        expr->setLeft();
+      }
+      llvm::Value * v = expr->compile();
+      argv.push_back(v);
+      args = args->u.eParameter.next;
     }
     return Builder.CreateCall(calledFun, argv);
   }
@@ -1334,7 +1547,7 @@ class CallStmt: public Stmt{
       }
 
       SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_ALL_SCOPES, false);
-      if (p->u.eFunction.isForward) fatal("Function needs to be defined before calling it.");
+      //if (p->u.eFunction.isForward) fatal("Function needs to be defined before calling it.");
       if (!equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression must of type Void.");
 
       SymbolEntry *args = p->u.eFunction.firstArgument;
@@ -1373,15 +1586,25 @@ class CallStmt: public Stmt{
     }
 
     virtual llvm::Value* compile() override {
+
       SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_ALL_SCOPES, false);
+
       llvm::Function *calledFun = p->u.eFunction.llvmfun;
       std::vector<llvm::Value*> argv;
       argv.clear();
       if (exprlist == NULL) return Builder.CreateCall(calledFun, std::vector<llvm::Value*> {});
       ExprList reversed = *exprlist;
       std::reverse(reversed.begin(), reversed.end());
+      SymbolEntry *args = p->u.eFunction.firstArgument;
+
+      args = p->u.eFunction.firstArgument;
       for (Expr *expr: reversed) {
-        argv.push_back(expr->compile());
+        if (args->u.eParameter.mode == PASS_BY_REFERENCE) {
+          expr->setLeft();
+        }
+        llvm::Value * v = expr->compile();
+        argv.push_back(v);
+        args = args->u.eParameter.next;
       }
       Builder.CreateCall(calledFun, argv);
       return nullptr;
@@ -1669,7 +1892,9 @@ public:
       for(Stmt *s: *s_list) {
         if(s!= nullptr) s->compile();
       }
-      Builder.CreateBr(AfterBB);
+      if (!Builder.GetInsertBlock()->getTerminator()) {
+        Builder.CreateBr(AfterBB);
+      }
       counter++;
     }
 
@@ -1677,7 +1902,9 @@ public:
     for(Stmt *s: *s_last) {
       if(s!= nullptr) s->compile();
     }
-    Builder.CreateBr(AfterBB);
+    if (!Builder.GetInsertBlock()->getTerminator()) {
+      Builder.CreateBr(AfterBB);
+    }
     Builder.SetInsertPoint(AfterBB);
 
     return nullptr;
@@ -1702,9 +1929,9 @@ public:
     if (!var->isLValue()) fatal("Can't assign value to non lvalue");
     if (var->getStringExpr() == STRING_ITEM) fatal("Can't assign value to item of a constant string type object");
     expr->type_check(var->getType());
+    var->setLeft();
   }
   virtual llvm::Value* compile() override {
-    var->setLeft();
     llvm::Value * alloc_tmp = var->compile();
     llvm::Value * val_tmp = expr->compile();
     Builder.CreateStore(val_tmp, alloc_tmp);
@@ -1728,8 +1955,20 @@ public:
     setReturnType(returnExpr->getType());
   }
   virtual llvm::Value* compile() override {
+    // return 1
+    // bb:
+    //  a = alloca
+    //  ret kati
+    // return 2
+    if (Builder.GetInsertBlock()->getTerminator()) {
+      Builder.SetInsertPoint(
+        llvm::BasicBlock::Create(TheContext, "lone_ret", Builder.GetInsertBlock()->getParent())
+      );
+    }
     llvm::Value *RetValue = returnExpr->compile();
     Builder.CreateRet(RetValue);
+    // create after block. Should be inserted at the end of If_then_else block
+
     return nullptr;
    }
 
@@ -1749,6 +1988,11 @@ class Exit: public Stmt {
       setStmtType(EXIT);
     }
     virtual llvm::Value* compile() override {
+      if (Builder.GetInsertBlock()->getTerminator()) {
+        Builder.SetInsertPoint(
+          llvm::BasicBlock::Create(TheContext, "lone_exit", Builder.GetInsertBlock()->getParent())
+        );
+      }
       Builder.CreateRetVoid();
       return nullptr;
     }

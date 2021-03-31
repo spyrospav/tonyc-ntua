@@ -1,0 +1,10 @@
+<*
+ * Test case: lval3.tony
+ * Result: Pass
+ *>
+
+def program():
+  int[][] a
+  int[] b
+  a[0] := b
+end

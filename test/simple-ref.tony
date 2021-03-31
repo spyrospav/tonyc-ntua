@@ -1,5 +1,5 @@
 <*
- * Test case: ref.tony
+ * Test case: simple-ref.tony
  * Result: Fail
  *>
 
@@ -9,6 +9,6 @@ def program():
     b := b + 1
   end
   a := 1
-  test(5)
+  test(a)
   puti(a)
 end

@@ -1,0 +1,15 @@
+<*
+ * Test case: if-arrays.tony
+ * Result: Pass
+ *>
+
+def program():
+  int i, b
+  int[] arr
+  b := 1
+  arr := new int[10]
+  if b>0:
+    arr[1] := 55
+  end
+  puti(arr[1])
+end

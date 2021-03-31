@@ -1,0 +1,17 @@
+<*
+ * Test case: simple-return2.tony
+ * Result: Pass
+ *>
+def program():
+  def int endiam():
+    int a, b
+    a := 20
+    b := 2
+    if a > 1:
+      return 10
+    end
+    return 20
+    return 30
+  end
+  puti(endiam())
+end

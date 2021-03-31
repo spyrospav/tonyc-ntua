@@ -13,10 +13,11 @@ llvm::Type *AST::i8;
 llvm::Type *AST::i16;
 llvm::Type *AST::i32;
 llvm::Type *AST::i64;
-
-
+llvm::PointerType *AST::TheListType;
+//llvm::Type *AST::ConstantPointerNull;
 // Global Variables
 llvm::GlobalVariable *AST::TheNL;
+
 //Functions
 llvm::Function *AST::TheWriteInteger;
 llvm::Function *AST::TheWriteString;
@@ -35,3 +36,6 @@ llvm::Function *AST::TheStrLen;
 llvm::Function *AST::TheStrCmp;
 llvm::Function *AST::TheStrCpy;
 llvm::Function *AST::TheStrCat;
+
+llvm::Function *AST::TheInit;
+llvm::Function *AST::TheMalloc;

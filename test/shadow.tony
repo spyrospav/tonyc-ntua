@@ -1,0 +1,49 @@
+<*
+ * Test case: shadow.tony
+ * Result: Pass
+ *>
+
+ def main():
+
+   def int f(int a; int b):
+
+     def int g():
+       def int h1():
+         def int h11():
+           a := a + b
+           return a
+         end
+         return h11()
+       end
+       int a
+       def int h2():
+         def int ff(int a):
+           def int gg():
+             def int hh1():
+               a := a + 1
+               return a
+             end
+             int a
+             def int hh2():
+               a := 11
+               return a
+             end
+             a := 42
+             return h1() + hh1() + hh2()
+           end
+           return gg()
+         end
+         return ff(a + 6)
+       end
+       a := 17
+       return h1() + h2()      % THIS IS THE FINAL RESULT: 3 + ff(17+6) = 3 + ff(23) = 3 + (4 + 24 + 11) = 42
+     end
+
+     return g()
+
+   end
+
+   puti( f(2, 1) )             % must print 42
+   puts("\n")
+
+ end

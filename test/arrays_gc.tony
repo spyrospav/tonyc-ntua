@@ -1,0 +1,10 @@
+<*
+ * Test case: arrays_gc.tony
+ * Result: Pass
+ *>
+
+def progran():
+  int[] a, c
+  a := new int[2000]
+
+end

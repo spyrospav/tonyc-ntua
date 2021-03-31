@@ -1,0 +1,11 @@
+<*
+ * Test case: call5.tony
+ * Result: Pass
+ *>
+
+def program () :
+  def int call (int a; char b; bool c):
+    return 5
+  end
+  puti(call(3, 'b', true))
+end

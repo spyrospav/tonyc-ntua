@@ -5,9 +5,10 @@
 
 def program():
   int a
-  a := 1
+  a := 2
   if a > 1 :
     skip
     a := 3
   end
+  puti(a)
 end

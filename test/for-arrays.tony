@@ -1,0 +1,17 @@
+<*
+ * Test case: for-arrays.tony
+ * Result: Pass
+ *>
+
+def program():
+  int i
+  int[] arr
+  arr := new int[10]
+  i:=1
+  arr[i] := 43
+  for i:=0; i<10; i:=i+1:
+    puts("i")
+    arr[i] := i
+    puts("i")
+  end
+end

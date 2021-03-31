@@ -246,7 +246,7 @@ SymbolEntry * newVariable (const char * name, Type type, llvm::AllocaInst * a)
     if (e != NULL) {
         e->entryType = ENTRY_VARIABLE;
         e->u.eVariable.type = type;
-        e->u.eVariable.allocainst = a;
+        e->allocainst = a;
         type->refCount++;
         currentScope->negOffset -= sizeOfType(type);
         e->u.eVariable.offset = currentScope->negOffset;
@@ -352,17 +352,15 @@ SymbolEntry * newConstant (const char * name, Type type, ...)
 SymbolEntry * newFunction (const char * name, llvm::Function * f)
 {
     SymbolEntry * e = lookupEntry(name, LOOKUP_CURRENT_SCOPE, false);
-
     if (e == NULL) {
         e = newEntry(name);
         if (e != NULL) {
-
-            e->entryType = ENTRY_FUNCTION;
-            e->u.eFunction.isForward = false;
-            e->u.eFunction.pardef = PARDEF_DEFINE;
-            e->u.eFunction.firstArgument = e->u.eFunction.lastArgument = NULL;
-            e->u.eFunction.resultType = NULL;
-            e->u.eFunction.llvmfun = f;
+          e->entryType = ENTRY_FUNCTION;
+          e->u.eFunction.isForward = false;
+          e->u.eFunction.pardef = PARDEF_DEFINE;
+          e->u.eFunction.firstArgument = e->u.eFunction.lastArgument = NULL;
+          e->u.eFunction.resultType = NULL;
+          e->u.eFunction.llvmfun = f;
         }
         return e;
     }
@@ -637,9 +635,10 @@ unsigned int sizeOfType (Type type)
             break;
         case TYPE_INTEGER:
         case TYPE_IARRAY:
-        case TYPE_LIST:
         case TYPE_POINTER:
-            return 2;
+          return 8;
+        case TYPE_LIST:
+            return 16;
         case TYPE_BOOLEAN:
         case TYPE_CHAR:
             return 1;
@@ -810,7 +809,7 @@ void StandardLibraryInit() {
   //decl putb (bool b)
   p = newFunction("putb");
   openScope();
-  newParameter("b", typeBoolean, PASS_BY_VALUE, p);
+  newParameter("c", typeBoolean, PASS_BY_VALUE, p);
   endFunctionHeader(p, typeVoid);
   closeScope();
 

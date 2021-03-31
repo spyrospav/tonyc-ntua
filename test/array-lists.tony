@@ -1,0 +1,21 @@
+<*
+ * Test case: array-lists.tony
+ * Result: Pass
+ *>
+
+ def program():
+  list[int][] a
+  list[int] b
+  b := 6 # 5 # 4 # 3 # 2 # nil
+  a := new list[int][2]
+  a[0] := b
+  a[1] := tail (b)
+  puti(head (a[0])) % Should print 6
+  putc('\n')
+  puti(head (tail (a[0]))) % should print 5
+  putc('\n')
+  puti(head (a[1])) % Should print 5
+  putc('\n')
+  puti(head (tail (a[1]))) % should print 4
+  putc('\n')
+end

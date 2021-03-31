@@ -1,0 +1,22 @@
+<*
+ * Test case: simple-nest2.tony
+ * Result: Pass
+ *>
+
+def program():
+  int a
+  def nested(int b):
+    def int nested_square(int c):
+      puti(a+1)
+      putc('\n')
+      puti(nested_square(a))
+      putc('\n')
+      return a*a
+    end
+    skip
+  end
+  a := 1
+  nested(4)
+  nested(a*2)
+
+end

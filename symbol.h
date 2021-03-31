@@ -32,10 +32,6 @@
 #include <llvm/IR/Value.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Instructions.h>
-/*
- *  �� �� �������� include ��� ������������� ��� ��� ���������
- *  ��� C ��� ��������������, �������������� �� �� �� ��������:
- */
 
 #if 0
 typedef enum { false=0, true=1 } bool;
@@ -124,13 +120,12 @@ struct SymbolEntry_tag {
    unsigned int   hashValue;          /* ���� ���������������          */
    SymbolEntry  * nextHash;           /* ������� ������� ���� �.�.     */
    SymbolEntry  * nextInScope;        /* ������� ������� ���� �������� */
-
+   llvm::AllocaInst * allocainst;
    union {                            /* ������� �� ��� ���� ��������: */
 
       struct {                                /******* ��������� *******/
          Type          type;                  /* �����                 */
          int           offset;                /* Offset ��� �.�.       */
-         llvm::AllocaInst * allocainst;
       } eVariable;
 
       struct {                                /******** ������� ********/
@@ -195,9 +190,9 @@ typedef enum {
    ------------- ��������� ���������� ��� ������ �������� --------------
    --------------------------------------------------------------------- */
 
-extern Scope        * currentScope;       /* �������� ��������         */
-extern unsigned int   quadNext;           /* ������� �������� �������� */
-extern unsigned int   tempNumber;         /* �������� ��� temporaries  */
+extern Scope        * currentScope;
+extern unsigned int   quadNext;
+extern unsigned int   tempNumber;
 
 extern const Type typeVoid;
 extern const Type typeInteger;
@@ -244,5 +239,4 @@ void          printMode          (PassMode mode);
 
 void          printSymbolTable   ();
 void          StandardLibraryInit();
-
 #endif
