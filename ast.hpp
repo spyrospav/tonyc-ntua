@@ -643,9 +643,7 @@ public:
   virtual void printOn(std::ostream &out) const override {
     out << "Header with name " << name << " and type " << type << "(";
     bool first = true;
-    std::cout << "here" << std::endl;
     for (std::vector<Arg *>::iterator it = arg_list->begin(); it != arg_list->end(); ++it){
-    std::cout << "here2" << std::endl;
       if (!first) out << ", ";
       first = false;
       out << std::endl << **it;
