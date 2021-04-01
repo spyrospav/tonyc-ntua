@@ -81,7 +81,7 @@ def program():
     end
     char[] board
     char current, d
-    bool win
+    bool res
     int i
 
     board := new char[9]
@@ -90,11 +90,11 @@ def program():
     end
 
     current := 'X'
-
+    res := false
     clear_screen()
     puts("Welcome To the game, press enter to start")
     d := getc()
-    for skip;true;skip:
+    for skip;not res;skip:
         clear_screen()
         print_board(board)
         i := get_move(current,board)
@@ -105,8 +105,10 @@ def program():
             puts("Player \'")
             putc(current)
             puts("\' Won!!!\n")
+            res := true
         elsif ended(board):
             puts("Game was a draw\n")
+            res := true
         end
         switch(current)
     end
