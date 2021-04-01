@@ -105,10 +105,8 @@ def program():
             puts("Player \'")
             putc(current)
             puts("\' Won!!!\n")
-            exit
         elsif ended(board):
             puts("Game was a draw\n")
-            exit
         end
         switch(current)
     end

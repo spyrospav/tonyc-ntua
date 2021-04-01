@@ -69,3 +69,14 @@ call(a, b)
 
 varlist: mallon swsta
 header's arglist: anapoda alla eswterika me swsth diata3h ()
+
+wrong testcases:
+  by-ref (instruciton does not dominate all uses)
+  for-return1 (basic block doesnt have a terminator)
+  game-v2 (does not work as expected)
+  if-return5 (basic block doesnt have a terminator)
+  isprime (basic block doesnt have a terminator)
+  lists3 (basic block doesnt have a terminator)
+  shadow (instruciton does not dominate all uses)
+  simple-if5 (instruciton does not dominate all uses)
+  simple-nest2 (instruciton does not dominate all uses)
