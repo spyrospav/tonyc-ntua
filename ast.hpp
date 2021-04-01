@@ -651,6 +651,7 @@ public:
     out << std::endl << ")";
   }
   virtual void sem() override {
+    std::reverse(arg_list->begin(), arg_list->end());
     SymbolEntry * p;
     p = newFunction(name);
     if (hdef == DECL) {
@@ -1219,7 +1220,7 @@ public:
     if(!strcmp(op, "+")) return operand;
     else if(!strcmp(op, "-")) return Builder.CreateMul(operand, c64(-1), "minus_sign_tmp");
     else if(!strcmp(op, "not")) return Builder.CreateNot(operand, "not_value");
-
+    return nullptr;
   }
 
 private:
@@ -1478,7 +1479,7 @@ public:
     if (exprsize){
       int i = 0;
       ExprList reversed = *exprlist;
-      std::reverse(reversed.begin(), reversed.end());
+      //std::reverse(reversed.begin(), reversed.end());
       args = p->u.eFunction.firstArgument;
       for (Expr *expr: reversed) {
         expr->sem();
@@ -1500,7 +1501,7 @@ public:
     argv.clear();
     if (exprlist == NULL) return Builder.CreateCall(calledFun, std::vector<llvm::Value*> {});
     ExprList reversed = *exprlist;
-    std::reverse(reversed.begin(), reversed.end());
+    //std::reverse(reversed.begin(), reversed.end());
     SymbolEntry *args = p->u.eFunction.firstArgument;
     args = p->u.eFunction.firstArgument;
     for (Expr *expr: reversed) {
@@ -1568,8 +1569,7 @@ class CallStmt: public Stmt{
       if (exprsize) {
         int i = 0;
         ExprList reversed = *exprlist;
-        std::reverse(reversed.begin(), reversed.end());
-
+        //std::reverse(reversed.begin(), reversed.end());
         args = p->u.eFunction.firstArgument;
         for (Expr *expr: reversed) {
           expr->sem();
@@ -1594,9 +1594,8 @@ class CallStmt: public Stmt{
       argv.clear();
       if (exprlist == NULL) return Builder.CreateCall(calledFun, std::vector<llvm::Value*> {});
       ExprList reversed = *exprlist;
-      std::reverse(reversed.begin(), reversed.end());
+      //std::reverse(reversed.begin(), reversed.end());
       SymbolEntry *args = p->u.eFunction.firstArgument;
-
       args = p->u.eFunction.firstArgument;
       for (Expr *expr: reversed) {
         if (args->u.eParameter.mode == PASS_BY_REFERENCE) {

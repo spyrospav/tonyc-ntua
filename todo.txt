@@ -66,3 +66,6 @@ end
 
 call(a, b)
 !realLeft -> Load(alloainst)
+
+varlist: mallon swsta
+header's arglist: anapoda alla eswterika me swsth diata3h ()
