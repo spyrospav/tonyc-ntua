@@ -11,9 +11,14 @@
 To install **tonyc** you should run
 
 ```
+./configure.sh
 make
-make install
 ```
+
+`configure.sh` automatically installs the following (needed) packages :
+  * `gcc`
+  * `llvm-10`
+  * `clang-10`
 
 ### Usage
 

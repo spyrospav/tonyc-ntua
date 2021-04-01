@@ -1,6 +1,6 @@
 <*
  * Test case: simple-ref.tony
- * Result: Fail
+ * Result: Pass
  *>
 
 def program():

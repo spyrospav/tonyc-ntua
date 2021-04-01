@@ -108,10 +108,12 @@ program:
       $2->setMain(); $2->sem();
       /* codegen  */
       destroySymbolTable();
+      #ifndef SEM
       initSymbolTable(2048);
       openScope();
       StandardLibraryInit();
       $2->llvm_compile_and_dump(doOptimize);
+      #endif
   }
 ;
 

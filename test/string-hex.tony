@@ -7,7 +7,7 @@
    char[] s
    s := "The character N in heximal is \x4e \n"
    puts(s)
-   s := "Lets try something \x1R"
+   s := "Lets try something \x1d"
    puts(s)
 
  end

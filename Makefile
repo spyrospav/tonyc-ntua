@@ -3,8 +3,11 @@
 LLVMCONFIG=llvm-config-10
 
 CXX=clang++-10
-CXXFLAGS=-std=c++14 -g `llvm-config-10 --cxxflags`
+#DSEM=-DSEM
+DSEM=
+CXXFLAGS=-std=c++14 -g ${DSEM} `llvm-config-10 --cxxflags`
 LDFLAGS=`llvm-config-10 --ldflags --system-libs --libs all`
+DIR=$(pwd)
 
 default: tony
 
@@ -37,6 +40,10 @@ lexer.o: lexer.cpp lexer.hpp parser.hpp symbol.h ast.hpp
 tony: lexer.o parser.o symbol.o error.o general.o
 	$(CXX) $(CXXFLAGS) -o tony lexer.o parser.o symbol.o error.o general.o $(LDFLAGS)
 
+install: tony
+	#echo 'export PATH=$PATH:$DIR/tonyc' >> ~/.bashrc
+	#echo 'alias tonyc=./tonyc' >> ~/.bashrc
+	
 clean:
 	$(RM) lexer.cpp parser.cpp parser.hpp parser.output *.o
 

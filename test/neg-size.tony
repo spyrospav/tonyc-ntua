@@ -1,6 +1,6 @@
 <*
  * Test case: neg-size.tony
- * Result: Fail
+ * Result: Pass 
  *>
 
 def program():

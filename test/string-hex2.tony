@@ -1,0 +1,13 @@
+<*
+ * Test case: string-hex2.tony
+ * Result: Fail
+ *>
+
+ def program():
+   char[] s
+   s := "The character N in heximal is \x4e \n"
+   puts(s)
+   s := "Lets try something \x1R"
+   puts(s)
+
+ end
