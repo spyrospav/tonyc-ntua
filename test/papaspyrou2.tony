@@ -1,0 +1,17 @@
+def main ():
+  def enlarge(int[] a; int old_size; int new_size):
+    int[] b
+    int i
+    b := new int[new_size]
+    for i := 0; i < old_size; i := i + 1:
+      b[i] := a[i]
+    end
+    a := b   % this is why we need call by reference!
+  end
+
+  int[] x
+  x := new int[17]
+  enlarge(x, 17, 42)
+  x[25] := 1234             % this should be OK now
+  puti(x[25])
+end

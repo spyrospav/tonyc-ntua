@@ -1,0 +1,11 @@
+def main ():
+  def push (ref list[int] stack; int x):
+    stack := x # stack
+  end
+
+  list[int] s
+  s := nil
+  push(s, 1)
+  push(s, 2)
+  puti(head(s))  % this should print 2
+end
