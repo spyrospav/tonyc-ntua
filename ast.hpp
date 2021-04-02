@@ -953,12 +953,19 @@ public:
     else {
       // Return statement produce by class Return for non-main function
       if(equalType(header->getHeaderType(), typeVoid)) {
+        // function returns void
         if (Builder.GetInsertBlock()->getTerminator()) {
           Builder.SetInsertPoint(
             llvm::BasicBlock::Create(TheContext, "lone_exit", Builder.GetInsertBlock()->getParent())
           );
         }
         Builder.CreateRetVoid();
+      }
+      else {
+        if (!Builder.GetInsertBlock()->getTerminator()) {
+          //function is non void, thus this is not reachable
+          Builder.CreateUnreachable();
+        }
       }
     }
 

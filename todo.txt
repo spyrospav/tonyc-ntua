@@ -72,11 +72,10 @@ header's arglist: anapoda alla eswterika me swsth diata3h ()
 
 wrong testcases:
   by-ref (instruciton does not dominate all uses)
-  for-return1 (basic block doesnt have a terminator)
-  game-v2 (does not work as expected)
-  if-return5 (basic block doesnt have a terminator)
-  isprime (basic block doesnt have a terminator)
-  lists3 (basic block doesnt have a terminator)
+  lists3 (seg fault, see line 21)
   shadow (instruciton does not dominate all uses)
   simple-if5 (instruciton does not dominate all uses)
   simple-nest2 (instruciton does not dominate all uses)
+
+proposed and implemented solution is marking block as uncreachable.
+That solves the non terminating block problem, at least as far as I can see.

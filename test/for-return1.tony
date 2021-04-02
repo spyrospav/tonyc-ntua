@@ -21,4 +21,5 @@ def program():
   end
   a := 5
   b := fun1(a)
+  putb(b)
 end

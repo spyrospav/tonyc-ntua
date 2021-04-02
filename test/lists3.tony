@@ -18,6 +18,7 @@
      def print_list (list[int] l):
          for skip; head (l) <> 0; l := tail(l):
              puti(head(l))
+             % error here after first head dunno why
              puts(" ")
          end
          puts("end\n")
