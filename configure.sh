@@ -31,3 +31,8 @@ echo "Installed clang-10"
 echo "Installing llvm-10..."
 apt-get -y -qq install llvm-10
 echo "Installed llvm-10"
+
+# Install libgc-dev
+echo "Installing libgc-dev..."
+apt-get -y -qq install libgc-dev
+echo "Installed libgc-dev"

@@ -1,3 +1,9 @@
+<*
+ * Test case: papaspyrou2.tony
+ * Result: Pass
+ *>
+
+
 def main ():
   def enlarge(int[] a; int old_size; int new_size):
     int[] b

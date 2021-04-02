@@ -1,3 +1,9 @@
+<*
+ * Test case: papaspyrou3.tony
+ * Result: Pass
+ *>
+
+
 % if a is passed by reference then the final output should contain updated
 % values (1-17 and then all 42s)
 % if a is passed by value then the final output is not updated and stays 1-17
@@ -13,8 +19,8 @@ def main ():
     end
     putc('\n')
   end
-  % def enlarge(ref int[] a; int old_size; int new_size):
-  def enlarge( int[] a; int old_size; int new_size):
+  def enlarge(ref int[] a; int old_size; int new_size):
+  % def enlarge( int[] a; int old_size; int new_size):
     int[] b
     int i
     b := new int[new_size]
