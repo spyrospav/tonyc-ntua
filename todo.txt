@@ -10,8 +10,6 @@ GROUP2:
   -- Problem with return (multiple returns in the same block are not allowed, however
       every basic block must have a terminating statement- theoritika einai ok)
 GROUP3:
-  -- seira metavlhtwn sto call (?)
-  -- By Ref parameter passing
   -- Outer Scope parameter passing
   -- Check Garbage Collector (for-lists.tony)
 
@@ -34,45 +32,11 @@ if a
 Phi res
 
 
-def program():
-  int b
-  def fun():
-    def fun2():
-      int a
-      a := 42
-    a := 2
-    exit
-  end
-  int a
-  a := 3
-  fun()
-end
-
-
-def program():
-  int a
-  def fun(ref int a):
-    def fun2(ref int b):
-      b := b + 1
-    end
-    a := a + 1
-    fun2(a)
-  end
-  a := 1
-  fun(a)
-  puti(a) % Should print 3
-  putc('\n')
-end
-
 call(a, b)
 !realLeft -> Load(alloainst)
 
-varlist: mallon swsta
-header's arglist: anapoda alla eswterika me swsth diata3h ()
-
 wrong testcases:
   by-ref (instruciton does not dominate all uses)
-  lists3 (seg fault, see line 21)
   shadow (instruciton does not dominate all uses)
   simple-if5 (instruciton does not dominate all uses)
   simple-nest2 (instruciton does not dominate all uses)

@@ -16,9 +16,8 @@
      end
 
      def print_list (list[int] l):
-         for skip; head (l) <> 0; l := tail(l):
+         for skip; not nil?(l); l := tail(l):
              puti(head(l))
-             % error here after first head dunno why
              puts(" ")
          end
          puts("end\n")
@@ -28,12 +27,12 @@
          int i
 
          for i := 1; i <= n; i := i+1, r := tail(r):
-             if head(r) = 0 or head(r) <> i:
+             if nil?(r) or head(r) <> i:
                  return false
              end
          end
          for i := n; i >= 1; i := i-1, l := tail(l):
-             if head(l) = 0 or head(l) <> i:
+             if nil?(l) or head(l) <> i:
                  return false
              end
          end
@@ -41,7 +40,7 @@
      end
 
      def list[int] revert_aux (list [int] l, r):
-         if head(l) = 0:
+         if nil?(l):
              return r
          else:
              return revert_aux(tail(l), (head(l) # r))
