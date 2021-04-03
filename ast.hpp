@@ -1161,8 +1161,8 @@ public:
   }
 
   virtual llvm::Value* compile() override {
-    llvm::Value* l = left->compile();
     if(!canBeShortCircuited){
+      llvm::Value* l = left->compile();
       llvm::Value* r = right->compile();
       if(!strcmp(op, "+")) return Builder.CreateAdd(l, r, "addtmp");
       else if(!strcmp(op, "-")) return Builder.CreateSub(l, r, "subtmp");
@@ -1170,20 +1170,79 @@ public:
       else if(!strcmp(op, "/")) return Builder.CreateSDiv(l, r, "divtmp");
       else if(!strcmp(op, "mod")) return Builder.CreateSRem(l, r, "modtmp");
       else if(!strcmp(op, "=")) return Builder.CreateICmpEQ(l, r, "eqtmp");
-      else if(!strcmp(op, "<=")) return Builder.CreateICmpSLE(l, r, "addtmp");
-      else if(!strcmp(op, "<")) return Builder.CreateICmpSLT(l, r, "addtmp");
-      else if(!strcmp(op, ">=")) return Builder.CreateICmpSGE(l, r, "addtmp");
-      else if(!strcmp(op, ">")) return Builder.CreateICmpSGT(l, r, "addtmp");
+      else if(!strcmp(op, "<=")) return Builder.CreateICmpSLE(l, r, "letmp");
+      else if(!strcmp(op, "<")) return Builder.CreateICmpSLT(l, r, "ltmp");
+      else if(!strcmp(op, ">=")) return Builder.CreateICmpSGE(l, r, "getmp");
+      else if(!strcmp(op, ">")) return Builder.CreateICmpSGT(l, r, "gtmp");
       else if(!strcmp(op, "<>")) return Builder.CreateICmpNE(l, r, "neqtmp");
     }
 
     else {
-      llvm::Value* r = right->compile(); // should be deleted afte shot chircuiting is implemented
-      if(!strcmp(op, "or"))
-        return Builder.CreateOr(l, r, "ortmp");
-      else if(!strcmp(op, "and"))
-        return Builder.CreateAnd(l, r, "andtmp");
 
+      if(!strcmp(op, "or")) {
+
+        llvm::Value* l = left->compile();
+
+        llvm::BasicBlock *L_Calc_BB = Builder.GetInsertBlock();
+        llvm::Function *TheFunction = L_Calc_BB->getParent();
+        llvm::BasicBlock *Or_Calc_BB =
+          llvm::BasicBlock::Create(TheContext, "or_calc", TheFunction);
+        llvm::BasicBlock *R_Calc_BB =
+          llvm::BasicBlock::Create(TheContext, "r_calc", TheFunction);
+
+        // calculate TRUE (this can be set global later)
+        llvm::Value* tru_val = c1(int(true));
+        // compare l with TRUE
+        llvm::Value* doShortCirc = Builder.CreateICmpEQ(l, tru_val, "ortmp");
+        // if l is True go to Calc from L_Calc_BB else go to L_Calc_BB from R_Calc_BB
+        Builder.CreateCondBr(doShortCirc, Or_Calc_BB, R_Calc_BB);
+
+        Builder.SetInsertPoint(R_Calc_BB);
+
+        llvm::Value* r = right->compile();
+        llvm::Value* or_res =  r;
+        R_Calc_BB = Builder.GetInsertBlock();
+        Builder.CreateBr(Or_Calc_BB);
+
+        Builder.SetInsertPoint(Or_Calc_BB);
+        llvm::PHINode *phi_iter = Builder.CreatePHI(i1, 2, "iter");
+        phi_iter->addIncoming(or_res, R_Calc_BB);
+        phi_iter->addIncoming(tru_val, L_Calc_BB);
+        return phi_iter;
+
+      }
+      else if(!strcmp(op, "and")) {
+
+        llvm::Value* l = left->compile();
+
+        llvm::BasicBlock *L_Calc_BB = Builder.GetInsertBlock();
+        llvm::Function *TheFunction = L_Calc_BB->getParent();
+        llvm::BasicBlock *And_Calc_BB =
+          llvm::BasicBlock::Create(TheContext, "and_calc", TheFunction);
+        llvm::BasicBlock *R_Calc_BB =
+          llvm::BasicBlock::Create(TheContext, "r_calc", TheFunction);
+
+        // calculate TRUE (this can be set global later)
+        llvm::Value* fls_val = c1(int(false));
+        // compare l with FALSE
+        llvm::Value* doShortCirc = Builder.CreateICmpEQ(l, fls_val, "andtmp");
+        // if l is True go to Calc from L_Calc_BB else go to L_Calc_BB from R_Calc_BB
+        Builder.CreateCondBr(doShortCirc, And_Calc_BB, R_Calc_BB);
+
+        Builder.SetInsertPoint(R_Calc_BB);
+
+        llvm::Value* r = right->compile();
+        llvm::Value* and_res =  r;
+        R_Calc_BB = Builder.GetInsertBlock();
+        Builder.CreateBr(And_Calc_BB);
+
+        Builder.SetInsertPoint(And_Calc_BB);
+        llvm::PHINode *phi_iter = Builder.CreatePHI(i1, 2, "iter");
+        phi_iter->addIncoming(and_res, R_Calc_BB);
+        phi_iter->addIncoming(fls_val, L_Calc_BB);
+        return phi_iter;
+
+      }
     }
 
     return nullptr;
@@ -1264,6 +1323,7 @@ public:
       return Builder.CreateICmpEQ(v, llvm::ConstantPointerNull::get(TheListType), "eqtmp");
     }
     else if(strcmp(op, "head") == 0) {
+      // std::cout << " in head of list"
       llvm::Value *h = Builder.CreateGEP(v, {c32(0), c32(0)}, "headptr");
       if ((type->kind != TYPE_LIST) && (type->kind != TYPE_IARRAY)) {
         //std::cout << "not ptr" << std::endl;
