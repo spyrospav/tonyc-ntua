@@ -1515,7 +1515,7 @@ public:
   }
   virtual void sem() override {
     lval = false;
-
+    stringExpr = OTHER;
     id->sem();
     EntryType entry = id->getEntryType();
     if (entry != ENTRY_FUNCTION) {
