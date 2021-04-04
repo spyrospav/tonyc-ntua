@@ -113,6 +113,8 @@ program:
       openScope();
       StandardLibraryInit();
       $2->llvm_compile_and_dump(doOptimize);
+      closeScope();
+      destroySymbolTable();
       #endif
   }
 ;

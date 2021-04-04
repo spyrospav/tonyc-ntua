@@ -1,0 +1,18 @@
+<*
+ * Test case: short-circ.tony
+ * Result: Pass
+ *>
+
+def program():
+  bool b
+  int a
+  int[] mylist
+  a := 1
+  if ((a > 0) and ((mylist[1] > 1) and true and true and true)):
+    puts("5\n")
+  else:
+    puts("4\n")
+  end
+end
+
+%((a or b) or c)

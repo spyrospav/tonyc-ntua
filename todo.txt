@@ -11,7 +11,7 @@ GROUP2:
       every basic block must have a terminating statement- theoritika einai ok)
 GROUP3:
   -- Outer Scope parameter passing
-  -- Check Garbage Collector (for-lists.tony)
+  -- Check Garbage Collector (funny behaviour when malloc is the only statement, maybe llvm IM generation pre-optimizes)
 
 ------------
 

@@ -1,0 +1,45 @@
+<*
+ * Test case: test-lib.tony
+ * Result: Pass
+ *>
+
+def program():
+  % this program tests if abgenetopoulos' basic library is correctly integrated
+  % to our codegen module.
+  int i
+  char c
+  char [] s
+  bool b
+
+  b := true
+  i := 1
+  c := 'b'
+  s := new char[9]
+  strcpy(s, "nickie")
+  s[4] := 'x'
+  puts("The following line should be 7\n")
+  puti(i*2 + 5)
+  puts("\nThe following line should be b\n")
+  putc(c)
+  puts("\nThe following line should be 98\n")
+  puti(ord(c))
+  puts("\nThe following line should be c\n")
+  putc(chr(99))
+  puts("\nThe following line should be nickie\n")
+  puts(s)
+  puts("\nThe following line should be false\n")
+  putb(not b)
+  puts("\nThe following line should be 6\n")
+  puti(strlen(s))
+  s[2] := '\0'
+  puts("\nThe following line should be 2\n")
+  puti(strlen(s))
+  puts("\nThe following line should be -1\n")
+  puti(strcmp("nickie", "sagonas"))
+  puts("\nThe following line should be 131\n")
+  puti(abs(-131))
+  puts("\nThe following line should be nihjo\n")
+  strcat(s, "hjo")
+  puts(s)
+  putc('\n')
+end

@@ -653,6 +653,8 @@ public:
   virtual void sem() override {
     std::reverse(arg_list->begin(), arg_list->end());
     SymbolEntry * p;
+    if (strcmp(name, "malloc") == 0)
+      fatal("Cannot declare a function with name \"malloc\".");
     p = newFunction(name);
     if (hdef == DECL) {
       forwardFunction(p);
@@ -842,6 +844,9 @@ public:
     if (!isMain) {
       header->sem();
     }
+    else {
+      openScope();
+    }
 
     int v = 0, f = 0, d = 0;
     bool existsReturn = false;
@@ -886,6 +891,8 @@ public:
       thisFunction = header->compilef();
     }
     else {
+
+      openScope();
       llvm::FunctionType *FT = llvm::FunctionType::get(i32, {}, false );
       thisFunction = llvm::Function::Create(
         FT,
@@ -1081,7 +1088,7 @@ public:
   virtual void sem() override {
     lval = true;
     SymbolEntry *e = lookupEntry(var,LOOKUP_ALL_SCOPES, false);
-    if (e==NULL) { fatal("Id has not been declared"); }
+    if (e==NULL) { fatal("Id \"%s\" has not been declared", var); }
     entry = e->entryType;
     if (entry == ENTRY_VARIABLE) {
       type = e->u.eVariable.type;
@@ -1102,7 +1109,8 @@ public:
       else return e->allocainst;
     }
     else if (entry == ENTRY_FUNCTION) {
-      return TheModule->getFunction(var);
+      //return TheModule->getFunction(var);
+      return e->u.eFunction.llvmfun;
     }
     else if (entry == ENTRY_PARAMETER) {
 
