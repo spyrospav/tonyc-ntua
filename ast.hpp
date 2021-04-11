@@ -684,6 +684,10 @@ public:
         argTypes.push_back(tempType);
       }
     }
+    // same as above but for outer scope variables
+    // we can have all the info we want from semantic analysis
+    // live_variables -> header->setLiveVariables(set live variables)
+    // we can have the correct header now and in SymbolTable
 
     if (p->u.eFunction.llvmfun != nullptr) {
       endFunctionHeader(p, type);
@@ -881,7 +885,7 @@ public:
       fatal("Non void function must have a return statement.");
     }
 
-    // live_vars = live_variables;
+    printSymbolTable();
     closeScope();
   }
 
@@ -951,7 +955,6 @@ public:
         }
       }
     }
-
     closeScope();
 
     if (isMain) {
@@ -1109,7 +1112,6 @@ public:
       else return e->allocainst;
     }
     else if (entry == ENTRY_FUNCTION) {
-      //return TheModule->getFunction(var);
       return e->u.eFunction.llvmfun;
     }
     else if (entry == ENTRY_PARAMETER) {
@@ -1119,7 +1121,6 @@ public:
           return Builder.CreateLoad(Builder.CreateLoad(e->allocainst, var), var);
         else return Builder.CreateLoad(e->allocainst, var);
       }
-      //SymbolEntry *e = lookupEntry(var,LOOKUP_ALL_SCOPES, false);
       if (!realLeft)
         return Builder.CreateLoad(e->allocainst, var);
       else return e->allocainst;
@@ -1198,11 +1199,8 @@ public:
         llvm::BasicBlock *R_Calc_BB =
           llvm::BasicBlock::Create(TheContext, "r_calc", TheFunction);
 
-        // calculate TRUE (this can be set global later)
         llvm::Value* tru_val = c1(int(true));
-        // compare l with TRUE
         llvm::Value* doShortCirc = Builder.CreateICmpEQ(l, tru_val, "ortmp");
-        // if l is True go to Calc from L_Calc_BB else go to L_Calc_BB from R_Calc_BB
         Builder.CreateCondBr(doShortCirc, Or_Calc_BB, R_Calc_BB);
 
         Builder.SetInsertPoint(R_Calc_BB);
@@ -1230,11 +1228,8 @@ public:
         llvm::BasicBlock *R_Calc_BB =
           llvm::BasicBlock::Create(TheContext, "r_calc", TheFunction);
 
-        // calculate TRUE (this can be set global later)
         llvm::Value* fls_val = c1(int(false));
-        // compare l with FALSE
         llvm::Value* doShortCirc = Builder.CreateICmpEQ(l, fls_val, "andtmp");
-        // if l is True go to Calc from L_Calc_BB else go to L_Calc_BB from R_Calc_BB
         Builder.CreateCondBr(doShortCirc, And_Calc_BB, R_Calc_BB);
 
         Builder.SetInsertPoint(R_Calc_BB);
@@ -1273,7 +1268,6 @@ public:
   virtual void printOn(std::ostream &out) const override {
     out << op << "(" << *expr << ")";
   }
-  //virtual void compile() const override {};
 
   virtual void sem() override {
     lval = false;
@@ -1325,20 +1319,16 @@ public:
     stringExpr = OTHER;
   }
   virtual llvm::Value* compile() override {
-    //std::cout << "hello1" << std::endl;
     llvm::Value *v = expr->compile();
     if(strcmp(op, "nil?") == 0) {
       return Builder.CreateICmpEQ(v, llvm::ConstantPointerNull::get(TheListType), "eqtmp");
     }
     else if(strcmp(op, "head") == 0) {
-      // std::cout << " in head of list"
       llvm::Value *h = Builder.CreateGEP(v, {c32(0), c32(0)}, "headptr");
       if ((type->kind != TYPE_LIST) && (type->kind != TYPE_IARRAY)) {
-        //std::cout << "not ptr" << std::endl;
         return  Builder.CreateTrunc(Builder.CreateLoad(h, "headtmp"), getLLVMType(type), "head");
       }
       else {
-        //std::cout << "ptr" << std::endl;
         return Builder.CreateIntToPtr(Builder.CreateLoad(h, "head"), getLLVMType(type));
       }
     }
@@ -1379,14 +1369,11 @@ public:
     llvm::Value *n = Builder.CreateBitCast(alloca, TheListType, "nodetmp");
     llvm::Value *h = Builder.CreateGEP(n, {c32(0), c32(0)}, "headptr");
     if ((expr1->getType()->kind != TYPE_LIST) && (expr1->getType()->kind != TYPE_IARRAY)) {
-      // cast to i64 to keep compatibility with list type
-      //std::cout << "not ptr" << std::endl;
       llvm::Value *l_cast = Builder.CreateZExt(l, i64, "headcast");
       Builder.CreateStore(l_cast, h);
     }
     else {
       llvm::Value *l_cast = Builder.CreatePtrToInt(l, i64, "headcast");
-      //std::cout << "ptr" << std::endl;
       Builder.CreateStore(l_cast, h);
     }
     llvm::Value *t = Builder.CreateGEP(n, {c32(0), c32(1)}, "tailptr");
@@ -1424,7 +1411,6 @@ class StringConst: public Expr {
     virtual void printOn(std::ostream &out) const override {
       out << "Const string" << "(" << stringconst << ")";
     }
-    //virtual void compile() const override {};
     virtual void sem() override {
       lval = false;
       size_t size = strlen(stringconst);
@@ -1432,11 +1418,6 @@ class StringConst: public Expr {
       stringExpr = STRING;
     }
     virtual llvm::Value* compile() override {
-
-      // std::string our_string = stringconst;
-      // our_string.append("\0")
-      // llvm::ArrayType *llvm_string = llvm::ArrayType::get(i8, our_string.size())
-      // return  llvm::ConstantArray::get(our_string, {});
       llvm::Value *temp = Builder.CreateGlobalStringPtr(stringconst);
       return temp;
     }
@@ -1531,7 +1512,6 @@ public:
     }
 
     SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_ALL_SCOPES, false);
-    //if (p->u.eFunction.isForward) fatal("Function needs to be defined before calling it.");
     type = p->u.eFunction.resultType;
     if (equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression should not be of type Void.");
 
@@ -1554,7 +1534,6 @@ public:
     if (exprsize){
       int i = 0;
       ExprList reversed = *exprlist;
-      //std::reverse(reversed.begin(), reversed.end());
       args = p->u.eFunction.firstArgument;
       for (Expr *expr: reversed) {
         expr->sem();
@@ -1576,7 +1555,6 @@ public:
     argv.clear();
     if (exprlist == NULL) return Builder.CreateCall(calledFun, std::vector<llvm::Value*> {});
     ExprList reversed = *exprlist;
-    //std::reverse(reversed.begin(), reversed.end());
     SymbolEntry *args = p->u.eFunction.firstArgument;
     args = p->u.eFunction.firstArgument;
     for (Expr *expr: reversed) {
@@ -1587,6 +1565,8 @@ public:
       argv.push_back(v);
       args = args->u.eParameter.next;
     }
+    // for the outer
+    // p->u.eFunction lookupEntry()->allocainst
     return Builder.CreateCall(calledFun, argv);
   }
 private:
@@ -1623,7 +1603,6 @@ class CallStmt: public Stmt{
       }
 
       SymbolEntry *p = lookupEntry(id->getIdName(), LOOKUP_ALL_SCOPES, false);
-      //if (p->u.eFunction.isForward) fatal("Function needs to be defined before calling it.");
       if (!equalType(p->u.eFunction.resultType, typeVoid)) fatal("Call expression must of type Void.");
 
       SymbolEntry *args = p->u.eFunction.firstArgument;
@@ -1644,7 +1623,6 @@ class CallStmt: public Stmt{
       if (exprsize) {
         int i = 0;
         ExprList reversed = *exprlist;
-        //std::reverse(reversed.begin(), reversed.end());
         args = p->u.eFunction.firstArgument;
         for (Expr *expr: reversed) {
           expr->sem();
@@ -1669,7 +1647,6 @@ class CallStmt: public Stmt{
       argv.clear();
       if (exprlist == NULL) return Builder.CreateCall(calledFun, std::vector<llvm::Value*> {});
       ExprList reversed = *exprlist;
-      //std::reverse(reversed.begin(), reversed.end());
       SymbolEntry *args = p->u.eFunction.firstArgument;
       args = p->u.eFunction.firstArgument;
       for (Expr *expr: reversed) {
@@ -1766,14 +1743,7 @@ public:
   }
 
   virtual llvm::Value* compile() override {
-    //emit initialization code
-    /*unordered_map<Value *> init;
-    Value *Init [init_list.size()]
-    for (Stmt *s: *init_list) {
-      Value *i = s->compile();
-      if (i != nullptr)
-        init.insert(pair<,>);
-    }*/
+
     llvm::BasicBlock *PrevBB = Builder.GetInsertBlock();
     Builder.SetInsertPoint(PrevBB);
     for (Stmt *s: *init_list) s->compile();
@@ -1788,15 +1758,10 @@ public:
     Builder.SetInsertPoint(LoopBB);
 
     llvm::Value *cond_value = terminate_expr->compile();
-    //llvm::Value *loop_cond =
-    //  Builder.CreateICmpNE(cond_value, c1(1), "loop_cond");
     Builder.CreateCondBr(cond_value, BodyBB, AfterBB);
     Builder.SetInsertPoint(BodyBB);
-    // Value *remaining =
-    //   Builder.CreateSub(phi_iter, c64(1), "remaining");
     for (Stmt *s: *stmt_list) s->compile();
     for (Stmt *s: *next_list) s->compile();
-    // phi_iter->addIncoming(remaining, Builder.GetInsertBlock());
     Builder.CreateBr(LoopBB);
     Builder.SetInsertPoint(AfterBB);
     return nullptr;
@@ -1924,10 +1889,8 @@ public:
 
   virtual llvm::Value* compile()  override {
 
-    // number of if then pairs
     int n = full_list->size(), counter=0;
 
-    // create after block. Should be inserted at the end of If_then_else block
     llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
 
     llvm::BasicBlock *AfterBB = llvm::BasicBlock::Create(TheContext, "endif", TheFunction);
@@ -2029,11 +1992,6 @@ public:
     setReturnType(returnExpr->getType());
   }
   virtual llvm::Value* compile() override {
-    // return 1
-    // bb:
-    //  a = alloca
-    //  ret kati
-    // return 2
     if (Builder.GetInsertBlock()->getTerminator()) {
       Builder.SetInsertPoint(
         llvm::BasicBlock::Create(TheContext, "lone_ret", Builder.GetInsertBlock()->getParent())
@@ -2041,8 +1999,6 @@ public:
     }
     llvm::Value *RetValue = returnExpr->compile();
     Builder.CreateRet(RetValue);
-    // create after block. Should be inserted at the end of If_then_else block
-
     return nullptr;
    }
 

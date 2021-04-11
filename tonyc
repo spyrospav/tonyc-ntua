@@ -82,6 +82,7 @@ except subprocess.CalledProcessError as e:
     print(e)
     if not args.i:
         subprocess.run(["rm", name + '.imm'])
+    exit(1)
 
 """
 if args.i:
@@ -107,6 +108,7 @@ try:
 except subprocess.CalledProcessError as e:
     print(e)
     subprocess.run(["rm", name + '.asm'])
+    exit(1)
 
 if args.f:
     with open(name + '.asm', 'r') as assembly:

@@ -43,3 +43,35 @@ wrong testcases:
 
 proposed and implemented solution is marking block as uncreachable.
 That solves the non terminating block problem, at least as far as I can see.
+
+
+int a
+# live : a
+def fun (int b):
+  return a + b
+-> fun(int b; ref int a)
+u.eFunction.outer_parameters_list
+call
+
+
+
+def program ():
+  int a,b
+  def piofun (int a, b):
+    int c
+    def fun (int a, b):
+      if a < 0:
+        if b > 0:
+          c := 2
+        end
+      elsif a > 0:
+        if b < 0:
+          c :=3
+        end
+      end
+    end
+  end
+  a := 1
+  b := 2
+  piofun(a, b)
+end
