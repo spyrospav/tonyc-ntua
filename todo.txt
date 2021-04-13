@@ -75,3 +75,15 @@ def program ():
   b := 2
   piofun(a, b)
 end
+
+
+
+
+initSymbolTable();
+blablabla
+we get the set -> setHeaderLive
+destroySymbolTable();
+initSymbolTable();
+
+
+we need std::vector<pair<const char *, Type>> live_vars

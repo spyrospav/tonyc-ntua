@@ -1,0 +1,47 @@
+<*
+ * Test case: nil-mess2.tony
+ * Result: Pass
+ *>
+
+ def main():
+
+  def list[list[list[int]]] f(list[list[list[int]]] x):
+    return (nil # nil) # nil
+  end
+
+  list[list[list[int]]] y
+
+  if nil?(nil # nil # nil):
+    puts("err\n")
+  end
+  if not nil?(head(nil # nil # nil)):
+    puts("err\n")
+  end
+  if not nil?(tail(nil # nil)):
+    puts("err\n")
+  end
+  if nil?(tail(nil # nil # nil)):
+    puts("err\n")
+  end
+
+  y := f((  head(
+              head( (42 # nil) # nil )
+              #
+              nil
+            )
+            #
+            tail(nil # nil)
+         )
+         #
+         nil
+        )
+  if nil?(head(y)):
+    puts("err\n")
+  end
+  if not nil?(head(head(y))):
+    puts("err\n")
+  end
+
+  puts("If any \"err\" above, then WRONG! If you do not see this message, then also WRONG!\n")
+
+end

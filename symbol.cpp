@@ -27,6 +27,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <iostream>
+#include <set>
 #include "general.h"
 #include "error.h"
 #include "symbol.h"
@@ -43,9 +44,10 @@ unsigned int   tempNumber;             /* �������� ��� tem
 static unsigned int   hashTableSize;   /* ������� ������ ��������������� */
 static SymbolEntry ** hashTable;       /* ������� ���������������        */
 
-std::map<SymbolEntry *, int> hashTheVars;  /* The order in which each variable (found by its symbol entry) is placed in the hash table */
+std::set<SymbolEntry *> liveVariables;
 
 unsigned int numInserted = 0;                /* Number of variales inserted to symbol table */
+
 
 static struct Type_tag typeConst [] = {
     { TYPE_VOID,    NULL, 0, 0 },
@@ -193,6 +195,7 @@ void closeScope ()
 {
     SymbolEntry * e = currentScope->entries;
     Scope       * t = currentScope;
+    int i = 0;
 
     while (e != NULL) {
         SymbolEntry * next = e->nextInScope;
@@ -202,6 +205,19 @@ void closeScope ()
         e = next;
     }
 
+    int counter = liveVariables.size();
+    if (currentScope->nestingLevel > 3) {
+      for (auto it = liveVariables.begin(); counter != 0; ++it) {
+        if ((*it)->nestingLevel == currentScope->parent->nestingLevel) {
+          liveVariables.erase(it);
+          // std::erase(liveVariables, it)
+        }
+        counter--;
+      }
+    }
+    else {
+      liveVariables.clear();
+    }
     currentScope = currentScope->parent;
     my_delete(t);
 
@@ -655,6 +671,10 @@ bool equalType (Type type1, Type type2)
     if (type1->kind != type2->kind) {
       if (type1->kind == TYPE_ANY || type2->kind == TYPE_ANY)
         return true;
+      else if (type1->kind == TYPE_LIST && type2->kind == TYPE_ANY)
+        return true;
+      else if (type1->kind == TYPE_ANY && type2->kind == TYPE_LIST)
+        return true;
       else
         return false;
     }
@@ -669,7 +689,7 @@ bool equalType (Type type1, Type type2)
         case TYPE_LIST:
             return equalType(type1->refType, type2->refType);
         case TYPE_ANY:
-            return false;
+            return true;
     }
     return true;
 }
@@ -906,4 +926,10 @@ void StandardLibraryInit() {
   endFunctionHeader(p, typeVoid);
   closeScope();
 
+}
+
+void addLiveVariable(SymbolEntry * e) {
+  if (e->nestingLevel < currentScope->nestingLevel) {
+    liveVariables.insert(e);
+  }
 }

@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <algorithm>
 #include <set>
+#include <utility>
 
 #include "symbol.h"
 #include "error.h"
@@ -664,8 +665,20 @@ public:
     endFunctionHeader(p, type);
   }
 
-  llvm::Function * compilef() {
+  void setLiveVariables(std::vector<std::pair<const char *, Type> > s) {
+    live_vars = s;
+    for (int i = 0; i < live_vars.size(); i++) {
+      std::cout << live_vars[i].first << std::endl;
+    }
+  }
 
+
+  llvm::Function * compilef() {
+    std::cout << "000000000000000000000000000000000000000" << std::endl;
+
+    for (int i = 0; i < live_vars.size(); i++) {
+      std::cout << live_vars[i].first << std::endl;
+    }
     SymbolEntry * p;
 
     p = newFunction(name);
@@ -684,10 +697,14 @@ public:
         argTypes.push_back(tempType);
       }
     }
-    // same as above but for outer scope variables
-    // we can have all the info we want from semantic analysis
-    // live_variables -> header->setLiveVariables(set live variables)
-    // we can have the correct header now and in SymbolTable
+
+    for (int i = 0; i < live_vars.size(); i++) {
+      // the info we need is  : id (first), type (second)
+      newParameter(live_vars[i].first, live_vars[i].second, PASS_BY_REFERENCE, p);
+      llvm::Type *tempType = this->getLLVMType(live_vars[i].second);
+      argTypes.push_back(llvm::PointerType::get(tempType, 0));
+    }
+
 
     if (p->u.eFunction.llvmfun != nullptr) {
       endFunctionHeader(p, type);
@@ -714,6 +731,10 @@ public:
       names.insert(names.end(), tmp.begin(), tmp.end());
     }
 
+    for (int i = 0; i < live_vars.size(); i++) {
+      names.insert(names.end(), live_vars[i].first);
+    }
+
     int i = 0;
     for (auto &Arg : Function->args())
         Arg.setName(names[i++]);
@@ -730,6 +751,7 @@ private:
   const char * name;
   ArgList *arg_list;
   HeaderDef hdef;
+  std::vector<std::pair<const char *, Type> > live_vars;
 };
 
 // Abstract definition of statements
@@ -885,12 +907,22 @@ public:
       fatal("Non void function must have a return statement.");
     }
 
-    printSymbolTable();
+    std::cout << header->getHeaderName() << " " << currentScope->nestingLevel << std::endl;
+
+    for (auto it = liveVariables.begin(); it != liveVariables.end(); ++it) {
+      if ((*it)->entryType == ENTRY_VARIABLE) live_vars.push_back(std::make_pair((*it)->id, (*it)->u.eVariable.type));
+      else if ((*it)->entryType == ENTRY_PARAMETER) live_vars.push_back(std::make_pair((*it)->id, (*it)->u.eParameter.type));
+      else std::cout << "aliens" << std::endl;
+    }
+    header->setLiveVariables(live_vars);
+
+    //printSymbolTable();
     closeScope();
   }
 
   virtual llvm::Value* compile() override {
 
+    std::cout << "start compiling " << header->getHeaderName() << std::endl;
     if (!isMain) {
       thisFunction = header->compilef();
     }
@@ -1001,7 +1033,7 @@ private:
   int size;
   llvm::Function * thisFunction;
   bool isMain;
-  std::set<SymbolEntry *> live_vars;
+  std::vector<std::pair<const char *, Type> > live_vars;
 };
 
 // Expressions (e.g atoms, constants, operations applied to expressions )
@@ -1094,12 +1126,14 @@ public:
     if (e==NULL) { fatal("Id \"%s\" has not been declared", var); }
     entry = e->entryType;
     if (entry == ENTRY_VARIABLE) {
+      addLiveVariable(e);
       type = e->u.eVariable.type;
     }
     else if (entry == ENTRY_FUNCTION) {
       type = e->u.eFunction.resultType;
     }
     else if (entry == ENTRY_PARAMETER) {
+      addLiveVariable(e);
       type = e->u.eParameter.type;
     }
     stringExpr = OTHER;
@@ -1354,6 +1388,7 @@ public:
     lval = false;
     expr1->sem();
     expr2->sem();
+
     if(expr2->getType()->kind != TYPE_LIST)  fatal("Operand 2 must be of type list");
 
     if(!equalType(expr1->getType(), expr2->getType()->refType)) fatal("Operands must be of same type");

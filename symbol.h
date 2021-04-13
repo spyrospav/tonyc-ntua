@@ -29,6 +29,7 @@
 
 #include <stdbool.h>
 #include <map>
+#include <set>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Instructions.h>
@@ -201,7 +202,7 @@ extern const Type typeChar;
 extern const Type typeReal;
 extern const Type typeAny;
 
-
+extern std::set<SymbolEntry *> liveVariables;
 /* ---------------------------------------------------------------------
    ------ ��������� ��� ����������� ��������� ��� ������ �������� ------
    --------------------------------------------------------------------- */
@@ -239,4 +240,6 @@ void          printMode          (PassMode mode);
 
 void          printSymbolTable   ();
 void          StandardLibraryInit();
+
+void          addLiveVariable(SymbolEntry * e);
 #endif
