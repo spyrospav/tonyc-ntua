@@ -4,27 +4,16 @@
  *>
 
 def program():
-  int a, d
+  int a
   def nested(int b):
-    def int nested_square(int c):
-      def triplenest():
-        b := 223
-        a := 2
-        exit
-      end
-      puti(a+1)
-      putc('\n')
-      puti(nested_square(a))
-      putc('\n')
-      return a*a + d + b
-    end
-    skip
+    a := a + b
+    puti(a)
   end
   def int nest():
     return 4
   end
   a := 1
-  nested(4)
-  nested(a*2)
+  nested(2)
+  nested(3)
 
 end

@@ -1593,8 +1593,16 @@ public:
       argv.push_back(v);
       args = args->u.eParameter.next;
     }
-    // for the outer
-    // p->u.eFunction lookupEntry()->allocainst
+
+    while (1) {
+      if (args != NULL) {
+        llvm::Value * v = Builder.CreateLoad(args->allocainst;
+        argv.push_back(v);
+        args = args->u.eParameter.next;
+      }
+      else break;
+    }
+
     return Builder.CreateCall(calledFun, argv);
   }
 private:
@@ -1685,6 +1693,16 @@ class CallStmt: public Stmt{
         argv.push_back(v);
         args = args->u.eParameter.next;
       }
+
+      while (1) {
+        if (args != NULL) {
+          llvm::Value * v = args->allocainst;
+          argv.push_back(v);
+          args = args->u.eParameter.next;
+        }
+        else break;
+      }
+
       Builder.CreateCall(calledFun, argv);
       return nullptr;
     }
