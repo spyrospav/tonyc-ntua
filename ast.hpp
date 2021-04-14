@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <set>
 #include <utility>
+#include <string.h>
 
 #include "symbol.h"
 #include "error.h"
@@ -665,20 +666,13 @@ public:
     endFunctionHeader(p, type);
   }
 
-  void setLiveVariables(std::vector<std::pair<const char *, Type> > s) {
+  void setLiveVariables(std::vector< std::pair <std::string, Type> > s) {
     live_vars = s;
-    for (int i = 0; i < live_vars.size(); i++) {
-      std::cout << live_vars[i].first << std::endl;
-    }
   }
 
 
   llvm::Function * compilef() {
-    std::cout << "000000000000000000000000000000000000000" << std::endl;
 
-    for (int i = 0; i < live_vars.size(); i++) {
-      std::cout << live_vars[i].first << std::endl;
-    }
     SymbolEntry * p;
 
     p = newFunction(name);
@@ -699,8 +693,7 @@ public:
     }
 
     for (int i = 0; i < live_vars.size(); i++) {
-      // the info we need is  : id (first), type (second)
-      newParameter(live_vars[i].first, live_vars[i].second, PASS_BY_REFERENCE, p);
+      newParameter(live_vars[i].first.c_str(), live_vars[i].second, PASS_BY_REFERENCE, p);
       llvm::Type *tempType = this->getLLVMType(live_vars[i].second);
       argTypes.push_back(llvm::PointerType::get(tempType, 0));
     }
@@ -732,7 +725,7 @@ public:
     }
 
     for (int i = 0; i < live_vars.size(); i++) {
-      names.insert(names.end(), live_vars[i].first);
+      names.insert(names.end(), live_vars[i].first.c_str());
     }
 
     int i = 0;
@@ -751,7 +744,7 @@ private:
   const char * name;
   ArgList *arg_list;
   HeaderDef hdef;
-  std::vector<std::pair<const char *, Type> > live_vars;
+  std::vector< std::pair <std::string, Type> > live_vars;
 };
 
 // Abstract definition of statements
@@ -907,22 +900,22 @@ public:
       fatal("Non void function must have a return statement.");
     }
 
-    std::cout << header->getHeaderName() << " " << currentScope->nestingLevel << std::endl;
-
     for (auto it = liveVariables.begin(); it != liveVariables.end(); ++it) {
-      if ((*it)->entryType == ENTRY_VARIABLE) live_vars.push_back(std::make_pair((*it)->id, (*it)->u.eVariable.type));
-      else if ((*it)->entryType == ENTRY_PARAMETER) live_vars.push_back(std::make_pair((*it)->id, (*it)->u.eParameter.type));
+      std::string s {(*it)->id};
+      if ((*it)->entryType == ENTRY_VARIABLE) live_vars.push_back(std::make_pair(s, (*it)->u.eVariable.type));
+      else if ((*it)->entryType == ENTRY_PARAMETER) live_vars.push_back(std::make_pair(s, (*it)->u.eParameter.type));
       else std::cout << "aliens" << std::endl;
     }
-    header->setLiveVariables(live_vars);
 
     //printSymbolTable();
     closeScope();
+
+    header->setLiveVariables(live_vars);
+
   }
 
   virtual llvm::Value* compile() override {
 
-    std::cout << "start compiling " << header->getHeaderName() << std::endl;
     if (!isMain) {
       thisFunction = header->compilef();
     }
@@ -1033,7 +1026,7 @@ private:
   int size;
   llvm::Function * thisFunction;
   bool isMain;
-  std::vector<std::pair<const char *, Type> > live_vars;
+  std::vector< std::pair <std::string, Type> > live_vars;
 };
 
 // Expressions (e.g atoms, constants, operations applied to expressions )

@@ -6,7 +6,7 @@
  def program():
    int a, d
    def nested(int b):
-     def int nested_square(int c):
+     def int nested_square(int f):
        def triplenest():
          b := 223
          a := 2
