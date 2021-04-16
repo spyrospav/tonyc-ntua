@@ -14,15 +14,17 @@
        end
        puti(a+1)
        putc('\n')
-       puti(nested_square(a))
+       puti(f+1)
        putc('\n')
        return a*a + d + b
      end
-     skip
+     puti(nested_square(3))
    end
    def int nest():
      return 4
    end
    a := 1
+   d := 1
+   nested(12)
 
  end

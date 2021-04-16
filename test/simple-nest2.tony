@@ -14,6 +14,8 @@ def program():
   end
   a := 1
   nested(2)
+  putc('\n')
   nested(3)
+  putc('\n')
 
 end

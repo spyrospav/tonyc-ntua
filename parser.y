@@ -112,6 +112,7 @@ program:
       initSymbolTable(2048);
       openScope();
       StandardLibraryInit();
+      std::cout << "Starting codegen " << std::endl;
       $2->llvm_compile_and_dump(doOptimize);
       closeScope();
       destroySymbolTable();

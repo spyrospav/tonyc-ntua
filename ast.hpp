@@ -668,6 +668,10 @@ public:
 
   void setLiveVariables(std::vector< std::pair <std::string, Type> > s) {
     live_vars = s;
+    std::cout << name << std::endl;
+    for (int i = 0; i < live_vars.size(); i++) {
+      std::cout << live_vars[i].first << std::endl;
+    }
   }
 
 
@@ -691,9 +695,11 @@ public:
         argTypes.push_back(tempType);
       }
     }
-
+    // std::cout << "in function: " << this->name << std::endl;
     for (int i = 0; i < live_vars.size(); i++) {
+      // std::cout << live_vars[i].first << ", " << live_vars[i].second << std::endl;
       newParameter(live_vars[i].first.c_str(), live_vars[i].second, PASS_BY_REFERENCE, p);
+      // std::cout << "after newparameter" << std::endl;
       llvm::Type *tempType = this->getLLVMType(live_vars[i].second);
       argTypes.push_back(llvm::PointerType::get(tempType, 0));
     }
@@ -703,6 +709,7 @@ public:
       endFunctionHeader(p, type);
       return p->u.eFunction.llvmfun;
     }
+
 
     llvm::FunctionType * FT = llvm::FunctionType::get(
       getLLVMType(type),
@@ -916,6 +923,7 @@ public:
 
   virtual llvm::Value* compile() override {
 
+    std::cout << "started compiling " << header->getHeaderName() << std::endl;
     if (!isMain) {
       thisFunction = header->compilef();
     }
@@ -1581,22 +1589,35 @@ public:
     llvm::Function *calledFun = p->u.eFunction.llvmfun;
     std::vector<llvm::Value*> argv;
     argv.clear();
-    if (exprlist == NULL) return Builder.CreateCall(calledFun, std::vector<llvm::Value*> {});
-    ExprList reversed = *exprlist;
     SymbolEntry *args = p->u.eFunction.firstArgument;
-    args = p->u.eFunction.firstArgument;
-    for (Expr *expr: reversed) {
-      if (args->u.eParameter.mode == PASS_BY_REFERENCE) {
-        expr->setLeft();
+    if (exprlist == NULL && p->u.eFunction.firstArgument == NULL) return Builder.CreateCall(calledFun, std::vector<llvm::Value*> {});
+    if (exprlist != NULL) {
+      ExprList reversed = *exprlist;
+      args = p->u.eFunction.firstArgument;
+      for (Expr *expr: reversed) {
+        if (args->u.eParameter.mode == PASS_BY_REFERENCE) {
+          expr->setLeft();
+        }
+        llvm::Value * v = expr->compile();
+        argv.push_back(v);
+        args = args->u.eParameter.next;
       }
-      llvm::Value * v = expr->compile();
-      argv.push_back(v);
-      args = args->u.eParameter.next;
     }
 
+
+    //std::cout << id->getIdName() << std::endl;
     while (1) {
       if (args != NULL) {
-        llvm::Value * v = Builder.CreateLoad(args->allocainst;
+        SymbolEntry *pp = lookupEntry(args->id, LOOKUP_ALL_SCOPES, false);
+        llvm::Value * v;
+        if (pp->entryType == ENTRY_VARIABLE) {
+          v = pp->allocainst;
+        }
+        else if (pp->entryType == ENTRY_PARAMETER) {
+          if (pp->u.eParameter.mode == PASS_BY_REFERENCE)
+            v = Builder.CreateLoad(pp->allocainst, pp->id);
+          else v = pp->allocainst;
+        }
         argv.push_back(v);
         args = args->u.eParameter.next;
       }
@@ -1681,22 +1702,33 @@ class CallStmt: public Stmt{
       llvm::Function *calledFun = p->u.eFunction.llvmfun;
       std::vector<llvm::Value*> argv;
       argv.clear();
-      if (exprlist == NULL) return Builder.CreateCall(calledFun, std::vector<llvm::Value*> {});
-      ExprList reversed = *exprlist;
       SymbolEntry *args = p->u.eFunction.firstArgument;
-      args = p->u.eFunction.firstArgument;
-      for (Expr *expr: reversed) {
-        if (args->u.eParameter.mode == PASS_BY_REFERENCE) {
-          expr->setLeft();
+      if (exprlist == NULL && p->u.eFunction.firstArgument == NULL) return Builder.CreateCall(calledFun, std::vector<llvm::Value*> {});
+      if (exprlist != NULL) {
+        ExprList reversed = *exprlist;
+        args = p->u.eFunction.firstArgument;
+        for (Expr *expr: reversed) {
+          if (args->u.eParameter.mode == PASS_BY_REFERENCE) {
+            expr->setLeft();
+          }
+          llvm::Value * v = expr->compile();
+          argv.push_back(v);
+          args = args->u.eParameter.next;
         }
-        llvm::Value * v = expr->compile();
-        argv.push_back(v);
-        args = args->u.eParameter.next;
       }
 
       while (1) {
         if (args != NULL) {
-          llvm::Value * v = args->allocainst;
+          SymbolEntry *pp = lookupEntry(args->id, LOOKUP_ALL_SCOPES, false);
+          llvm::Value * v;
+          if (pp->entryType == ENTRY_VARIABLE) {
+            v = pp->allocainst;
+          }
+          else if (pp->entryType == ENTRY_PARAMETER) {
+            if (pp->u.eParameter.mode == PASS_BY_REFERENCE)
+              v = Builder.CreateLoad(pp->allocainst, pp->id);
+            else v = pp->allocainst;
+          }
           argv.push_back(v);
           args = args->u.eParameter.next;
         }

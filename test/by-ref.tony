@@ -15,5 +15,5 @@ def program():
     c := fun2()
   end
   fun()
-  puti(c)
+  puti(c) %should output 6
 end
