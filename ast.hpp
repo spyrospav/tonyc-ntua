@@ -666,15 +666,6 @@ public:
     endFunctionHeader(p, type);
   }
 
-  void setLiveVariables(std::vector< std::pair <std::string, Type> > s) {
-    live_vars = s;
-    std::cout << name << std::endl;
-    for (int i = 0; i < live_vars.size(); i++) {
-      std::cout << live_vars[i].first << std::endl;
-    }
-  }
-
-
   llvm::Function * compilef() {
 
     SymbolEntry * p;
@@ -695,15 +686,6 @@ public:
         argTypes.push_back(tempType);
       }
     }
-    // std::cout << "in function: " << this->name << std::endl;
-    for (int i = 0; i < live_vars.size(); i++) {
-      // std::cout << live_vars[i].first << ", " << live_vars[i].second << std::endl;
-      newParameter(live_vars[i].first.c_str(), live_vars[i].second, PASS_BY_REFERENCE, p);
-      // std::cout << "after newparameter" << std::endl;
-      llvm::Type *tempType = this->getLLVMType(live_vars[i].second);
-      argTypes.push_back(llvm::PointerType::get(tempType, 0));
-    }
-
 
     if (p->u.eFunction.llvmfun != nullptr) {
       endFunctionHeader(p, type);
@@ -731,10 +713,6 @@ public:
       names.insert(names.end(), tmp.begin(), tmp.end());
     }
 
-    for (int i = 0; i < live_vars.size(); i++) {
-      names.insert(names.end(), live_vars[i].first.c_str());
-    }
-
     int i = 0;
     for (auto &Arg : Function->args())
         Arg.setName(names[i++]);
@@ -751,7 +729,6 @@ private:
   const char * name;
   ArgList *arg_list;
   HeaderDef hdef;
-  std::vector< std::pair <std::string, Type> > live_vars;
 };
 
 // Abstract definition of statements
@@ -806,7 +783,7 @@ class Decl: public AST{
 
 class FuncBlock: public AST {
 public:
-  FuncBlock(): var_list(), sequence(), stmt_list(NULL), size(0), isMain(false) { }
+  FuncBlock(): var_list(), sequence(), stmt_list(NULL), size(0), isMain(false) { ar_size = 0; }
   ~FuncBlock() {
     for (VarList *d : var_list) delete d;
   }
@@ -907,23 +884,20 @@ public:
       fatal("Non void function must have a return statement.");
     }
 
-    for (auto it = liveVariables.begin(); it != liveVariables.end(); ++it) {
-      std::string s {(*it)->id};
-      if ((*it)->entryType == ENTRY_VARIABLE) live_vars.push_back(std::make_pair(s, (*it)->u.eVariable.type));
-      else if ((*it)->entryType == ENTRY_PARAMETER) live_vars.push_back(std::make_pair(s, (*it)->u.eParameter.type));
-      else std::cout << "aliens" << std::endl;
-    }
-
+    ar_size += 64 - currentScope->negOffset;
     //printSymbolTable();
     closeScope();
-
-    header->setLiveVariables(live_vars);
+    // this should cover all but last variables + frame pointer + last variable. func Parameters not included
 
   }
 
   virtual llvm::Value* compile() override {
 
-    std::cout << "started compiling " << header->getHeaderName() << std::endl;
+    int array_items = ar_size / 8 + 1;
+    std::cout << "before" << std::endl;
+    currentScope->activation_record = Builder.CreateAlloca(llvm::ArrayType::get(i64, array_items), nullptr, "ar");
+    //currentScope->activation_record = Builder.CreateAlloca(i64, c32(array_items), "ar");
+    std::cout << "after" << std::endl;
     if (!isMain) {
       thisFunction = header->compilef();
     }
@@ -964,12 +938,14 @@ public:
       }
       else if (*it == VARIABLE) {
         var_list[v]->sem();
+        /* this should migrate to activation record
         llvm::Type * t = getLLVMType(var_list[v]->getType());
         for (const char * s : var_list[v]->getVarList()) {
             llvm::AllocaInst *alloca_temp = CreateEntryBlockAlloca(thisFunction, s, t);
             SymbolEntry * e = lookupEntry(s, LOOKUP_ALL_SCOPES, false);
             e->allocainst = alloca_temp;
         }
+        */
         v++;
       }
       else if (*it == DECLARATION) {
@@ -1033,8 +1009,8 @@ private:
   std::vector<DefType> sequence;
   int size;
   llvm::Function * thisFunction;
-  bool isMain;
-  std::vector< std::pair <std::string, Type> > live_vars;
+  bool isMain; // True if function i
+  int ar_size; // size of activation record
 };
 
 // Expressions (e.g atoms, constants, operations applied to expressions )
@@ -1127,14 +1103,12 @@ public:
     if (e==NULL) { fatal("Id \"%s\" has not been declared", var); }
     entry = e->entryType;
     if (entry == ENTRY_VARIABLE) {
-      addLiveVariable(e);
       type = e->u.eVariable.type;
     }
     else if (entry == ENTRY_FUNCTION) {
       type = e->u.eFunction.resultType;
     }
     else if (entry == ENTRY_PARAMETER) {
-      addLiveVariable(e);
       type = e->u.eParameter.type;
     }
     stringExpr = OTHER;
@@ -1590,38 +1564,16 @@ public:
     std::vector<llvm::Value*> argv;
     argv.clear();
     SymbolEntry *args = p->u.eFunction.firstArgument;
-    if (exprlist == NULL && p->u.eFunction.firstArgument == NULL) return Builder.CreateCall(calledFun, std::vector<llvm::Value*> {});
-    if (exprlist != NULL) {
-      ExprList reversed = *exprlist;
-      args = p->u.eFunction.firstArgument;
-      for (Expr *expr: reversed) {
-        if (args->u.eParameter.mode == PASS_BY_REFERENCE) {
-          expr->setLeft();
-        }
-        llvm::Value * v = expr->compile();
-        argv.push_back(v);
-        args = args->u.eParameter.next;
+    if (exprlist == NULL) return Builder.CreateCall(calledFun, std::vector<llvm::Value*> {});
+    ExprList reversed = *exprlist;
+    args = p->u.eFunction.firstArgument;
+    for (Expr *expr: reversed) {
+      if (args->u.eParameter.mode == PASS_BY_REFERENCE) {
+        expr->setLeft();
       }
-    }
-
-
-    //std::cout << id->getIdName() << std::endl;
-    while (1) {
-      if (args != NULL) {
-        SymbolEntry *pp = lookupEntry(args->id, LOOKUP_ALL_SCOPES, false);
-        llvm::Value * v;
-        if (pp->entryType == ENTRY_VARIABLE) {
-          v = pp->allocainst;
-        }
-        else if (pp->entryType == ENTRY_PARAMETER) {
-          if (pp->u.eParameter.mode == PASS_BY_REFERENCE)
-            v = Builder.CreateLoad(pp->allocainst, pp->id);
-          else v = pp->allocainst;
-        }
-        argv.push_back(v);
-        args = args->u.eParameter.next;
-      }
-      else break;
+      llvm::Value * v = expr->compile();
+      argv.push_back(v);
+      args = args->u.eParameter.next;
     }
 
     return Builder.CreateCall(calledFun, argv);
@@ -1703,37 +1655,19 @@ class CallStmt: public Stmt{
       std::vector<llvm::Value*> argv;
       argv.clear();
       SymbolEntry *args = p->u.eFunction.firstArgument;
-      if (exprlist == NULL && p->u.eFunction.firstArgument == NULL) return Builder.CreateCall(calledFun, std::vector<llvm::Value*> {});
-      if (exprlist != NULL) {
-        ExprList reversed = *exprlist;
-        args = p->u.eFunction.firstArgument;
-        for (Expr *expr: reversed) {
-          if (args->u.eParameter.mode == PASS_BY_REFERENCE) {
-            expr->setLeft();
-          }
-          llvm::Value * v = expr->compile();
-          argv.push_back(v);
-          args = args->u.eParameter.next;
+      if (exprlist == NULL) return Builder.CreateCall(calledFun, std::vector<llvm::Value*> {});
+
+      ExprList reversed = *exprlist;
+      args = p->u.eFunction.firstArgument;
+      for (Expr *expr: reversed) {
+        if (args->u.eParameter.mode == PASS_BY_REFERENCE) {
+          expr->setLeft();
         }
+        llvm::Value * v = expr->compile();
+        argv.push_back(v);
+        args = args->u.eParameter.next;
       }
 
-      while (1) {
-        if (args != NULL) {
-          SymbolEntry *pp = lookupEntry(args->id, LOOKUP_ALL_SCOPES, false);
-          llvm::Value * v;
-          if (pp->entryType == ENTRY_VARIABLE) {
-            v = pp->allocainst;
-          }
-          else if (pp->entryType == ENTRY_PARAMETER) {
-            if (pp->u.eParameter.mode == PASS_BY_REFERENCE)
-              v = Builder.CreateLoad(pp->allocainst, pp->id);
-            else v = pp->allocainst;
-          }
-          argv.push_back(v);
-          args = args->u.eParameter.next;
-        }
-        else break;
-      }
 
       Builder.CreateCall(calledFun, argv);
       return nullptr;

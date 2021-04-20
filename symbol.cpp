@@ -197,23 +197,6 @@ void closeScope ()
     Scope       * t = currentScope;
     int i = 0;
 
-    std::set<SymbolEntry *> tmp;
-
-    int counter = liveVariables.size();
-    if (currentScope->nestingLevel >= 3) {
-      for (auto it = liveVariables.begin(); counter != 0; ++it) {
-        if ((*it)->nestingLevel != currentScope->parent->nestingLevel) {
-          tmp.insert((*it));
-        }
-        counter--;
-      }
-      liveVariables.clear();
-      liveVariables = tmp;
-    }
-    else {
-      liveVariables.clear();
-    }
-
     while (e != NULL) {
         SymbolEntry * next = e->nextInScope;
 
@@ -930,10 +913,4 @@ void StandardLibraryInit() {
   endFunctionHeader(p, typeVoid);
   closeScope();
 
-}
-
-void addLiveVariable(SymbolEntry * e) {
-  if (e->nestingLevel < currentScope->nestingLevel) {
-    liveVariables.insert(e);
-  }
 }

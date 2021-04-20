@@ -5,13 +5,8 @@ Arrays:
 
 
 TODO:
-GROUP2:
-  -- Short circuiting (DISTRIB)
-  -- Problem with return (multiple returns in the same block are not allowed, however
-      every basic block must have a terminating statement- theoritika einai ok)
-GROUP3:
   -- Outer Scope parameter passing
-  -- Check Garbage Collector (funny behaviour when malloc is the only statement, maybe llvm IM generation pre-optimizes)
+
 
 ------------
 
@@ -77,13 +72,12 @@ def program ():
 end
 
 
-
-
-initSymbolTable();
-blablabla
-we get the set -> setHeaderLive
-destroySymbolTable();
-initSymbolTable();
-
-
-we need std::vector<pair<const char *, Type>> live_vars
+1) Fix the allocainst of Activation Record.
+2) One function to find the correct Activation Record.
+!!! We have to check if ID if parameter, this will be done with lookupEntry
+parameters are allocated in the current stack frame whereas variables are
+allocated in the stack frame.
+3) Use GEP with appropriate offsets to get a ptr to the variable address.
+4) Create the appropriate load/store. (see class id for the appropriate options)
+5) Pass PTR to parent frame as parameter in every nested function. This should happen
+in function ir codegen and in call codegen.

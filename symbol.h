@@ -176,6 +176,7 @@ struct Scope_tag {
     unsigned int   negOffset;                /* ������ �������� offset */
     Scope        * parent;                   /* ������������ ��������  */
     SymbolEntry  * entries;                  /* ������� ��� ���������  */
+    llvm::AllocaInst *activation_record;
 };
 
 
@@ -202,7 +203,6 @@ extern const Type typeChar;
 extern const Type typeReal;
 extern const Type typeAny;
 
-extern std::set<SymbolEntry *> liveVariables;
 /* ---------------------------------------------------------------------
    ------ ��������� ��� ����������� ��������� ��� ������ �������� ------
    --------------------------------------------------------------------- */
