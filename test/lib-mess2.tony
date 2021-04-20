@@ -1,0 +1,47 @@
+<*
+ * Test case: lib-mess2.tony
+ * Result: Pass
+ *>
+
+def main():
+
+  def amalloc(int i):
+    puti(i)
+  end
+
+  def GC_malloc(int i):
+    puti(i)
+  end
+
+  def puti(list[int] a):
+    list[int] b
+
+    if not nil?(tail(a)):
+      b := head(a) # nil
+      puti(b)
+    else:
+      amalloc(head(a))
+    end
+  end
+
+  def gets(int i):
+    list[int] a
+    a := i # 16014 # nil
+    puti(a)
+  end
+  
+
+  list[int] a
+  int zmalloc
+  a := 42 # nil
+  amalloc(head(a))
+  puts(" ")
+  GC_malloc(head(a))
+  puts(" ")
+  gets(17)
+  puts(" ")
+  zmalloc := 17
+  GC_malloc(zmalloc)
+  puts("\n")
+  % EXPECTED OUTPUT: 42 42 17 17
+end

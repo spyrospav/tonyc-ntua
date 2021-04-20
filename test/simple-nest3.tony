@@ -1,0 +1,30 @@
+<*
+ * Test case: simple-nest3.tony
+ * Result: Pass
+ *>
+
+ def program():
+   int a, d
+   def nested(int b):
+     def int nested_square(int f):
+       def triplenest():
+         b := 223
+         a := 2
+         exit
+       end
+       puti(a+1)
+       putc('\n')
+       puti(f+1)
+       putc('\n')
+       return a*a + d + b
+     end
+     puti(nested_square(3))
+   end
+   def int nest():
+     return 4
+   end
+   a := 1
+   d := 1
+   nested(12)
+
+ end

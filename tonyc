@@ -3,11 +3,12 @@
 import argparse
 import os
 import subprocess
+import sys
 
 DESC_MSG =      'Tony Compiler by Dimitris and Spyros :)'
 USAGE_MSG =     "Usage: python3 tonyc.py [options] file... \n" + \
                 "Options: \n" + \
-                "-o enable optimizations\n"+ \
+                "-O enable optimizations\n"+ \
                 '-f Show final code at stdout\n'+ \
                 '-i Show intermediate code at stdout\n'
 
@@ -18,6 +19,9 @@ USAGE_MSG =     "Usage: python3 tonyc.py [options] file... \n" + \
 parser = argparse.ArgumentParser(description=DESC_MSG)
 parser.add_argument(
     'filename',
+    default='',
+    type=str,
+    nargs='?',
     help="Filename of Tony program")
 group = parser.add_mutually_exclusive_group()
 group.add_argument('-f',
@@ -43,37 +47,74 @@ if args.O:
     args_.append("-O")
 name = os.path.splitext(args.filename)[0]
 
+if (args.filename != '') ^ args.i ^ args.f:
+    if args.filename == '':
+        name = 'a.tony'
+else:
+    sys.stderr.write('Multiple Inputs defined\n')
+    exit(1)
+
 # Run Tony compiler
 #./tony {} < {} > {}.imm".format(optimize, args.filename, name) :the os way
 
 try:
-    subprocess.run(
-                args_,
-                stdin=open(args.filename, 'r'),
-                stdout=open(name + '.imm', 'w'),
-                check=True
-                )
-    print("Compiled succesfully.")
+    if args.f:
+        subprocess.run(
+                    args_,
+                    stdout=open(name + '.imm', 'w'),
+                    check=True
+                    )
+        print("Compiled succesfully.")
+    elif args.i:
+        subprocess.run(
+                    args_,
+                    check=True
+                    )
+    else:
+        subprocess.run(
+                    args_,
+                    stdin=open(args.filename, 'r'),
+                    stdout=open(name + '.imm', 'w'),
+                    check=True
+                    )
+        print("Compiled succesfully.")
 except subprocess.CalledProcessError as e:
     print(e)
-    subprocess.run(["rm", name + '.imm'])
+    if not args.i:
+        subprocess.run(["rm", name + '.imm'])
+    exit(1)
 
+"""
 if args.i:
     with open(name + '.imm', 'r') as interim:
         print(interim.read())
+"""
+if args.i:
+    exit(1)
+
 
 try:
-    subprocess.run(
-                ["llc-10", name + ".imm", "-o", name + ".asm"],
-                check=True
-                )
+    if args.f:
+        subprocess.run(
+                    ["llc-10", name + ".imm", "-o", name + ".asm"],
+                    check=True
+                    )
+    else:
+        subprocess.run(
+                    ["llc-10", name + ".imm", "-o", name + ".asm"],
+                    check=True
+                    )
     print("Assembly generated succesfully.")
 except subprocess.CalledProcessError as e:
-    print("Something wrong with Assembly code generation.")
+    print(e)
+    subprocess.run(["rm", name + '.asm'])
+    exit(1)
 
 if args.f:
     with open(name + '.asm', 'r') as assembly:
         print(assembly.read())
+    subprocess.run(["rm", name + '.asm'])
+    exit(1)
 
 try:
     print("clang-10", "-o", name + ".out", name + ".asm", "./edsger_lib-master/lib.a")

@@ -5,6 +5,7 @@
 
 def program ():
   def bool opposite_sign? (int a, b):
+  puts("fun called with a = ") puti(a) puts(" , b = ") puti(b) putc('\n')
     if a < 0:
       if b > 0:
         return true

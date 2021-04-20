@@ -10,10 +10,8 @@ GROUP2:
   -- Problem with return (multiple returns in the same block are not allowed, however
       every basic block must have a terminating statement- theoritika einai ok)
 GROUP3:
-  -- seira metavlhtwn sto call (?)
-  -- By Ref parameter passing
   -- Outer Scope parameter passing
-  -- Check Garbage Collector (for-lists.tony)
+  -- Check Garbage Collector (funny behaviour when malloc is the only statement, maybe llvm IM generation pre-optimizes)
 
 ------------
 
@@ -34,49 +32,58 @@ if a
 Phi res
 
 
-def program():
-  int b
-  def fun():
-    def fun2():
-      int a
-      a := 42
-    a := 2
-    exit
-  end
-  int a
-  a := 3
-  fun()
-end
-
-
-def program():
-  int a
-  def fun(ref int a):
-    def fun2(ref int b):
-      b := b + 1
-    end
-    a := a + 1
-    fun2(a)
-  end
-  a := 1
-  fun(a)
-  puti(a) % Should print 3
-  putc('\n')
-end
-
 call(a, b)
 !realLeft -> Load(alloainst)
 
-varlist: mallon swsta
-header's arglist: anapoda alla eswterika me swsth diata3h ()
-
 wrong testcases:
   by-ref (instruciton does not dominate all uses)
-  for-return1 (basic block doesnt have a terminator)
-  game-v2 (does not work as expected)
-  if-return5 (basic block doesnt have a terminator)
-  isprime (basic block doesnt have a terminator)
-  lists3 (basic block doesnt have a terminator)
   shadow (instruciton does not dominate all uses)
   simple-if5 (instruciton does not dominate all uses)
   simple-nest2 (instruciton does not dominate all uses)
+
+proposed and implemented solution is marking block as uncreachable.
+That solves the non terminating block problem, at least as far as I can see.
+
+
+int a
+# live : a
+def fun (int b):
+  return a + b
+-> fun(int b; ref int a)
+u.eFunction.outer_parameters_list
+call
+
+
+
+def program ():
+  int a,b
+  def piofun (int a, b):
+    int c
+    def fun (int a, b):
+      if a < 0:
+        if b > 0:
+          c := 2
+        end
+      elsif a > 0:
+        if b < 0:
+          c :=3
+        end
+      end
+    end
+  end
+  a := 1
+  b := 2
+  piofun(a, b)
+end
+
+
+
+
+initSymbolTable();
+blablabla
+we get the set -> setHeaderLive
+destroySymbolTable();
+initSymbolTable();
+
+
+we need std::vector<pair<const char *, Type>> live_vars

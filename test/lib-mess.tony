@@ -1,0 +1,12 @@
+<*
+ * Test case: lib-mess.tony
+ * Result: Pass
+ *>
+
+def program():
+  def puti(int a):
+    int b
+    b := a
+  end
+  puti(1)
+end

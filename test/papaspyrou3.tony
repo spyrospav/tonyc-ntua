@@ -1,0 +1,51 @@
+<*
+ * Test case: papaspyrou3.tony
+ * Result: Pass
+ *>
+
+
+% if a is passed by reference then the final output should contain updated
+% values (1-17 and then all 42s)
+% if a is passed by value then the final output is not updated and stays 1-17
+% however we can see that in the enlarge function, the b array is constructed correctly
+% and in enlarge's scope a is correctly enlarged.
+
+% NOTE: not assigned array values and index out of bounds values are printed as 0
+def main ():
+  def printarr(int[] aa; int sz):
+    int ii
+    for ii:=0; ii<sz; ii:=ii+1:
+      puti(aa[ii]) puts(", ")
+    end
+    putc('\n')
+  end
+  def enlarge(ref int[] a; int old_size; int new_size):
+  % def enlarge( int[] a; int old_size; int new_size):
+    int[] b
+    int i
+    b := new int[new_size]
+    for i := 0; i < old_size; i := i + 1:
+      b[i] := a[i]
+    end
+    for i := old_size; i < new_size; i := i + 1:
+      b[i] := 42
+    end
+    puts("b array: ") printarr(b, new_size) putc('\n')
+    puts("a array: ") printarr(a, old_size) putc('\n')
+    a := b   % this is why we need call by reference!
+    puts("a array after assignment to b: ") printarr(a, new_size) putc('\n')
+
+  end
+
+  int i
+  int[] x
+  x := new int[17]
+
+  for i := 0; i < 17; i := i + 1:
+    x[i] := i
+  end
+
+  enlarge(x, 17, 42)
+  x[25] := 1234             % this should be OK now
+  printarr(x, 42)
+end

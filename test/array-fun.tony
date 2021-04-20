@@ -1,0 +1,20 @@
+<*
+ * Test case: array-fun.tony
+ * Result: Pass
+ *>
+
+def program():
+  def char[] f():
+     char[] a
+     a := new char[5]
+     a[0] := 'd'
+     return a
+  end
+  int[] arr
+  char[] x
+  x := "ppppp"
+  puts(x)
+  putc('\n')
+  putc(f()[0])
+  putc('\n')
+end

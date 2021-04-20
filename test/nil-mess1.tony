@@ -1,0 +1,53 @@
+<*
+ * Test case: nil-mess1.tony
+ * Result: Pass
+ *>
+
+def main():   % no "err" should be printed!
+
+  def list[list[int][]] f():
+    return nil
+  end
+
+  def list[list[int][]] g(list[list[int][]] initial):
+    list[list[int][]] y
+    if nil?(nil):
+      y := nil
+    else:
+      puts("err\n")
+    end
+    return y
+  end
+
+  def list[list[list[int][]]] h(list[list[int][]] initial):
+    return initial # nil # nil
+  end
+
+  list[list[list[int][]]] x
+
+  x := f() # nil
+  if not nil?(head(x)):
+    puts("err\n")
+  end
+
+  if not nil?(g(nil)):
+    puts("err\n")
+  end
+
+  x := h(head(x))
+  if nil?(x):
+    puts("err\n")
+  end
+  if not nil?(head(x)):
+    puts("err\n")
+  end
+  if nil?(tail(x)):
+    puts("err\n")
+  end
+  if not nil?(head(tail(x))):
+    puts("err\n")
+  end
+
+  puts("If any \"err\" above, then WRONG! If you do not see this message, then also WRONG!\n")
+
+end
