@@ -1,6 +1,7 @@
 <*
  * Test case: simple-nest.tony
  * Result: Pass
+ * Input
  *>
 
 def program():

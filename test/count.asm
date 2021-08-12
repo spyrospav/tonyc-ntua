@@ -8,6 +8,7 @@ main:                                   # @main
 # %bb.0:                                # %entry
 	pushq	%rax
 	.cfi_def_cfa_offset 16
+	callq	GC_init
 	movq	$1, (%rsp)
 	cmpq	$41, (%rsp)
 	jg	.LBB0_3

@@ -43,9 +43,9 @@ tony: lexer.o parser.o symbol.o error.o general.o
 install: tony
 	#echo 'export PATH=$PATH:$DIR/tonyc' >> ~/.bashrc
 	#echo 'alias tonyc=./tonyc' >> ~/.bashrc
-	
+
 clean:
 	$(RM) lexer.cpp parser.cpp parser.hpp parser.output *.o
 
 distclean:
-	$(RM) lexer.cpp parser.cpp parser.hpp parser.output *.o tony *.asm *.imm
+	$(RM) lexer.cpp parser.cpp parser.hpp parser.output *.o tony test/*.asm test/*.imm test/*.out

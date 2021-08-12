@@ -6,5 +6,7 @@
 def program():
   int[][] a
   int[] b
+  b := new int[2]
+  a := new int[][1]
   a[0] := b
 end

@@ -10,6 +10,8 @@ def program():
   list[list[bool]] b
   skip
   d := false # nil
+  b := (false # nil) # nil
+  a := 5 # (2 # nil)
   d := head(b)
   b := tail(b)
   c := head(a)

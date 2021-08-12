@@ -1,6 +1,7 @@
 <*
  * Test case: neg-new.tony
  * Result: Pass
+ * Input
  *>
 
  def program():

@@ -668,10 +668,9 @@ public:
 
   void setLiveVariables(std::vector< std::pair <std::string, Type> > s) {
     live_vars = s;
-    std::cout << name << std::endl;
-    for (int i = 0; i < live_vars.size(); i++) {
-      std::cout << live_vars[i].first << std::endl;
-    }
+    // for (int i = 0; i < live_vars.size(); i++) {
+    //   std::cout << live_vars[i].first << std::endl;
+    // }
   }
 
 
@@ -923,7 +922,6 @@ public:
 
   virtual llvm::Value* compile() override {
 
-    std::cout << "started compiling " << header->getHeaderName() << std::endl;
     if (!isMain) {
       thisFunction = header->compilef();
     }

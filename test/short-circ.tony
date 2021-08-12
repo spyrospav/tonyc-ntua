@@ -8,6 +8,7 @@ def program():
   int a
   int[] mylist
   a := 1
+  mylist := new int[10]
   if ((a > 0) and ((mylist[1] > 1) and true and true and true)):
     puts("5\n")
   else:
