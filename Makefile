@@ -40,9 +40,8 @@ lexer.o: lexer.cpp lexer.hpp parser.hpp symbol.h ast.hpp
 tony: lexer.o parser.o symbol.o error.o general.o
 	$(CXX) $(CXXFLAGS) -o tony lexer.o parser.o symbol.o error.o general.o $(LDFLAGS)
 
-install: tony
-	#echo 'export PATH=$PATH:$DIR/tonyc' >> ~/.bashrc
-	#echo 'alias tonyc=./tonyc' >> ~/.bashrc
+install:
+	install.sh
 
 clean:
 	$(RM) lexer.cpp parser.cpp parser.hpp parser.output *.o
