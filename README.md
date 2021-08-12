@@ -6,7 +6,7 @@
  * [Dimitris Galanis](https://github.com/DominusTea)
  * [Spyros Pavlatos](https://github.com/spyrospav)
 
-### Installation
+### Installation and build
 
 To install **tonyc** you should run
 
