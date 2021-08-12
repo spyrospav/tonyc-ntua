@@ -1,6 +1,7 @@
 <*
  * Test case: hanoi.tony
  * Result: Pass
+ * Input
  *>
 
 def solve():

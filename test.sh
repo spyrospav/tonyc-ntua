@@ -5,6 +5,8 @@ echo -e "----------------------------------------------\n"
 test_dir="./test/"
 count=1
 correct=0
+wrong=()
+
 for testfile in "$test_dir"*.tony
 do
   res=$(awk -v line=3 -v field=3 'NR==line{print $field}' "$testfile")
@@ -18,6 +20,7 @@ do
       let correct+=1
       echo "Test case ${count}: ${name} - Success"
     else
+      wrong+=(${name})
       echo "Test case ${count}: ${name} - Error"
     fi
   elif [ $res = "Fail" ]; then
@@ -36,3 +39,9 @@ done
 let count-=1
 echo -e "----------------------------------------------\n"
 echo "Correct: ${correct}/${count}"
+echo -e "----------------------------------------------\n"
+echo "Wrong:"
+for value in "${wrong[@]}"
+do
+   echo "$value"
+done

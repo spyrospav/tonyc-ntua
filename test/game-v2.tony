@@ -1,6 +1,7 @@
 <*
  * Test case: game-v2.tony
  * Result: Pass
+ * Input
  *>
 
 def program():

@@ -1,6 +1,7 @@
 <*
  * Test case: isprime.tony
  * Result: Pass
+ * Input
  *>
 
 def main ():

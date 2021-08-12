@@ -29,5 +29,11 @@ def main ():
     end
   end
   int[] x
+  x := new int[5]
+  x[0] := 2
+  x[1] := 4
+  x[2] := 1
+  x[3] := 13
+  x[4] := 0
   bsort(5, x)
 end
