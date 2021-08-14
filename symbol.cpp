@@ -339,6 +339,8 @@ SymbolEntry * newConstant (const char * name, Type type, ...)
                 strcpy(buffer, "\"");
                 strAppendString(buffer, value.vString);
                 strcat(buffer, "\"");
+            default:
+                internal("Invalid type for constant");
         }
         e = newEntry(buffer);
     }
@@ -364,6 +366,8 @@ SymbolEntry * newConstant (const char * name, Type type, ...)
                 break;
             case TYPE_ARRAY:
                 e->u.eConstant.value.vString = value.vString;
+            default:
+                internal("Tried to insert as constant to the SymbolTable something of type %s", type->kind);
         }
     }
     return e;
@@ -644,6 +648,8 @@ void destroyType (Type type)
                 destroyType(type->refType);
                 delete(type);
             }
+        default:
+          break;
     }
 }
 
@@ -666,6 +672,8 @@ unsigned int sizeOfType (Type type)
             return 10;
         case TYPE_ARRAY:
             return type->size * sizeOfType(type->refType);
+        default:
+            internal("type_ANY has undefined size");
     }
     return 0;
 }
@@ -694,6 +702,8 @@ bool equalType (Type type1, Type type2)
             return equalType(type1->refType, type2->refType);
         case TYPE_ANY:
             return true;
+        default:
+            break;
     }
     return true;
 }
@@ -805,6 +815,8 @@ void printSymbolTable ()
                         break;
                     case ENTRY_TEMPORARY:
                         printf("[%d]", e->u.eTemporary.offset);
+                        break;
+                    case ENTRY_CONSTANT:
                         break;
 #endif
                 }

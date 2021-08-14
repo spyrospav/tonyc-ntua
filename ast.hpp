@@ -24,6 +24,8 @@
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Constants.h>
 
+#include <llvm/Support/Alignment.h>
+
 /*------------ LLVM Optimizations -------------*/
 #include <llvm/Transforms/InstCombine/InstCombine.h>
 #include <llvm/Transforms/Scalar.h>
@@ -155,7 +157,7 @@ class AST {
           *TheModule, nl_type, true, llvm::GlobalValue::PrivateLinkage,
           llvm::ConstantArray::get(nl_type, {c8('\n'), c8('\0')}), "nl"
       );
-      TheNL->setAlignment(1);
+      TheNL->setAlignment(llvm::MaybeAlign(1));
 
       // Initialize abenetopoulos library functions (https://github.com/abenetopoulos/edsger_lib)
 

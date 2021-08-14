@@ -117,7 +117,7 @@ E \\(n|t|r|0|\'|\"|\\|x{H}{H})
 %%
 
 void yyerror(const char *msg) {
-  fprintf(stderr, "Illegal character with code %d in line %d \n",
+  fprintf(stderr, "Illegal character with code %d in line %d \n %s",
                     yytext[0], linecount, msg);
       exit(1);
 }

@@ -1,0 +1,15 @@
+<*
+ * Test case: type-checking.tony
+ * Result: Fail
+ *>
+
+ def program():
+   def int fun(int a):
+      return (a+1)
+   end
+   int b
+   char c
+   b := fun('a') % both lines are wrong
+   c := fun (10) % both lines are wrong
+
+ end
