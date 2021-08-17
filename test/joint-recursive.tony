@@ -1,0 +1,23 @@
+<*
+ * Test case: joint-recursive.tony
+ * Result: Pass
+ *>
+
+def program():
+  decl int g(int a, b)
+  def int f(int a, b):
+    if a = 0:
+      return a+b
+    else:
+      return g(a-1,b)
+    end
+  end
+  def int g(int a, b):
+    if b = 0:
+      return a+b
+    else:
+      return f(a, b-2)
+    end
+  end
+  puts("The joint recursive result is: ") puti(f(10,12)) putc('\n')
+end
