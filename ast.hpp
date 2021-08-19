@@ -1132,6 +1132,7 @@ public:
     }
     else if (entry == ENTRY_FUNCTION) {
       type = e->u.eFunction.resultType;
+      lval = false;
     }
     else if (entry == ENTRY_PARAMETER) {
       addLiveVariable(e);

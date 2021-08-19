@@ -1,0 +1,30 @@
+<*
+ * Test case: joint-recursive-ref.tony
+ * Result: Pass
+ *>
+
+def program():
+  int a, b
+  decl int g(ref int a, b)
+  def int f(ref int a, b):
+    if a = 0:
+      return a+b
+    else:
+      a := a-1
+      return g(a,b)
+    end
+  end
+  def int g(ref int a, b):
+    if b = 0:
+      return a+b
+    else:
+      b := b-2
+      return f(a, b)
+    end
+  end
+
+  a := 10
+  b := 12
+  puts("The joint recursive result is: ") puti(f(a,b)) putc('\n')
+  puts("a = ") puti(a) puts(", b = ") puti(b) putc('\n')
+end

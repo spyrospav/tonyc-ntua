@@ -6,25 +6,26 @@
 main:                                   # @main
 	.cfi_startproc
 # %bb.0:                                # %entry
-	pushq	%rax
+	pushq	%rbx
 	.cfi_def_cfa_offset 16
+	.cfi_offset %rbx, -16
 	callq	GC_init
-	movq	$1, (%rsp)
-	cmpq	$41, (%rsp)
+	movl	$1, %ebx
+	cmpq	$41, %rbx
 	jg	.LBB0_3
 	.p2align	4, 0x90
 .LBB0_2:                                # %body
                                         # =>This Inner Loop Header: Depth=1
-	movq	(%rsp), %rdi
+	movq	%rbx, %rdi
 	callq	puti
 	movl	$10, %edi
 	callq	putc
-	incq	(%rsp)
-	cmpq	$41, (%rsp)
+	incq	%rbx
+	cmpq	$41, %rbx
 	jle	.LBB0_2
 .LBB0_3:                                # %endfor
 	xorl	%eax, %eax
-	popq	%rcx
+	popq	%rbx
 	.cfi_def_cfa_offset 8
 	retq
 .Lfunc_end0:

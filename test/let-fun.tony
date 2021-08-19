@@ -1,0 +1,20 @@
+<*
+ * Test case: let-fun.tony
+ * Result: Fail
+ *>
+
+def program():
+  def int f(int a):
+    return a+1
+  end
+  def int g(int a):
+    return a-1
+  end
+  int a
+
+  a := f(1) %this should be ok
+  g := f  % I DUNNO
+  a := f  % this should lead to semantic error
+  f := a  % this should lead to semantic error
+
+end

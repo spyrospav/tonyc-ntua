@@ -6,14 +6,20 @@
 def program():
   bool b
   int a
-  int[] mylist
+  list[int] mylist
   a := 1
-  mylist := new int[10]
-  if ((a > 0) and ((mylist[1] > 1) and true and true and true)):
-    puts("5\n")
-  else:
-    puts("4\n")
-  end
-end
+  mylist := nil
 
-%((a or b) or c)
+  if (a > 0) or (head (mylist)>1):
+    puts("Should be reached if short-circuiting works!\n")
+  else:
+    puts("wrong!\n")
+  end
+
+  if (a < 0) and (head (mylist)>1):
+    puts("wrong!\n")
+  else:
+    puts("Should be reached if short-circuiting works!\n")
+  end
+
+end

@@ -1,0 +1,45 @@
+<*
+ * Test case: perfect.tony
+ * Result: Pass
+ *>
+
+def program():
+  def bool isPerfect(int n):
+    % checks if n is perfect
+    int i, sum
+    sum := 0
+    for i:=1; i<n; i:=i+1:
+    <*
+      puts("i= ")
+      puti(i)
+      putc('\n')
+      puts("modded= ")
+      puti(n mod i)
+      putc('\n')
+    *>
+      if (n mod i) = 0:
+        sum := sum + i
+      end
+    end
+    return (sum = n)
+  end
+
+  def findPerfects(int l):
+    % finds all perfect numbers smaller than l, starting from 2
+    int i
+    for i:=1; i<l; i:=i+1:
+      puti(i) puts(" ")
+      if isPerfect(i):
+        puts("is Perfect \n")
+      else:
+        puts("is NOT Perfect \n")
+      end
+    end
+  end
+
+  int a, lim
+  lim := 100
+  puts("testing numbers up to: ")
+  puti(lim)
+  findPerfects(lim)
+end
