@@ -41,7 +41,7 @@ tony: lexer.o parser.o symbol.o error.o general.o
 	$(CXX) $(CXXFLAGS) -o tony lexer.o parser.o symbol.o error.o general.o $(LDFLAGS)
 
 depend:
-	install.sh
+	./install.sh
 
 clean:
 	$(RM) lexer.cpp parser.cpp parser.hpp parser.output *.o
