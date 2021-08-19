@@ -15,6 +15,8 @@ make
 ```
 
 `make depend` automatically installs the following (needed) packages :
+  * `flex`
+  * `bison`
   * `gcc`
   * `llvm-10`
   * `clang-10`
