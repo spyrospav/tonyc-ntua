@@ -1,7 +1,6 @@
 # compilers-ntua
 
-**tonyc** is a compiler made for Tony, an educational programming language for Compilers course at ECE, NTUA.
-
+**tonyc** is a compiler made for Tony, an educational programming language for Compilers course at ECE, NTUA. More information about our compiler's architecture and the choices we've made constructing it, can be found in our written [report](docs/report.pdf).
 ### Team
  * [Dimitris Galanis](https://github.com/DominusTea)
  * [Spyros Pavlatos](https://github.com/spyrospav)
