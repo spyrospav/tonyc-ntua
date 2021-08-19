@@ -8,14 +8,14 @@
 
 ### Installation and build
 
-To install **tonyc** you should run
+To install **tonyc** dependencies and build the compiler you should run
 
 ```
-make install
+make depend
 make
 ```
 
-`make install` automatically installs the following (needed) packages :
+`make depend` automatically installs the following (needed) packages :
   * `gcc`
   * `llvm-10`
   * `clang-10`

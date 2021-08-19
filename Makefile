@@ -40,7 +40,7 @@ lexer.o: lexer.cpp lexer.hpp parser.hpp symbol.h ast.hpp
 tony: lexer.o parser.o symbol.o error.o general.o
 	$(CXX) $(CXXFLAGS) -o tony lexer.o parser.o symbol.o error.o general.o $(LDFLAGS)
 
-install:
+depend:
 	install.sh
 
 clean:
